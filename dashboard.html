@@ -164,10 +164,16 @@
                 const contacts = await conRes.json();
                 
                 const now = new Date();
-                const thisMonth = invoices.filter(inv => { const d = new Date(inv.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
+                const thisMonth = invoices.filter(inv => { 
+                    if (inv.state === 'draft') return false;
+                    const dateStr = inv.invoice_date || inv.created_at;
+                    if (!dateStr) return false;
+                    const d = new Date(dateStr); 
+                    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); 
+                });
                 document.getElementById('kpiOmzet').textContent = '€' + thisMonth.reduce((s,i) => s + parseFloat(i.total_price_incl_tax||0), 0).toLocaleString('nl-NL', {maximumFractionDigits:0});
                 
-                const open = invoices.filter(i => i.state === 'open' || i.state === 'pending');
+                const open = invoices.filter(i => i.state === 'open' || i.state === 'late' || i.state === 'reminded');
                 document.getElementById('kpiOpen').textContent = '€' + open.reduce((s,i) => s + parseFloat(i.total_price_incl_tax||0), 0).toLocaleString('nl-NL', {maximumFractionDigits:0});
                 document.getElementById('kpiOpenAantal').textContent = open.length + ' facturen';
                 document.getElementById('kpiKlanten').textContent = contacts.length;
@@ -177,7 +183,11 @@
                 
                 document.getElementById('facturen').innerHTML = invoices.slice(0,5).map(inv => {
                     const c = contacts.find(x => x.id === inv.contact_id);
-                    const st = inv.state === 'paid' ? '<span class="text-green-600">Betaald</span>' : inv.state === 'open' ? '<span class="text-orange-500">Open</span>' : '<span class="text-gray-400">Concept</span>';
+                    const st = inv.state === 'paid' ? '<span class="text-green-600">Betaald</span>' : 
+                               inv.state === 'late' ? '<span class="text-red-500">Te laat</span>' :
+                               inv.state === 'reminded' ? '<span class="text-orange-600">Herinnerd</span>' :
+                               inv.state === 'open' ? '<span class="text-orange-500">Open</span>' : 
+                               '<span class="text-gray-400">Concept</span>';
                     return `<tr><td class="text-sm">${c?.company_name || c?.firstname || '-'}</td><td class="text-sm">€${parseFloat(inv.total_price_incl_tax||0).toFixed(0)}</td><td class="text-sm">${st}</td></tr>`;
                 }).join('') || '<tr><td colspan="3" class="text-gray-400 text-center py-4 text-sm">Geen facturen</td></tr>';
                 
@@ -189,7 +199,13 @@
                 const data = [];
                 for (let i = 5; i >= 0; i--) {
                     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                    const m = invoices.filter(inv => { const id = new Date(inv.date); return id.getMonth() === d.getMonth() && id.getFullYear() === d.getFullYear(); });
+                    const m = invoices.filter(inv => { 
+                        if (inv.state === 'draft') return false;
+                        const dateStr = inv.invoice_date || inv.created_at;
+                        if (!dateStr) return false;
+                        const id = new Date(dateStr); 
+                        return id.getMonth() === d.getMonth() && id.getFullYear() === d.getFullYear(); 
+                    });
                     data.push({ month: months[d.getMonth()], total: m.reduce((s,i) => s + parseFloat(i.total_price_incl_tax||0), 0) });
                 }
                 new Chart(ctx, { type: 'bar', data: { labels: data.map(d => d.month), datasets: [{ data: data.map(d => d.total), backgroundColor: '#6366f1', borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString() } } } } });
