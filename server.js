@@ -1004,8 +1004,10 @@ app.get('/api/purchase-history', requireAuth, async (req, res) => {
 app.get('/api/suppliers', requireAuth, async (req, res) => {
     try {
         const fetch = (await import('node-fetch')).default;
-        const response = await fetch(
-            `${MONEYBIRD_API_URL}/contacts.json`,
+        
+        // Haal eerst inkoopfacturen op om te zien welke contacten echt leveranciers zijn
+        const purchaseRes = await fetch(
+            `${MONEYBIRD_API_URL}/documents/purchase_invoices.json`,
             {
                 headers: {
                     'Authorization': `Bearer ${MONEYBIRD_API_TOKEN}`,
@@ -1014,23 +1016,30 @@ app.get('/api/suppliers', requireAuth, async (req, res) => {
             }
         );
         
-        if (!response.ok) throw new Error('Moneybird API error');
+        if (!purchaseRes.ok) throw new Error('Moneybird API error');
         
-        const contacts = await response.json();
+        const purchases = await purchaseRes.json();
         
-        // Filter alleen leveranciers
-        const suppliers = contacts
-            .filter(c => c.company_name)
-            .map(c => ({
-                id: c.id,
-                name: c.company_name,
-                email: c.email,
-                phone: c.phone,
-                address: `${c.address1 || ''} ${c.city || ''}`.trim()
-            }))
+        // Verzamel unieke leverancier IDs en namen uit inkoopfacturen
+        const supplierMap = new Map();
+        for (const inv of purchases) {
+            if (inv.contact_id && inv.contact) {
+                const name = inv.contact.company_name || inv.contact.firstname + ' ' + inv.contact.lastname;
+                if (name && name.trim()) {
+                    supplierMap.set(inv.contact_id, {
+                        id: inv.contact_id,
+                        name: name.trim(),
+                        invoiceCount: (supplierMap.get(inv.contact_id)?.invoiceCount || 0) + 1
+                    });
+                }
+            }
+        }
+        
+        // Sorteer op naam
+        const suppliers = Array.from(supplierMap.values())
             .sort((a, b) => a.name.localeCompare(b.name));
         
-        res.json({ success: true, suppliers });
+        res.json({ success: true, suppliers, count: suppliers.length });
         
     } catch (error) {
         console.error('Error fetching suppliers:', error);
