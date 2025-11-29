@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Opname & Contract - StucAdmin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; }
+        .sidebar { background: #fff; border-right: 1px solid #e5e7eb; position: fixed; left: 0; top: 0; bottom: 0; width: 256px; display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s ease; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; text-decoration: none; margin-bottom: 4px; }
+        .nav-item:hover { background: #f1f5f9; }
+        .nav-item.active { background: #6366f1; color: white; }
+        .logout-btn { color: #ef4444; }
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        main { margin-left: 256px; padding: 24px; min-height: 100vh; max-width: 900px; }
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+        .btn { padding: 12px 24px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+        .btn-primary { background: #6366f1; color: white; }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-secondary { background: #f1f5f9; color: #475569; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; width: 100%; font-size: 16px; min-height: 44px; }
+        .input-field:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+        textarea.input-field { min-height: 100px; resize: vertical; }
+        .step-indicator { display: flex; gap: 8px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 8px; flex-wrap: wrap; }
+        .step { padding: 8px 16px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; background: #e5e7eb; color: #64748b; cursor: pointer; }
+        .step.active { background: #6366f1; color: white; }
+        .step.completed { background: #10b981; color: white; }
+        .checkbox-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: 10px; background: #f8fafc; margin-bottom: 8px; }
+        .checkbox-item input[type="checkbox"] { width: 22px; height: 22px; margin-top: 2px; accent-color: #6366f1; flex-shrink: 0; }
+        .checkbox-item label { flex: 1; font-size: 14px; cursor: pointer; }
+        .section-title { font-weight: 700; font-size: 14px; color: #374151; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .section-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+        .section-box.client { background: #fef3c7; border-color: #fcd34d; }
+        .section-box.company { background: #dbeafe; border-color: #93c5fd; }
+        .section-box h3 { font-weight: 700; font-size: 15px; margin-bottom: 12px; }
+        .section-box.client h3 { color: #92400e; }
+        .section-box.company h3 { color: #1e40af; }
+        .room-row { display: grid; grid-template-columns: 1fr 80px 1fr 40px; gap: 8px; align-items: center; margin-bottom: 8px; }
+        .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; margin-top: 12px; }
+        .photo-item { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: #f1f5f9; }
+        .photo-item img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-item .delete-btn { position: absolute; top: 4px; right: 4px; background: rgba(239,68,68,0.9); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 12px; }
+        .file-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f1f5f9; border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
+        .file-item .delete-btn { background: none; border: none; color: #ef4444; cursor: pointer; margin-left: auto; }
+        .add-media { display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed #cbd5e1; border-radius: 10px; padding: 20px; cursor: pointer; color: #64748b; font-size: 13px; text-align: center; }
+        .add-media:hover { border-color: #6366f1; color: #6366f1; }
+        .signature-container { border: 2px solid #e2e8f0; border-radius: 10px; background: white; overflow: hidden; }
+        .signature-pad { width: 100%; height: 150px; touch-action: none; cursor: crosshair; }
+        .nav-buttons { display: flex; gap: 12px; margin-top: 24px; }
+        .nav-buttons .btn { flex: 1; }
+        .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .summary-box { background: #f8fafc; border-radius: 10px; padding: 16px; }
+        .summary-box h4 { font-weight: 600; font-size: 13px; margin-bottom: 8px; color: #6366f1; }
+        .summary-box ul { font-size: 13px; color: #374151; list-style: none; padding: 0; margin: 0; }
+        .summary-box li { padding: 4px 0; display: flex; align-items: center; gap: 6px; }
+        .summary-box li::before { content: "✓"; color: #10b981; font-weight: bold; }
+        .warning-box { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 10px; padding: 12px; font-size: 13px; color: #92400e; margin: 16px 0; }
+        .dropdown-container { position: relative; }
+        .dropdown-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); max-height: 250px; overflow-y: auto; z-index: 50; display: none; }
+        .dropdown-list.show { display: block; }
+        .dropdown-item { padding: 12px 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
+        .dropdown-item:hover { background: #f8fafc; }
+        .dropdown-item:last-child { border-bottom: none; }
+        .extra-work-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+        .extra-work-row input[type="checkbox"] { width: 22px; height: 22px; }
+        .extra-work-row input[type="number"] { width: 80px; }
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            main { margin-left: 0; padding: 70px 16px 24px 16px; }
+            .summary-grid { grid-template-columns: 1fr; }
+            .room-row { grid-template-columns: 1fr 60px 40px; }
+            .room-row input:nth-child(3) { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
+    <aside class="sidebar">
+        <div class="p-6 border-b border-gray-100">
+            <h1 class="text-xl font-bold text-indigo-600">StucAdmin</h1>
+            <p class="text-xs text-gray-400 mt-1">Professional Suite</p>
+        </div>
+        <nav class="flex-1 p-4 overflow-y-auto">
+            <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+            <a href="omzet.html" class="nav-item">💹 Omzet</a>
+            <a href="crm.html" class="nav-item">👥 Klanten</a>
+            <a href="planning.html" class="nav-item">📅 Planning</a>
+            <a href="opname.html" class="nav-item active">📋 Opname</a>
+            <a href="uren.html" class="nav-item">⏱️ Uren</a>
+            <a href="calculator.html" class="nav-item">🧮 Calculator</a>
+            <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
+            <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
+        </nav>
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button>
+        </div>
+    </aside>
+
+    <main>
+        <header class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-xl font-bold">📋 Opname & Contract</h1>
+                <p class="text-gray-500 text-sm">Leg alle afspraken vast</p>
+            </div>
+            <button onclick="showOpnameList()" class="btn btn-secondary text-sm">📁 Opnames</button>
+        </header>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator" id="stepIndicator">
+            <div class="step active" onclick="goToStep(1)">1. Klant</div>
+            <div class="step" onclick="goToStep(2)">2. Werk</div>
+            <div class="step" onclick="goToStep(3)">3. Ruimtes</div>
+            <div class="step" onclick="goToStep(4)">4. Klant taken</div>
+            <div class="step" onclick="goToStep(5)">5. Onze taken</div>
+            <div class="step" onclick="goToStep(6)">6. Foto's</div>
+            <div class="step" onclick="goToStep(7)">7. Akkoord</div>
+        </div>
+
+        <!-- STEP 1: Klantgegevens -->
+        <div id="step1" class="step-content">
+            <div class="card">
+                <h2 class="text-lg font-bold mb-4">👤 Klantgegevens</h2>
+                
+                <div class="mb-4">
+                    <label class="text-sm text-gray-600 mb-1 block">Klant zoeken (Moneybird)</label>
+                    <div class="dropdown-container">
+                        <input type="text" id="klantSearch" class="input-field" placeholder="🔍 Zoek op naam..." oninput="filterKlanten(this.value)" onfocus="showKlantDropdown()">
+                        <div id="klantDropdown" class="dropdown-list"></div>
+                    </div>
+                </div>
+
+                <div id="klantDetails" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="text-sm text-gray-600 mb-1 block">Naam</label>
+                            <input type="text" id="klantNaam" class="input-field" placeholder="Volledige naam">
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-600 mb-1 block">Telefoon</label>
+                            <input type="tel" id="klantTelefoon" class="input-field" placeholder="06-12345678">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="text-sm text-gray-600 mb-1 block">Email</label>
+                        <input type="email" id="klantEmail" class="input-field" placeholder="email@voorbeeld.nl">
+                    </div>
+                </div>
+
+                <div class="border-t pt-4 mt-4">
+                    <h3 class="font-semibold mb-3">📍 Werklocatie</h3>
+                    <div class="mb-4">
+                        <label class="text-sm text-gray-600 mb-1 block">Adres</label>
+                        <input type="text" id="werkAdres" class="input-field" placeholder="Straat en huisnummer">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-sm text-gray-600 mb-1 block">Postcode</label>
+                            <input type="text" id="werkPostcode" class="input-field" placeholder="1234 AB">
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-600 mb-1 block">Plaats</label>
+                            <input type="text" id="werkPlaats" class="input-field" placeholder="Stad">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t pt-4 mt-4">
+                    <label class="text-sm text-gray-600 mb-1 block">📅 Datum opname</label>
+                    <input type="date" id="opnameDatum" class="input-field" style="max-width: 200px;">
+                </div>
+
+                <div class="nav-buttons">
+                    <div></div>
+                    <button onclick="nextStep()" class="btn btn-primary">Volgende →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 2: Werkzaamheden -->
+        <div id="step2" class="step-content hidden">
+            <div class="card">
+                <h2 class="text-lg font-bold mb-4">🎨 Werkzaamheden</h2>
+                
+                <div class="section-title">Hoofdwerk</div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="werkWanden" checked>
+                    <label for="werkWanden">Stucwerk wanden</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="werkPlafond">
+                    <label for="werkPlafond">Stucwerk plafond</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="werkSpuitwerk">
+                    <label for="werkSpuitwerk">Spuitwerk</label>
+                </div>
+
+                <div class="mt-4 mb-4">
+                    <label class="text-sm text-gray-600 mb-1 block">Aantal kleuren</label>
+                    <select id="aantalKleuren" class="input-field" style="max-width: 150px;">
+                        <option value="1">1 kleur</option>
+                        <option value="2">2 kleuren</option>
+                        <option value="3">3 kleuren</option>
+                        <option value="4">4 kleuren</option>
+                        <option value="5">5+ kleuren</option>
+                    </select>
+                </div>
+
+                <div class="section-title mt-6">Extra werk</div>
+                <div class="extra-work-row">
+                    <input type="checkbox" id="werkKoofjes">
+                    <label for="werkKoofjes" class="flex-1">Koofjes</label>
+                    <span class="text-sm text-gray-500">Aantal:</span>
+                    <input type="number" id="aantalKoofjes" class="input-field" min="0" value="0">
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="werkTVOmbouw">
+                    <label for="werkTVOmbouw">TV ombouw / Schouw</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="werkKeuken">
+                    <label for="werkKeuken">Keuken ombouw op maat</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="werkDeurposten">
+                    <label for="werkDeurposten">Deurposten op maat</label>
+                </div>
+
+                <div class="mt-6">
+                    <label class="text-sm text-gray-600 mb-1 block">Omschrijving werkzaamheden</label>
+                    <textarea id="werkOmschrijving" class="input-field" placeholder="Eventuele extra details over het werk..."></textarea>
+                </div>
+
+                <div class="nav-buttons">
+                    <button onclick="prevStep()" class="btn btn-secondary">← Terug</button>
+                    <button onclick="nextStep()" class="btn btn-primary">Volgende →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: Ondergrond & Ruimtes -->
+        <div id="step3" class="step-content hidden">
+            <div class="card">
+                <h2 class="text-lg font-bold mb-4">🏠 Ondergrond & Ruimtes</h2>
+                
+                <div class="section-title">Ondergrond situatie</div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="ondergVerflaag">
+                    <label for="ondergVerflaag">Bestaande verflaag verwijderen</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="ondergScheuren">
+                    <label for="ondergScheuren">Scheuren/beschadigingen aanwezig</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="ondergVocht">
+                    <label for="ondergVocht">Vochtproblemen geconstateerd</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="ondergBehang">
+                    <label for="ondergBehang">Behang aanwezig (moet verwijderd)</label>
+                </div>
+
+                <div class="warning-box mt-4">
+                    <strong>🏗️ Aanbouw / Nog niet gereed</strong>
+                    <div class="checkbox-item mt-2" style="background: transparent; padding: 0;">
+                        <input type="checkbox" id="aanbouwNietKlaar" onchange="toggleAanbouw()">
+                        <label for="aanbouwNietKlaar">Aanbouw nog niet klaar</label>
+                    </div>
+                    <div id="aanbouwM2" class="hidden mt-2">
+                        <label class="text-sm mb-1 block">Geschatte m² (wordt later verrekend)</label>
+                        <input type="number" id="aanbouwM2Input" class="input-field" style="max-width: 120px;" placeholder="m²">
+                        <p class="text-xs mt-1">⚠️ Wordt achteraf verrekend bij meer/minder werk</p>
+                    </div>
+                </div>
+
+                <div class="section-title mt-6">📐 Ruimtes & Oppervlaktes</div>
+                <div id="ruimtesList">
+                    <div class="room-row">
+                        <input type="text" class="input-field ruimte-naam" placeholder="Ruimte naam">
+                        <input type="number" class="input-field ruimte-m2" placeholder="m²">
+                        <input type="text" class="input-field ruimte-opmerking" placeholder="Opmerking">
+                        <button onclick="removeRuimte(this)" class="btn btn-danger" style="padding: 8px; min-height: 36px;">×</button>
+                    </div>
+                </div>
+                <button onclick="addRuimte()" class="btn btn-secondary mt-2 text-sm">+ Ruimte toevoegen</button>
+
+                <div class="mt-4 p-3 bg-indigo-50 rounded-lg">
+                    <strong>Totaal: <span id="totaalM2">0</span> m²</strong>
+                </div>
+
+                <div class="nav-buttons">
+                    <button onclick="prevStep()" class="btn btn-secondary">← Terug</button>
+                    <button onclick="nextStep()" class="btn btn-primary">Volgende →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 4: Verplichtingen Klant -->
+        <div id="step4" class="step-content hidden">
+            <div class="card">
+                <div class="section-box client">
+                    <h3>👤 VERPLICHTINGEN KLANT</h3>
+                    <p class="text-sm mb-4" style="color: #92400e;">Onderstaande punten dienen gereed te zijn vóór aanvang werkzaamheden:</p>
+
+                    <div class="section-title">🏠 Toegang & Voorzieningen</div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="klantSleutel">
+                        <label for="klantSleutel">Sleutel / toegangscode beschikbaar</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="klantWC">
+                        <label for="klantWC">WC beschikbaar tijdens werkzaamheden</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="klantWasmachine">
+                        <label for="klantWasmachine">Wasmachine-aansluiting vrij voor onze machine</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="klantElektra">
+                        <label for="klantElektra">Elektra aanwezig (werkende stopcontacten)</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="klantParkeren">
+                        <label for="klantParkeren">Parkeerruimte beschikbaar</label>
+                    </div>
+
+                    <div class="section-title mt-4">🧹 Voorbereiding ruimtes</div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="klantLeeg">
+                        <label for="klantLeeg">Ruimtes zijn leeg en schoon</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="klantRadiatoren">
+                        <label for="klantRadiatoren">Radiatoren zijn verwijderd/afgemonteerd</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="klantStopcontacten">
+                        <label for="klantStopcontacten">Stopcontacten en lichtpunten zijn losgemaakt</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="klantSpijkers">
+                        <label for="klantSpijkers">Spijkers en schroeven zijn verwijderd</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="klantBehangVerw">
+                        <label for="klantBehangVerw">Behang is verwijderd</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="klantVerfVerw">
+                        <label for="klantVerfVerw">Verflaag is verwijderd (indien van toepassing)</label>
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="text-sm text-gray-700 mb-1 block font-medium">Voorbereiding door ons gewenst? (meerwerk)</label>
+                        <textarea id="klantMeerwerk" class="input-field" placeholder="Bijv: Stopcontacten losmaken, behang verwijderen..."></textarea>
+                    </div>
+
+                    <div class="section-title mt-4">🚧 Werkplek</div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="klantEnige">
+                        <label for="klantEnige">Wij zijn de enige partij aan het werk (tenzij anders besproken)</label>
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="text-sm text-gray-700 mb-1 block font-medium">📢 Bijzonderheden project</label>
+                        <p class="text-xs text-gray-500 mb-2">Andere wensen of ruimtes die NIET in deze opname staan? Noteer hier alles wat besproken is.</p>
+                        <textarea id="klantBijzonderheden" class="input-field" placeholder="Bijv: Zolder is besproken, klant doet dit later zelf. Garage valt NIET onder deze opdracht..."></textarea>
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="text-sm text-gray-700 mb-1 block font-medium">Overige afwijkingen/afspraken</label>
+                        <textarea id="klantAfwijkingen" class="input-field" placeholder="Bijv: Radiatoren worden vrijdag verwijderd..."></textarea>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    ⚠️ Niet nageleefde punten kunnen leiden tot meerwerk of vertraging.
+                </div>
+
+                <div class="nav-buttons">
+                    <button onclick="prevStep()" class="btn btn-secondary">← Terug</button>
+                    <button onclick="nextStep()" class="btn btn-primary">Volgende →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 5: Verantwoordelijkheden Stucologie -->
+        <div id="step5" class="step-content hidden">
+            <div class="card">
+                <div class="section-box company">
+                    <h3>🏢 VERANTWOORDELIJKHEDEN STUCOLOGIE</h3>
+                    <p class="text-sm mb-4" style="color: #1e40af;">Wij zorgen voor:</p>
+
+                    <div class="section-title">📦 Materialen & Gereedschap</div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="wijMateriaal" checked disabled>
+                        <label for="wijMateriaal">Alle benodigde materialen</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="wijGereedschap" checked disabled>
+                        <label for="wijGereedschap">Professioneel gereedschap</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="wijAfdek" checked disabled>
+                        <label for="wijAfdek">Afdekmateriaal voor vloeren/kozijnen</label>
+                    </div>
+
+                    <div class="section-title mt-4">👷 Uitvoering</div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="wijVakkundig" checked disabled>
+                        <label for="wijVakkundig">Vakkundige uitvoering volgens offerte</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="wijOpruimen" checked disabled>
+                        <label for="wijOpruimen">Opruimen werkplek na afloop</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="wijAfval" checked disabled>
+                        <label for="wijAfval">Afvoer eigen afval</label>
+                    </div>
+
+                    <div class="section-title mt-4">📋 Garantie & Service</div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="wijGarantie" checked disabled>
+                        <label for="wijGarantie">24 maanden garantie op geleverd stucwerk (conform AV)</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="wijBereikbaar" checked disabled>
+                        <label for="wijBereikbaar">Bereikbaar voor vragen tijdens project</label>
+                    </div>
+                    
+                    <p class="text-xs mt-3" style="color: #1e40af;">* Scheurvorming door zetting/werking van het gebouw is uitgesloten van garantie</p>
+                </div>
+
+                <div class="mt-4">
+                    <label class="text-sm text-gray-700 mb-1 block font-medium">Aanvullende afspraken van onze kant</label>
+                    <textarea id="wijAfspraken" class="input-field" placeholder="Eventuele extra toezeggingen..."></textarea>
+                </div>
+
+                <div class="nav-buttons">
+                    <button onclick="prevStep()" class="btn btn-secondary">← Terug</button>
+                    <button onclick="nextStep()" class="btn btn-primary">Volgende →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 6: Foto's & Bestanden -->
+        <div id="step6" class="step-content hidden">
+            <div class="card">
+                <h2 class="text-lg font-bold mb-4">📷 Foto's & Bestanden</h2>
+                
+                <div class="section-title">Foto's van situatie</div>
+                <p class="text-sm text-gray-500 mb-3">Maak foto's van de huidige situatie als bewijs</p>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <label class="add-media">
+                        <input type="file" accept="image/*" capture="environment" multiple onchange="addPhotos(this.files)" style="display:none;">
+                        📷<br>Maak foto
+                    </label>
+                    <label class="add-media">
+                        <input type="file" accept="image/*" multiple onchange="addPhotos(this.files)" style="display:none;">
+                        🖼️<br>Upload foto's
+                    </label>
+                </div>
+                
+                <div id="photoGrid" class="photo-grid"></div>
+
+                <div class="section-title mt-6">📄 Metingen & Documenten</div>
+                <p class="text-sm text-gray-500 mb-3">Upload tekeningen, metingen of andere documenten</p>
+                
+                <label class="add-media">
+                    <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" multiple onchange="addFiles(this.files)" style="display:none;">
+                    📁 Upload bestanden<br>
+                    <span class="text-xs">(PDF, Word, Excel, afbeeldingen)</span>
+                </label>
+                
+                <div id="fileList" class="mt-4"></div>
+
+                <div class="nav-buttons">
+                    <button onclick="prevStep()" class="btn btn-secondary">← Terug</button>
+                    <button onclick="nextStep()" class="btn btn-primary">Volgende →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 7: Samenvatting & Handtekening -->
+        <div id="step7" class="step-content hidden">
+            <div class="card">
+                <h2 class="text-lg font-bold mb-4">📄 Samenvatting & Akkoord</h2>
+                
+                <div id="summaryContent"></div>
+
+                <div class="section-box mt-4" style="background: #f1f5f9; border-color: #cbd5e1;">
+                    <h3 style="color: #374151;">📜 VOORWAARDEN DEZE OPDRACHT</h3>
+                    
+                    <div class="mt-3">
+                        <strong class="text-sm">💰 Betaling</strong>
+                        <ul class="text-sm mt-1 ml-4">
+                            <li>• 30% aanbetaling bij akkoord offerte</li>
+                            <li>• Restant binnen 14 dagen na oplevering</li>
+                        </ul>
+                        <div class="mt-2">
+                            <label class="text-sm text-gray-600">Afwijkende afspraak:</label>
+                            <input type="text" id="afwijkendeBetaling" class="input-field mt-1" placeholder="Indien anders besproken...">
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <strong class="text-sm">❌ Annulering</strong>
+                        <p class="text-sm mt-1 ml-4">• Bij annulering door opdrachtgever: €250 administratiekosten</p>
+                    </div>
+
+                    <div class="mt-4">
+                        <strong class="text-sm">📅 Geldigheid</strong>
+                        <p class="text-sm mt-1 ml-4">• Deze offerte is 30 dagen geldig</p>
+                    </div>
+
+                    <div class="mt-4">
+                        <strong class="text-sm">📋 Algemene Voorwaarden</strong>
+                        <p class="text-sm mt-1 ml-4">
+                            Op deze opdracht zijn de Algemene Voorwaarden van Stucologie B.V. van toepassing (KvK 98077627).<br>
+                            <a href="https://www.stucologie.nl/algemene-voorwaarden" target="_blank" class="text-indigo-600 underline">www.stucologie.nl/algemene-voorwaarden</a>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    ⚠️ Ruimtes/werk niet genoemd in deze opname vallen buiten de opdracht en worden apart geoffreerd.
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div>
+                        <div class="section-title">✍️ Handtekening klant</div>
+                        <div class="signature-container">
+                            <canvas id="signatureKlant" class="signature-pad" width="350" height="150"></canvas>
+                        </div>
+                        <button onclick="clearSignature('signatureKlant')" class="btn btn-secondary text-sm mt-2">Wissen</button>
+                        <p class="text-xs text-gray-500 mt-2">Door te tekenen verklaart de klant kennis te hebben genomen van de Algemene Voorwaarden en akkoord te gaan met deze opname.</p>
+                    </div>
+                    <div>
+                        <div class="section-title">✍️ Handtekening Stucologie</div>
+                        <div class="signature-container">
+                            <canvas id="signatureStucologie" class="signature-pad" width="350" height="150"></canvas>
+                        </div>
+                        <button onclick="clearSignature('signatureStucologie')" class="btn btn-secondary text-sm mt-2">Wissen</button>
+                    </div>
+                </div>
+
+                <div class="nav-buttons mt-6">
+                    <button onclick="prevStep()" class="btn btn-secondary">← Terug</button>
+                    <button onclick="saveOpname()" class="btn btn-success">💾 Opslaan</button>
+                    <button onclick="generatePDF()" class="btn btn-primary">📄 PDF maken</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Opnames List Modal -->
+        <div id="opnameListModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+                <div class="p-4 border-b flex justify-between items-center">
+                    <h2 class="font-bold">📁 Opgeslagen Opnames</h2>
+                    <button onclick="hideOpnameList()" class="text-2xl text-gray-400">&times;</button>
+                </div>
+                <div class="p-4 overflow-y-auto" style="max-height: calc(80vh - 80px);" id="opnameListContent"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentStep = 1;
+        const totalSteps = 7;
+        let contacts = [];
+        let selectedContact = null;
+        let photos = [];
+        let files = [];
+        let opnames = JSON.parse(localStorage.getItem('stuc_opnames') || '[]');
+
+        // Init
+        document.getElementById('opnameDatum').value = new Date().toISOString().split('T')[0];
+        loadContacts();
+        initSignaturePads();
+
+        function toggleMenu() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.querySelector('.sidebar-overlay').classList.toggle('open');
+        }
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
+
+        // Step Navigation
+        function goToStep(step) {
+            if (step < 1 || step > totalSteps) return;
+            document.querySelectorAll('.step-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById('step' + step).classList.remove('hidden');
+            
+            document.querySelectorAll('.step').forEach((el, i) => {
+                el.classList.remove('active', 'completed');
+                if (i + 1 < step) el.classList.add('completed');
+                if (i + 1 === step) el.classList.add('active');
+            });
+            
+            currentStep = step;
+            
+            if (step === 7) generateSummary();
+            window.scrollTo(0, 0);
+        }
+
+        function nextStep() {
+            if (currentStep < totalSteps) goToStep(currentStep + 1);
+        }
+
+        function prevStep() {
+            if (currentStep > 1) goToStep(currentStep - 1);
+        }
+
+        // Klant Search
+        async function loadContacts() {
+            try {
+                const res = await fetch('/api/contacts');
+                contacts = await res.json();
+            } catch (e) {
+                console.log('Could not load contacts');
+            }
+        }
+
+        function showKlantDropdown() {
+            filterKlanten(document.getElementById('klantSearch').value);
+            document.getElementById('klantDropdown').classList.add('show');
+        }
+
+        function filterKlanten(search) {
+            const dropdown = document.getElementById('klantDropdown');
+            const term = search.toLowerCase();
+            
+            const filtered = contacts
+                .filter(c => {
+                    const name = c.company_name || (c.firstname + ' ' + c.lastname) || '';
+                    return name.toLowerCase().includes(term);
+                })
+                .slice(0, 20);
+
+            dropdown.innerHTML = filtered.map(c => {
+                const name = c.company_name || (c.firstname + ' ' + c.lastname) || 'Onbekend';
+                return '<div class="dropdown-item" onclick="selectKlant(\'' + c.id + '\')">' +
+                    '<div class="font-medium">' + name + '</div>' +
+                    '<div class="text-xs text-gray-500">' + (c.city || '') + '</div>' +
+                '</div>';
+            }).join('') || '<div class="dropdown-item text-gray-400">Geen resultaten</div>';
+
+            dropdown.innerHTML += '<div class="dropdown-item text-indigo-600" onclick="newKlant()">+ Nieuwe klant toevoegen</div>';
+        }
+
+        function selectKlant(id) {
+            selectedContact = contacts.find(c => c.id === id);
+            if (selectedContact) {
+                const name = selectedContact.company_name || (selectedContact.firstname + ' ' + selectedContact.lastname);
+                document.getElementById('klantSearch').value = name;
+                document.getElementById('klantNaam').value = name;
+                document.getElementById('klantTelefoon').value = selectedContact.phone || '';
+                document.getElementById('klantEmail').value = selectedContact.email || '';
+                document.getElementById('werkAdres').value = selectedContact.address1 || '';
+                document.getElementById('werkPostcode').value = selectedContact.zipcode || '';
+                document.getElementById('werkPlaats').value = selectedContact.city || '';
+                document.getElementById('klantDetails').classList.remove('hidden');
+            }
+            document.getElementById('klantDropdown').classList.remove('show');
+        }
+
+        function newKlant() {
+            selectedContact = null;
+            document.getElementById('klantSearch').value = '';
+            document.getElementById('klantNaam').value = '';
+            document.getElementById('klantTelefoon').value = '';
+            document.getElementById('klantEmail').value = '';
+            document.getElementById('klantDetails').classList.remove('hidden');
+            document.getElementById('klantDropdown').classList.remove('show');
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.dropdown-container')) {
+                document.getElementById('klantDropdown').classList.remove('show');
+            }
+        });
+
+        // Ruimtes
+        function addRuimte() {
+            const html = '<div class="room-row">' +
+                '<input type="text" class="input-field ruimte-naam" placeholder="Ruimte naam">' +
+                '<input type="number" class="input-field ruimte-m2" placeholder="m²" oninput="updateTotaalM2()">' +
+                '<input type="text" class="input-field ruimte-opmerking" placeholder="Opmerking">' +
+                '<button onclick="removeRuimte(this)" class="btn btn-danger" style="padding: 8px; min-height: 36px;">×</button>' +
+            '</div>';
+            document.getElementById('ruimtesList').insertAdjacentHTML('beforeend', html);
+        }
+
+        function removeRuimte(btn) {
+            btn.closest('.room-row').remove();
+            updateTotaalM2();
+        }
+
+        function updateTotaalM2() {
+            const m2Inputs = document.querySelectorAll('.ruimte-m2');
+            let total = 0;
+            m2Inputs.forEach(input => {
+                total += parseFloat(input.value) || 0;
+            });
+            document.getElementById('totaalM2').textContent = total.toFixed(1);
+        }
+
+        document.getElementById('ruimtesList').addEventListener('input', function(e) {
+            if (e.target.classList.contains('ruimte-m2')) updateTotaalM2();
+        });
+
+        // Aanbouw toggle
+        function toggleAanbouw() {
+            const checked = document.getElementById('aanbouwNietKlaar').checked;
+            document.getElementById('aanbouwM2').classList.toggle('hidden', !checked);
+        }
+
+        // Photos & Files
+        function addPhotos(fileList) {
+            for (const file of fileList) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photos.push({ name: file.name, data: e.target.result });
+                    renderPhotos();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function renderPhotos() {
+            const grid = document.getElementById('photoGrid');
+            grid.innerHTML = photos.map((p, i) => 
+                '<div class="photo-item">' +
+                    '<img src="' + p.data + '" alt="Foto">' +
+                    '<button class="delete-btn" onclick="removePhoto(' + i + ')">×</button>' +
+                '</div>'
+            ).join('');
+        }
+
+        function removePhoto(index) {
+            photos.splice(index, 1);
+            renderPhotos();
+        }
+
+        function addFiles(fileList) {
+            for (const file of fileList) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    files.push({ name: file.name, type: file.type, data: e.target.result });
+                    renderFiles();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function renderFiles() {
+            const list = document.getElementById('fileList');
+            list.innerHTML = files.map((f, i) => 
+                '<div class="file-item">' +
+                    '<span>📄</span>' +
+                    '<span class="flex-1">' + f.name + '</span>' +
+                    '<button class="delete-btn" onclick="removeFile(' + i + ')">×</button>' +
+                '</div>'
+            ).join('');
+        }
+
+        function removeFile(index) {
+            files.splice(index, 1);
+            renderFiles();
+        }
+
+        // Signature Pads
+        let signaturePads = {};
+
+        function initSignaturePads() {
+            ['signatureKlant', 'signatureStucologie'].forEach(id => {
+                const canvas = document.getElementById(id);
+                const ctx = canvas.getContext('2d');
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+
+                let drawing = false;
+                let lastX = 0;
+                let lastY = 0;
+
+                function getPos(e) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                    const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+                    return { x: x * (canvas.width / rect.width), y: y * (canvas.height / rect.height) };
+                }
+
+                function start(e) {
+                    e.preventDefault();
+                    drawing = true;
+                    const pos = getPos(e);
+                    lastX = pos.x;
+                    lastY = pos.y;
+                }
+
+                function draw(e) {
+                    if (!drawing) return;
+                    e.preventDefault();
+                    const pos = getPos(e);
+                    ctx.beginPath();
+                    ctx.moveTo(lastX, lastY);
+                    ctx.lineTo(pos.x, pos.y);
+                    ctx.stroke();
+                    lastX = pos.x;
+                    lastY = pos.y;
+                }
+
+                function stop() {
+                    drawing = false;
+                }
+
+                canvas.addEventListener('mousedown', start);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseup', stop);
+                canvas.addEventListener('mouseout', stop);
+                canvas.addEventListener('touchstart', start);
+                canvas.addEventListener('touchmove', draw);
+                canvas.addEventListener('touchend', stop);
+
+                signaturePads[id] = { canvas, ctx };
+            });
+        }
+
+        function clearSignature(id) {
+            const { canvas, ctx } = signaturePads[id];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Summary
+        function generateSummary() {
+            const ruimtes = [];
+            document.querySelectorAll('.room-row').forEach(row => {
+                const naam = row.querySelector('.ruimte-naam').value;
+                const m2 = row.querySelector('.ruimte-m2').value;
+                if (naam || m2) ruimtes.push({ naam, m2 });
+            });
+
+            const werkItems = [];
+            if (document.getElementById('werkWanden').checked) werkItems.push('Stucwerk wanden');
+            if (document.getElementById('werkPlafond').checked) werkItems.push('Stucwerk plafond');
+            if (document.getElementById('werkSpuitwerk').checked) werkItems.push('Spuitwerk');
+            if (document.getElementById('werkKoofjes').checked) werkItems.push('Koofjes (' + document.getElementById('aantalKoofjes').value + 'x)');
+            if (document.getElementById('werkTVOmbouw').checked) werkItems.push('TV ombouw / Schouw');
+            if (document.getElementById('werkKeuken').checked) werkItems.push('Keuken ombouw op maat');
+            if (document.getElementById('werkDeurposten').checked) werkItems.push('Deurposten op maat');
+
+            const klantItems = [];
+            if (document.getElementById('klantSleutel').checked) klantItems.push('Sleutel/toegang');
+            if (document.getElementById('klantWC').checked) klantItems.push('WC beschikbaar');
+            if (document.getElementById('klantWasmachine').checked) klantItems.push('Wasmachine-aansluiting');
+            if (document.getElementById('klantElektra').checked) klantItems.push('Elektra');
+            if (document.getElementById('klantParkeren').checked) klantItems.push('Parkeerruimte');
+            if (document.getElementById('klantLeeg').checked) klantItems.push('Ruimtes leeg/schoon');
+            if (document.getElementById('klantRadiatoren').checked) klantItems.push('Radiatoren verwijderd');
+            if (document.getElementById('klantStopcontacten').checked) klantItems.push('Stopcontacten losgemaakt');
+            if (document.getElementById('klantSpijkers').checked) klantItems.push('Spijkers verwijderd');
+            if (document.getElementById('klantBehangVerw').checked) klantItems.push('Behang verwijderd');
+            if (document.getElementById('klantVerfVerw').checked) klantItems.push('Verflaag verwijderd');
+            if (document.getElementById('klantEnige').checked) klantItems.push('Enige partij aan het werk');
+
+            let html = '<div class="summary-grid">';
+            
+            // Klant info
+            html += '<div class="summary-box"><h4>👤 Klant</h4><ul style="list-style:none;">';
+            html += '<li style="padding:4px 0;"><strong>' + (document.getElementById('klantNaam').value || '-') + '</strong></li>';
+            html += '<li style="padding:4px 0;">' + (document.getElementById('werkAdres').value || '') + '</li>';
+            html += '<li style="padding:4px 0;">' + (document.getElementById('werkPostcode').value || '') + ' ' + (document.getElementById('werkPlaats').value || '') + '</li>';
+            html += '<li style="padding:4px 0;">📅 ' + (document.getElementById('opnameDatum').value || '-') + '</li>';
+            html += '</ul></div>';
+
+            // Werkzaamheden
+            html += '<div class="summary-box"><h4>🎨 Werkzaamheden</h4><ul>';
+            werkItems.forEach(item => html += '<li>' + item + '</li>');
+            html += '<li style="margin-top:8px;"><strong>' + document.getElementById('aantalKleuren').value + ' kleur(en)</strong></li>';
+            html += '</ul></div>';
+
+            // Ruimtes
+            html += '<div class="summary-box"><h4>📐 Ruimtes</h4><ul style="list-style:none;">';
+            ruimtes.forEach(r => html += '<li style="padding:4px 0;">' + (r.naam || 'Onbenoemd') + ': ' + (r.m2 || '0') + ' m²</li>');
+            html += '<li style="padding:8px 0; border-top:1px solid #e5e7eb; margin-top:8px;"><strong>Totaal: ' + document.getElementById('totaalM2').textContent + ' m²</strong></li>';
+            if (document.getElementById('aanbouwNietKlaar').checked) {
+                html += '<li style="color:#92400e;">⚠️ Aanbouw: ' + (document.getElementById('aanbouwM2Input').value || '?') + ' m² (verrekening)</li>';
+            }
+            html += '</ul></div>';
+
+            // Klant verplichtingen
+            html += '<div class="summary-box" style="background:#fef3c7;"><h4 style="color:#92400e;">👤 Klant zorgt voor</h4><ul>';
+            klantItems.forEach(item => html += '<li>' + item + '</li>');
+            html += '</ul></div>';
+
+            html += '</div>';
+
+            // Bijzonderheden
+            const bijzonderheden = document.getElementById('klantBijzonderheden').value;
+            if (bijzonderheden) {
+                html += '<div class="summary-box mt-4"><h4>📢 Bijzonderheden project</h4><p class="text-sm">' + bijzonderheden.replace(/\n/g, '<br>') + '</p></div>';
+            }
+
+            // Fotos
+            if (photos.length > 0 || files.length > 0) {
+                html += '<div class="summary-box mt-4"><h4>📎 Bijlagen</h4>';
+                html += '<p class="text-sm">' + photos.length + ' foto\'s, ' + files.length + ' bestanden</p></div>';
+            }
+
+            document.getElementById('summaryContent').innerHTML = html;
+        }
+
+        // Save & PDF
+        function collectData() {
+            const ruimtes = [];
+            document.querySelectorAll('.room-row').forEach(row => {
+                const naam = row.querySelector('.ruimte-naam').value;
+                const m2 = row.querySelector('.ruimte-m2').value;
+                const opmerking = row.querySelector('.ruimte-opmerking')?.value || '';
+                if (naam || m2) ruimtes.push({ naam, m2, opmerking });
+            });
+
+            return {
+                id: Date.now().toString(),
+                datum: document.getElementById('opnameDatum').value,
+                klant: {
+                    naam: document.getElementById('klantNaam').value,
+                    telefoon: document.getElementById('klantTelefoon').value,
+                    email: document.getElementById('klantEmail').value,
+                    adres: document.getElementById('werkAdres').value,
+                    postcode: document.getElementById('werkPostcode').value,
+                    plaats: document.getElementById('werkPlaats').value,
+                    moneybirdId: selectedContact?.id || null
+                },
+                werk: {
+                    wanden: document.getElementById('werkWanden').checked,
+                    plafond: document.getElementById('werkPlafond').checked,
+                    spuitwerk: document.getElementById('werkSpuitwerk').checked,
+                    kleuren: document.getElementById('aantalKleuren').value,
+                    koofjes: document.getElementById('werkKoofjes').checked,
+                    aantalKoofjes: document.getElementById('aantalKoofjes').value,
+                    tvOmbouw: document.getElementById('werkTVOmbouw').checked,
+                    keuken: document.getElementById('werkKeuken').checked,
+                    deurposten: document.getElementById('werkDeurposten').checked,
+                    omschrijving: document.getElementById('werkOmschrijving').value
+                },
+                ondergrond: {
+                    verflaag: document.getElementById('ondergVerflaag').checked,
+                    scheuren: document.getElementById('ondergScheuren').checked,
+                    vocht: document.getElementById('ondergVocht').checked,
+                    behang: document.getElementById('ondergBehang').checked,
+                    aanbouwNietKlaar: document.getElementById('aanbouwNietKlaar').checked,
+                    aanbouwM2: document.getElementById('aanbouwM2Input').value
+                },
+                ruimtes: ruimtes,
+                totaalM2: document.getElementById('totaalM2').textContent,
+                klantVerplichtingen: {
+                    sleutel: document.getElementById('klantSleutel').checked,
+                    wc: document.getElementById('klantWC').checked,
+                    wasmachine: document.getElementById('klantWasmachine').checked,
+                    elektra: document.getElementById('klantElektra').checked,
+                    parkeren: document.getElementById('klantParkeren').checked,
+                    leeg: document.getElementById('klantLeeg').checked,
+                    radiatoren: document.getElementById('klantRadiatoren').checked,
+                    stopcontacten: document.getElementById('klantStopcontacten').checked,
+                    spijkers: document.getElementById('klantSpijkers').checked,
+                    behangVerw: document.getElementById('klantBehangVerw').checked,
+                    verfVerw: document.getElementById('klantVerfVerw').checked,
+                    enige: document.getElementById('klantEnige').checked,
+                    meerwerk: document.getElementById('klantMeerwerk').value,
+                    bijzonderheden: document.getElementById('klantBijzonderheden').value,
+                    afwijkingen: document.getElementById('klantAfwijkingen').value
+                },
+                wijAfspraken: document.getElementById('wijAfspraken').value,
+                afwijkendeBetaling: document.getElementById('afwijkendeBetaling').value,
+                photos: photos,
+                files: files,
+                handtekeningKlant: document.getElementById('signatureKlant').toDataURL(),
+                handtekeningStucologie: document.getElementById('signatureStucologie').toDataURL()
+            };
+        }
+
+        function saveOpname() {
+            const data = collectData();
+            opnames.push(data);
+            localStorage.setItem('stuc_opnames', JSON.stringify(opnames));
+            alert('✅ Opname opgeslagen!');
+        }
+
+        function generatePDF() {
+            const data = collectData();
+            // For now, save and show alert - PDF generation would need a library like jsPDF
+            saveOpname();
+            alert('📄 PDF functie komt binnenkort!\n\nVoorlopig is de opname opgeslagen in het systeem.');
+            // TODO: Implement PDF generation with jsPDF
+        }
+
+        // Opnames List
+        function showOpnameList() {
+            const content = document.getElementById('opnameListContent');
+            
+            if (opnames.length === 0) {
+                content.innerHTML = '<p class="text-gray-400 text-center py-8">Nog geen opnames opgeslagen</p>';
+            } else {
+                content.innerHTML = opnames.map(o => 
+                    '<div class="p-4 border rounded-lg mb-3 cursor-pointer hover:bg-gray-50" onclick="loadOpname(\'' + o.id + '\')">' +
+                        '<div class="flex justify-between">' +
+                            '<strong>' + (o.klant?.naam || 'Onbekend') + '</strong>' +
+                            '<span class="text-sm text-gray-500">' + (o.datum || '-') + '</span>' +
+                        '</div>' +
+                        '<p class="text-sm text-gray-600">' + (o.klant?.adres || '') + ', ' + (o.klant?.plaats || '') + '</p>' +
+                        '<p class="text-sm text-indigo-600 mt-1">' + (o.totaalM2 || '0') + ' m²</p>' +
+                    '</div>'
+                ).join('');
+            }
+            
+            document.getElementById('opnameListModal').classList.remove('hidden');
+        }
+
+        function hideOpnameList() {
+            document.getElementById('opnameListModal').classList.add('hidden');
+        }
+
+        function loadOpname(id) {
+            const o = opnames.find(x => x.id === id);
+            if (!o) return;
+            
+            // Load all data back into form
+            document.getElementById('klantNaam').value = o.klant?.naam || '';
+            document.getElementById('klantTelefoon').value = o.klant?.telefoon || '';
+            document.getElementById('klantEmail').value = o.klant?.email || '';
+            document.getElementById('werkAdres').value = o.klant?.adres || '';
+            document.getElementById('werkPostcode').value = o.klant?.postcode || '';
+            document.getElementById('werkPlaats').value = o.klant?.plaats || '';
+            document.getElementById('opnameDatum').value = o.datum || '';
+            document.getElementById('klantDetails').classList.remove('hidden');
+            
+            // Work
+            document.getElementById('werkWanden').checked = o.werk?.wanden || false;
+            document.getElementById('werkPlafond').checked = o.werk?.plafond || false;
+            document.getElementById('werkSpuitwerk').checked = o.werk?.spuitwerk || false;
+            document.getElementById('aantalKleuren').value = o.werk?.kleuren || '1';
+            document.getElementById('werkKoofjes').checked = o.werk?.koofjes || false;
+            document.getElementById('aantalKoofjes').value = o.werk?.aantalKoofjes || '0';
+            document.getElementById('werkTVOmbouw').checked = o.werk?.tvOmbouw || false;
+            document.getElementById('werkKeuken').checked = o.werk?.keuken || false;
+            document.getElementById('werkDeurposten').checked = o.werk?.deurposten || false;
+            document.getElementById('werkOmschrijving').value = o.werk?.omschrijving || '';
+            
+            // Photos and files
+            photos = o.photos || [];
+            files = o.files || [];
+            renderPhotos();
+            renderFiles();
+            
+            hideOpnameList();
+            goToStep(1);
+            alert('Opname geladen!');
+        }
+    </script>
+</body>
+</html>
