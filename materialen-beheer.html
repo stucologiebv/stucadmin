@@ -1651,14 +1651,35 @@
             return;
         }
         
-        // Detect delimiter
+        // Detect delimiter (check first non-quoted section)
         const firstLine = lines[0];
         let delimiter = ',';
         if (firstLine.includes('\t')) delimiter = '\t';
-        else if (firstLine.includes(';')) delimiter = ';';
+        else if (firstLine.includes(';') && !firstLine.includes(',')) delimiter = ';';
         
-        // Parse header to find column indexes
-        const headerCols = lines[0].split(delimiter).map(c => c.trim().toUpperCase());
+        // CSV-aware split function (handles quoted fields with commas inside)
+        function csvSplit(line, delim) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === delim && !inQuotes) {
+                    result.push(current.trim().replace(/^["']|["']$/g, ''));
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim().replace(/^["']|["']$/g, ''));
+            return result;
+        }
+        
+        // Parse header to find column indexes (use CSV-aware split)
+        const headerCols = csvSplit(lines[0], delimiter).map(c => c.toUpperCase());
         
         // Smart column detection - zoek naar bekende kolomnamen
         let colMap = {
@@ -1702,9 +1723,9 @@
         // Als we geen naam kolom vonden, probeer eerste tekstkolom
         if (colMap.naam === -1) {
             if (lines.length > 1) {
-                const firstDataCols = lines[1].split(delimiter);
+                const firstDataCols = csvSplit(lines[1], delimiter);
                 for (let i = 0; i < firstDataCols.length; i++) {
-                    const val = firstDataCols[i].trim();
+                    const val = firstDataCols[i];
                     if (val.length > 3 && isNaN(parseFloat(val.replace(',', '.')))) {
                         colMap.naam = i;
                         break;
@@ -1717,12 +1738,12 @@
         // Als we geen prijs kolom vonden via header, zoek naar kolom met decimale getallen
         if (colMap.prijs === -1) {
             if (lines.length > 1) {
-                const firstDataCols = lines[1].split(delimiter);
+                const firstDataCols = csvSplit(lines[1], delimiter);
                 for (let i = 0; i < firstDataCols.length; i++) {
                     if (i === colMap.naam || i === colMap.artikelnummer) continue;
-                    const val = firstDataCols[i].trim().replace(',', '.');
+                    const val = firstDataCols[i].replace(',', '.');
                     const num = parseFloat(val);
-                    if (!isNaN(num) && num > 0 && num < 100000 && (val.includes('.') || val.includes(','))) {
+                    if (!isNaN(num) && num > 0 && num < 100000 && (val.includes('.') || firstDataCols[i].includes(','))) {
                         colMap.prijs = i;
                         break;
                     }
@@ -1730,10 +1751,10 @@
             }
             // Als nog steeds niet gevonden, zoek eerste getal kolom
             if (colMap.prijs === -1 && lines.length > 1) {
-                const firstDataCols = lines[1].split(delimiter);
+                const firstDataCols = csvSplit(lines[1], delimiter);
                 for (let i = 0; i < firstDataCols.length; i++) {
                     if (i === colMap.naam || i === colMap.artikelnummer) continue;
-                    const val = firstDataCols[i].trim().replace(',', '.');
+                    const val = firstDataCols[i].replace(',', '.');
                     const num = parseFloat(val);
                     if (!isNaN(num) && num > 0 && num < 100000) {
                         colMap.prijs = i;
@@ -1757,7 +1778,7 @@
         
         // Parse data rows (skip header)
         for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^["']|["']$/g, ''));
+            const cols = csvSplit(lines[i], delimiter);
             
             if (cols.length >= 2) {
                 const naam = cols[colMap.naam] || '';
