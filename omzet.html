@@ -112,13 +112,24 @@
 
         function renderAll() {
             const jaar = parseInt(document.getElementById('jaar').value);
-            const jaarInv = invoices.filter(i => new Date(i.date).getFullYear() === jaar);
+            // Use invoice_date from Moneybird API, fallback to created_at for drafts
+            const jaarInv = invoices.filter(i => {
+                const dateStr = i.invoice_date || i.created_at;
+                if (!dateStr) return false;
+                return new Date(dateStr).getFullYear() === jaar;
+            });
             const now = new Date();
-            const maandInv = jaarInv.filter(i => new Date(i.date).getMonth() === now.getMonth());
+            const maandInv = jaarInv.filter(i => {
+                const dateStr = i.invoice_date || i.created_at;
+                return new Date(dateStr).getMonth() === now.getMonth();
+            });
             
-            const jaarOmzet = jaarInv.reduce((s, i) => s + parseFloat(i.total_price_incl_tax || 0), 0);
-            const maandOmzet = maandInv.reduce((s, i) => s + parseFloat(i.total_price_incl_tax || 0), 0);
-            const open = jaarInv.filter(i => i.state === 'open' || i.state === 'pending');
+            // Only count non-draft invoices for revenue
+            const realInvoices = jaarInv.filter(i => i.state !== 'draft');
+            const jaarOmzet = realInvoices.reduce((s, i) => s + parseFloat(i.total_price_incl_tax || 0), 0);
+            const maandRealInv = maandInv.filter(i => i.state !== 'draft');
+            const maandOmzet = maandRealInv.reduce((s, i) => s + parseFloat(i.total_price_incl_tax || 0), 0);
+            const open = jaarInv.filter(i => i.state === 'open' || i.state === 'late' || i.state === 'reminded');
             const betaald = jaarInv.filter(i => i.state === 'paid');
             
             document.getElementById('kpiJaar').textContent = '€' + jaarOmzet.toLocaleString('nl-NL', {maximumFractionDigits: 0});
@@ -133,7 +144,11 @@
         function renderCharts(jaarInv) {
             const months = ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
             const maandData = months.map((m, i) => {
-                return jaarInv.filter(inv => new Date(inv.date).getMonth() === i).reduce((s, inv) => s + parseFloat(inv.total_price_incl_tax || 0), 0);
+                return jaarInv.filter(inv => {
+                    if (inv.state === 'draft') return false; // Don't count drafts in chart
+                    const dateStr = inv.invoice_date || inv.created_at;
+                    return new Date(dateStr).getMonth() === i;
+                }).reduce((s, inv) => s + parseFloat(inv.total_price_incl_tax || 0), 0);
             });
 
             new Chart(document.getElementById('omzetChart'), {
@@ -144,7 +159,7 @@
 
             const statusData = [
                 jaarInv.filter(i => i.state === 'paid').length,
-                jaarInv.filter(i => i.state === 'open').length,
+                jaarInv.filter(i => i.state === 'open' || i.state === 'late' || i.state === 'reminded').length,
                 jaarInv.filter(i => i.state === 'draft').length
             ];
             new Chart(document.getElementById('statusChart'), {
@@ -155,12 +170,23 @@
         }
 
         function renderTabel(jaarInv) {
-            document.getElementById('facturenTabel').innerHTML = jaarInv.sort((a, b) => new Date(b.date) - new Date(a.date)).map(inv => {
+            document.getElementById('facturenTabel').innerHTML = jaarInv.sort((a, b) => {
+                const dateA = a.invoice_date || a.created_at;
+                const dateB = b.invoice_date || b.created_at;
+                return new Date(dateB) - new Date(dateA);
+            }).map(inv => {
                 const c = contacts.find(x => x.id === inv.contact_id);
-                const status = inv.state === 'paid' ? '<span class="text-green-600">Betaald</span>' : inv.state === 'open' ? '<span class="text-orange-500">Open</span>' : '<span class="text-gray-400">Concept</span>';
+                const dateStr = inv.invoice_date || inv.created_at;
+                const dateDisplay = dateStr ? new Date(dateStr).toLocaleDateString('nl-NL') : '-';
+                const status = inv.state === 'paid' ? '<span class="text-green-600">Betaald</span>' : 
+                               inv.state === 'late' ? '<span class="text-red-500">Te laat</span>' :
+                               inv.state === 'reminded' ? '<span class="text-orange-600">Herinnerd</span>' :
+                               inv.state === 'open' ? '<span class="text-orange-500">Open</span>' : 
+                               '<span class="text-gray-400">Concept</span>';
                 return `<tr>
                     <td class="font-medium">${inv.invoice_id || '-'}</td>
-                    <td>${c?.company_name || c?.firstname || '-'}</td>
+                    <td>${c?.company_name || c?.firstname || inv.contact?.company_name || '-'}</td>
+                    <td>${dateDisplay}</td>
                     <td class="text-gray-500">${new Date(inv.date).toLocaleDateString('nl-NL')}</td>
                     <td class="font-semibold">€${parseFloat(inv.total_price_incl_tax || 0).toFixed(0)}</td>
                     <td>${status}</td>
