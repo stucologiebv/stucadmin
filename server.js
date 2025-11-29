@@ -2,18 +2,156 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Authentication credentials - WIJZIG DEZE IN RAILWAY ENVIRONMENT VARIABLES!
-const AUTH_USERNAME = process.env.AUTH_USERNAME || 'stucologie';
-const AUTH_PASSWORD = process.env.AUTH_PASSWORD || 'StucAdmin2024!';
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+// ============================================
+// 🔐 GEAVANCEERDE BEVEILIGING
+// ============================================
 
-// Session storage (in-memory)
+// Security configuration
+const SECURITY_CONFIG = {
+    maxLoginAttempts: 5,           // Max login pogingen
+    lockoutDuration: 15 * 60 * 1000, // 15 minuten lockout
+    sessionDuration: 24 * 60 * 60 * 1000, // 24 uur sessie
+    passwordMinLength: 8,
+    bcryptRounds: 12
+};
+
+// Session & security storage (in-memory)
 const sessions = new Map();
-const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 uur
+const loginAttempts = new Map();  // IP -> { count, lastAttempt, lockedUntil }
+const loginHistory = [];          // Login audit log
+
+// Password hashing (simple but secure - no bcrypt dependency needed)
+function hashPassword(password) {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+    return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+    if (!storedHash || !storedHash.includes(':')) {
+        // Fallback voor plaintext wachtwoorden (legacy)
+        return password === storedHash;
+    }
+    const [salt, hash] = storedHash.split(':');
+    const verifyHash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+    return hash === verifyHash;
+}
+
+// User storage (bestand-gebaseerd voor persistentie)
+const USERS_FILE = path.join(__dirname, '.users.json');
+
+function loadUsers() {
+    try {
+        if (fs.existsSync(USERS_FILE)) {
+            return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+        }
+    } catch (e) {
+        console.log('Could not load users file, using defaults');
+    }
+    
+    // Default admin user - WIJZIG DIT NA EERSTE LOGIN!
+    const defaultPassword = process.env.AUTH_PASSWORD || 'StucAdmin2024!';
+    return {
+        [process.env.AUTH_USERNAME || 'stucologie']: {
+            passwordHash: hashPassword(defaultPassword),
+            role: 'admin',
+            created: new Date().toISOString(),
+            mustChangePassword: true
+        }
+    };
+}
+
+function saveUsers(users) {
+    try {
+        fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+    } catch (e) {
+        console.error('Could not save users file:', e.message);
+    }
+}
+
+let users = loadUsers();
+
+// Rate limiting check
+function checkRateLimit(ip) {
+    const attempt = loginAttempts.get(ip);
+    
+    if (!attempt) return { allowed: true };
+    
+    // Check if still locked out
+    if (attempt.lockedUntil && Date.now() < attempt.lockedUntil) {
+        const remainingMs = attempt.lockedUntil - Date.now();
+        const remainingMin = Math.ceil(remainingMs / 60000);
+        return { 
+            allowed: false, 
+            reason: `Te veel pogingen. Probeer opnieuw over ${remainingMin} minuten.`,
+            remainingMs 
+        };
+    }
+    
+    // Reset if lockout expired
+    if (attempt.lockedUntil && Date.now() >= attempt.lockedUntil) {
+        loginAttempts.delete(ip);
+        return { allowed: true };
+    }
+    
+    return { allowed: true };
+}
+
+function recordLoginAttempt(ip, success) {
+    const now = Date.now();
+    
+    if (success) {
+        loginAttempts.delete(ip);
+        return;
+    }
+    
+    const attempt = loginAttempts.get(ip) || { count: 0, lastAttempt: 0 };
+    
+    // Reset count if last attempt was more than lockout duration ago
+    if (now - attempt.lastAttempt > SECURITY_CONFIG.lockoutDuration) {
+        attempt.count = 0;
+    }
+    
+    attempt.count++;
+    attempt.lastAttempt = now;
+    
+    if (attempt.count >= SECURITY_CONFIG.maxLoginAttempts) {
+        attempt.lockedUntil = now + SECURITY_CONFIG.lockoutDuration;
+        console.log(`🔒 IP ${ip} locked out for ${SECURITY_CONFIG.lockoutDuration / 60000} minutes`);
+    }
+    
+    loginAttempts.set(ip, attempt);
+}
+
+function logLogin(username, ip, success, reason = '') {
+    const entry = {
+        timestamp: new Date().toISOString(),
+        username,
+        ip,
+        success,
+        reason,
+        userAgent: '' // Will be set by caller
+    };
+    
+    loginHistory.push(entry);
+    
+    // Keep only last 1000 entries
+    if (loginHistory.length > 1000) {
+        loginHistory.shift();
+    }
+    
+    // Log to console
+    const icon = success ? '✅' : '❌';
+    console.log(`${icon} Login ${success ? 'SUCCESS' : 'FAILED'}: ${username} from ${ip} ${reason ? `(${reason})` : ''}`);
+}
+
+// Session management
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
 // Moneybird credentials
 const MONEYBIRD_API_TOKEN = process.env.MONEYBIRD_TOKEN || 'GJvgHpLiwQnDxIodsO283OJT0Rgq8DTgq6ekpbMEGqU';
@@ -103,7 +241,7 @@ function requireAuth(req, res, next) {
         return res.status(401).json({ error: 'Sessie verlopen' });
     }
     
-    session.expires = Date.now() + SESSION_DURATION;
+    session.expires = Date.now() + SECURITY_CONFIG.sessionDuration;
     req.user = session.user;
     next();
 }
@@ -131,7 +269,7 @@ app.use((req, res, next) => {
             return res.redirect('/login.html');
         }
         
-        session.expires = Date.now() + SESSION_DURATION;
+        session.expires = Date.now() + SECURITY_CONFIG.sessionDuration;
     }
     
     next();
@@ -154,25 +292,181 @@ app.get('/', (req, res) => {
 
 // ============ AUTH ROUTES ============
 
+// Get client IP (works behind proxy)
+function getClientIP(req) {
+    return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+           req.headers['x-real-ip'] || 
+           req.connection?.remoteAddress || 
+           req.ip || 
+           'unknown';
+}
+
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
+    const ip = getClientIP(req);
+    const userAgent = req.headers['user-agent'] || 'unknown';
     
-    if (username === AUTH_USERNAME && password === AUTH_PASSWORD) {
-        const sessionId = crypto.randomBytes(32).toString('hex');
-        sessions.set(sessionId, {
-            user: username,
-            expires: Date.now() + SESSION_DURATION,
-            created: Date.now()
-        });
-        
-        res.setHeader('Set-Cookie', `stucadmin_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_DURATION / 1000}`);
-        res.json({ success: true, user: username });
-        
-        // Preload cache in background (don't wait for it)
-        preloadCache().catch(e => console.log('Preload error:', e.message));
-    } else {
-        res.status(401).json({ error: 'Ongeldige gebruikersnaam of wachtwoord' });
+    // Rate limit check
+    const rateCheck = checkRateLimit(ip);
+    if (!rateCheck.allowed) {
+        logLogin(username, ip, false, 'Rate limited');
+        return res.status(429).json({ error: rateCheck.reason });
     }
+    
+    // Validate input
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Gebruikersnaam en wachtwoord zijn verplicht' });
+    }
+    
+    // Find user
+    const user = users[username.toLowerCase()];
+    
+    if (!user) {
+        recordLoginAttempt(ip, false);
+        logLogin(username, ip, false, 'User not found');
+        // Generic error to prevent user enumeration
+        return res.status(401).json({ error: 'Ongeldige gebruikersnaam of wachtwoord' });
+    }
+    
+    // Verify password
+    const passwordValid = verifyPassword(password, user.passwordHash);
+    
+    if (!passwordValid) {
+        recordLoginAttempt(ip, false);
+        logLogin(username, ip, false, 'Wrong password');
+        return res.status(401).json({ error: 'Ongeldige gebruikersnaam of wachtwoord' });
+    }
+    
+    // Success! Create session
+    recordLoginAttempt(ip, true);
+    logLogin(username, ip, true);
+    
+    const sessionId = crypto.randomBytes(32).toString('hex');
+    sessions.set(sessionId, {
+        user: username,
+        expires: Date.now() + SECURITY_CONFIG.sessionDuration,
+        created: Date.now(),
+        ip: ip,
+        userAgent: userAgent
+    });
+    
+    // Secure cookie settings
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT;
+    const cookieOptions = [
+        `stucadmin_session=${sessionId}`,
+        'Path=/',
+        'HttpOnly',
+        'SameSite=Strict',
+        `Max-Age=${SECURITY_CONFIG.sessionDuration / 1000}`
+    ];
+    
+    if (isProduction) {
+        cookieOptions.push('Secure'); // Only HTTPS in production
+    }
+    
+    res.setHeader('Set-Cookie', cookieOptions.join('; '));
+    
+    res.json({ 
+        success: true, 
+        user: username,
+        mustChangePassword: user.mustChangePassword || false
+    });
+    
+    // Preload cache in background (don't wait for it)
+    preloadCache().catch(e => console.log('Preload error:', e.message));
+});
+
+// Change password endpoint
+app.post('/api/auth/change-password', requireAuth, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const username = req.user;
+    
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'Huidig en nieuw wachtwoord zijn verplicht' });
+    }
+    
+    if (newPassword.length < SECURITY_CONFIG.passwordMinLength) {
+        return res.status(400).json({ error: `Wachtwoord moet minimaal ${SECURITY_CONFIG.passwordMinLength} karakters zijn` });
+    }
+    
+    const user = users[username.toLowerCase()];
+    
+    if (!user) {
+        return res.status(404).json({ error: 'Gebruiker niet gevonden' });
+    }
+    
+    // Verify current password
+    if (!verifyPassword(currentPassword, user.passwordHash)) {
+        return res.status(401).json({ error: 'Huidig wachtwoord is onjuist' });
+    }
+    
+    // Update password
+    user.passwordHash = hashPassword(newPassword);
+    user.mustChangePassword = false;
+    user.passwordChanged = new Date().toISOString();
+    
+    saveUsers(users);
+    
+    console.log(`🔑 Password changed for user: ${username}`);
+    
+    res.json({ success: true, message: 'Wachtwoord succesvol gewijzigd' });
+});
+
+// Login history endpoint (admin only)
+app.get('/api/auth/login-history', requireAuth, (req, res) => {
+    // Return last 50 login attempts
+    const recentHistory = loginHistory.slice(-50).reverse();
+    res.json(recentHistory);
+});
+
+// Active sessions endpoint
+app.get('/api/auth/sessions', requireAuth, (req, res) => {
+    const activeSessions = [];
+    sessions.forEach((session, id) => {
+        if (Date.now() < session.expires) {
+            activeSessions.push({
+                id: id.substring(0, 8) + '...', // Partial ID for security
+                user: session.user,
+                created: new Date(session.created).toISOString(),
+                expires: new Date(session.expires).toISOString(),
+                ip: session.ip,
+                current: id === parseCookies(req).stucadmin_session
+            });
+        }
+    });
+    res.json(activeSessions);
+});
+
+// Logout all sessions
+app.post('/api/auth/logout-all', requireAuth, (req, res) => {
+    const username = req.user;
+    let count = 0;
+    
+    sessions.forEach((session, id) => {
+        if (session.user === username) {
+            sessions.delete(id);
+            count++;
+        }
+    });
+    
+    console.log(`🚪 Logged out all sessions for ${username} (${count} sessions)`);
+    res.json({ success: true, sessionsTerminated: count });
+});
+
+// Security status endpoint
+app.get('/api/auth/security-status', requireAuth, (req, res) => {
+    const ip = getClientIP(req);
+    const attempt = loginAttempts.get(ip);
+    
+    res.json({
+        currentIP: ip,
+        failedAttempts: attempt?.count || 0,
+        maxAttempts: SECURITY_CONFIG.maxLoginAttempts,
+        lockoutDuration: SECURITY_CONFIG.lockoutDuration / 60000 + ' minuten',
+        sessionDuration: SECURITY_CONFIG.sessionDuration / 3600000 + ' uur',
+        activeSessions: sessions.size,
+        recentLogins: loginHistory.slice(-10).reverse()
+    });
 });
 
 // Preload all frequently used data into cache
@@ -248,7 +542,12 @@ app.get('/api/auth/check', (req, res) => {
     if (sessionId && sessions.has(sessionId)) {
         const session = sessions.get(sessionId);
         if (Date.now() <= session.expires) {
-            return res.json({ authenticated: true, user: session.user });
+            const user = users[session.user.toLowerCase()];
+            return res.json({ 
+                authenticated: true, 
+                user: session.user,
+                mustChangePassword: user?.mustChangePassword || false
+            });
         }
         sessions.delete(sessionId);
     }
