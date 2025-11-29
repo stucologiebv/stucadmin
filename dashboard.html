@@ -50,6 +50,9 @@
                 <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
                 <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
             </nav>
+            <div class="p-4 border-t border-gray-100">
+                <button onclick="logout()" class="nav-item w-full text-red-500 hover:bg-red-50">🚪 Uitloggen</button>
+            </div>
         </aside>
 
         <!-- Main -->
@@ -149,7 +152,7 @@
     </div>
 
     <script>
-        const API = '/api';
+        const API = 'http://localhost:3001/api';
 
         async function init() {
             await laadKPIs();
@@ -235,6 +238,11 @@
                     <td class="text-indigo-600">${new Date(p.startDatum).toLocaleDateString('nl-NL')}</td>
                 </tr>`).join('');
             }
+        }
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
         }
 
         init();

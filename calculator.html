@@ -48,6 +48,9 @@
                 <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
                 <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
             </nav>
+            <div class="p-4 border-t border-gray-100">
+                <button onclick="logout()" class="nav-item w-full text-red-500 hover:bg-red-50">🚪 Uitloggen</button>
+            </div>
         </aside>
 
         <main class="flex-1 ml-64 p-8">
@@ -548,6 +551,11 @@
         }
 
         function sluitModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
 
         // Init
         loadTaxRates();

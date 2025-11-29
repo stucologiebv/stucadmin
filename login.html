@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - StucAdmin Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .login-card { background: white; border-radius: 24px; padding: 48px; width: 100%; max-width: 420px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+        .input-field { background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; width: 100%; font-size: 16px; transition: all 0.2s; }
+        .input-field:focus { outline: none; border-color: #6366f1; background: white; }
+        .btn-login { background: #6366f1; color: white; padding: 14px 28px; border-radius: 12px; font-weight: 600; border: none; cursor: pointer; width: 100%; font-size: 16px; transition: all 0.2s; }
+        .btn-login:hover { background: #4f46e5; transform: translateY(-1px); }
+        .btn-login:disabled { background: #a5a6f6; cursor: not-allowed; }
+        .error-msg { background: #fef2f2; color: #dc2626; padding: 12px 16px; border-radius: 10px; margin-bottom: 20px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-indigo-600 mb-2">StucAdmin</h1>
+            <p class="text-gray-500">Professional Suite</p>
+        </div>
+        
+        <div id="errorMsg" class="error-msg"></div>
+        
+        <form onsubmit="login(event)">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Gebruikersnaam</label>
+                <input type="text" id="username" class="input-field" placeholder="Voer gebruikersnaam in" required autocomplete="username">
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Wachtwoord</label>
+                <input type="password" id="password" class="input-field" placeholder="Voer wachtwoord in" required autocomplete="current-password">
+            </div>
+            
+            <button type="submit" id="loginBtn" class="btn-login">
+                Inloggen
+            </button>
+        </form>
+        
+        <p class="text-center text-gray-400 text-sm mt-6">
+            🔒 Beveiligde verbinding
+        </p>
+    </div>
+
+    <script>
+        // Check if already logged in
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/auth/check');
+                const data = await res.json();
+                if (data.authenticated) {
+                    window.location.href = '/dashboard.html';
+                }
+            } catch (e) {}
+        }
+        checkAuth();
+
+        async function login(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            const errorMsg = document.getElementById('errorMsg');
+            
+            btn.disabled = true;
+            btn.textContent = 'Bezig...';
+            errorMsg.style.display = 'none';
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.success) {
+                    window.location.href = '/dashboard.html';
+                } else {
+                    errorMsg.textContent = data.error || 'Ongeldige inloggegevens';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (e) {
+                errorMsg.textContent = 'Verbindingsfout. Probeer opnieuw.';
+                errorMsg.style.display = 'block';
+            }
+            
+            btn.disabled = false;
+            btn.textContent = 'Inloggen';
+        }
+    </script>
+</body>
+</html>
