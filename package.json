@@ -1,19 +1,14 @@
 {
-  "name": "moneybird-backend",
+  "name": "stucadmin",
   "version": "1.0.0",
-  "description": "Backend server voor Moneybird API",
+  "description": "StucAdmin Pro - Bedrijfsmanagement",
   "main": "server.js",
-  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "multer": "^2.0.2",
-    "nodemailer": "^7.0.11"
+    "node-fetch": "^2.7.0"
   }
 }
