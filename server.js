@@ -20,6 +20,50 @@ const MONEYBIRD_API_TOKEN = process.env.MONEYBIRD_TOKEN || 'GJvgHpLiwQnDxIodsO28
 const ADMINISTRATION_ID = process.env.MONEYBIRD_ADMIN_ID || '463906598304089814';
 const MONEYBIRD_API_URL = `https://moneybird.com/api/v2/${ADMINISTRATION_ID}`;
 
+// ============================================
+// CACHING SYSTEM - Moneybird data cachen
+// ============================================
+const cache = {
+    contacts: { data: null, expires: 0 },
+    suppliers: { data: null, expires: 0 },
+    invoices: { data: null, expires: 0 },
+    purchaseInvoices: { data: null, expires: 0 },
+    taxRates: { data: null, expires: 0 }
+};
+
+const CACHE_DURATION = {
+    contacts: 10 * 60 * 1000,        // 10 minuten
+    suppliers: 30 * 60 * 1000,       // 30 minuten (verandert weinig)
+    invoices: 5 * 60 * 1000,         // 5 minuten
+    purchaseInvoices: 5 * 60 * 1000, // 5 minuten
+    taxRates: 60 * 60 * 1000         // 1 uur (verandert zelden)
+};
+
+function getCached(key) {
+    if (cache[key] && cache[key].data && Date.now() < cache[key].expires) {
+        console.log(`📦 Cache HIT: ${key}`);
+        return cache[key].data;
+    }
+    return null;
+}
+
+function setCache(key, data) {
+    cache[key] = {
+        data: data,
+        expires: Date.now() + (CACHE_DURATION[key] || 5 * 60 * 1000)
+    };
+    console.log(`💾 Cache SET: ${key} (expires in ${CACHE_DURATION[key] / 1000}s)`);
+}
+
+function clearCache(key) {
+    if (key) {
+        cache[key] = { data: null, expires: 0 };
+    } else {
+        Object.keys(cache).forEach(k => cache[k] = { data: null, expires: 0 });
+    }
+    console.log(`🗑️ Cache CLEARED: ${key || 'ALL'}`);
+}
+
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
@@ -169,6 +213,10 @@ async function moneybirdRequest(endpoint, options = {}) {
 // Contacts
 app.get('/api/contacts', requireAuth, async (req, res) => {
     try {
+        // Check cache first
+        const cached = getCached('contacts');
+        if (cached) return res.json(cached);
+        
         let allContacts = [];
         let page = 1;
         let hasMore = true;
@@ -182,6 +230,8 @@ app.get('/api/contacts', requireAuth, async (req, res) => {
                 hasMore = false;
             }
         }
+        
+        setCache('contacts', allContacts);
         res.json(allContacts);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -190,6 +240,7 @@ app.get('/api/contacts', requireAuth, async (req, res) => {
 
 app.post('/api/contacts', requireAuth, async (req, res) => {
     try {
+        clearCache('contacts'); // Clear cache when adding new contact
         const contact = await moneybirdRequest('/contacts.json', {
             method: 'POST',
             body: JSON.stringify(req.body)
@@ -224,6 +275,10 @@ app.patch('/api/contacts/:id', requireAuth, async (req, res) => {
 // Invoices
 app.get('/api/invoices', requireAuth, async (req, res) => {
     try {
+        // Check cache first
+        const cached = getCached('invoices');
+        if (cached) return res.json(cached);
+        
         let allInvoices = [];
         let page = 1;
         let hasMore = true;
@@ -237,6 +292,8 @@ app.get('/api/invoices', requireAuth, async (req, res) => {
                 hasMore = false;
             }
         }
+        
+        setCache('invoices', allInvoices);
         res.json(allInvoices);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -245,6 +302,7 @@ app.get('/api/invoices', requireAuth, async (req, res) => {
 
 app.post('/api/invoices', requireAuth, async (req, res) => {
     try {
+        clearCache('invoices'); // Clear cache when adding new invoice
         const invoice = await moneybirdRequest('/sales_invoices.json', {
             method: 'POST',
             body: JSON.stringify(req.body)
@@ -351,11 +409,35 @@ app.get('/api/ledger_accounts', requireAuth, async (req, res) => {
 // Tax Rates
 app.get('/api/tax_rates', requireAuth, async (req, res) => {
     try {
+        // Check cache first - tax rates veranderen bijna nooit
+        const cached = getCached('taxRates');
+        if (cached) return res.json(cached);
+        
         const taxRates = await moneybirdRequest('/tax_rates.json');
+        setCache('taxRates', taxRates);
         res.json(taxRates);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+});
+
+// Cache management endpoint
+app.post('/api/cache/clear', requireAuth, (req, res) => {
+    const { key } = req.body;
+    clearCache(key);
+    res.json({ success: true, message: `Cache ${key || 'ALL'} cleared` });
+});
+
+app.get('/api/cache/status', requireAuth, (req, res) => {
+    const status = {};
+    Object.keys(cache).forEach(key => {
+        status[key] = {
+            hasData: !!cache[key].data,
+            expires: cache[key].expires ? new Date(cache[key].expires).toISOString() : null,
+            expiresIn: cache[key].expires ? Math.max(0, Math.round((cache[key].expires - Date.now()) / 1000)) + 's' : null
+        };
+    });
+    res.json({ success: true, cache: status });
 });
 
 // Workflows
@@ -1003,6 +1085,10 @@ app.get('/api/purchase-history', requireAuth, async (req, res) => {
 
 app.get('/api/suppliers', requireAuth, async (req, res) => {
     try {
+        // Check cache first - suppliers veranderen weinig
+        const cached = getCached('suppliers');
+        if (cached) return res.json(cached);
+        
         const fetch = (await import('node-fetch')).default;
         
         // Haal eerst inkoopfacturen op om te zien welke contacten echt leveranciers zijn
@@ -1039,7 +1125,9 @@ app.get('/api/suppliers', requireAuth, async (req, res) => {
         const suppliers = Array.from(supplierMap.values())
             .sort((a, b) => a.name.localeCompare(b.name));
         
-        res.json({ success: true, suppliers, count: suppliers.length });
+        const result = { success: true, suppliers, count: suppliers.length };
+        setCache('suppliers', result);
+        res.json(result);
         
     } catch (error) {
         console.error('Error fetching suppliers:', error);
