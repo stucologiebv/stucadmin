@@ -2,44 +2,54 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Klanten - StucAdmin Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * { font-family: 'Inter', sans-serif; }
-        body { background: #f5f7fa; color: #1a1a2e; }
-        .sidebar { background: #ffffff; border-right: 1px solid #e5e7eb; }
-        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; transition: all 0.2s; text-decoration: none; margin-bottom: 4px; }
-        .nav-item:hover { background: #f1f5f9; color: #1e293b; }
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; }
+        .sidebar { background: #fff; border-right: 1px solid #e5e7eb; position: fixed; left: 0; top: 0; bottom: 0; width: 256px; display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s ease; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; text-decoration: none; margin-bottom: 4px; }
+        .nav-item:hover { background: #f1f5f9; }
         .nav-item.active { background: #6366f1; color: white; }
-        .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; }
-        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent, #6366f1); border-radius: 16px 16px 0 0; }
+        .logout-btn { color: #ef4444; }
+        .logout-btn:hover { background: #fef2f2; }
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; }
         .kpi-card { position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent, #6366f1); }
         .kpi-value { font-size: 1.75rem; font-weight: 800; color: var(--accent, #6366f1); }
-        .btn-primary { background: #6366f1; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
-        .btn-primary:hover { background: #4f46e5; }
-        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
-        .btn-secondary:hover { background: #e2e8f0; }
-        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; width: 100%; }
-        .input-field:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
-        .klant-card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s; }
-        .klant-card:hover { border-color: #6366f1; box-shadow: 0 4px 15px rgba(99,102,241,0.1); transform: translateY(-2px); }
-        .klant-card.alert { border-color: #fca5a5; background: #fef2f2; }
+        .btn-primary { background: #6366f1; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; min-height: 44px; }
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; min-height: 44px; }
+        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; width: 100%; font-size: 16px; min-height: 44px; }
+        .input-field:focus { outline: none; border-color: #6366f1; }
+        .klant-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s; }
+        .klant-card:hover { border-color: #6366f1; }
         .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
         .badge-green { background: #ecfdf5; color: #059669; }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
-        .modal-content { background: white; border-radius: 20px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+        .modal-content { background: white; border-radius: 16px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 20px; }
+        main { margin-left: 256px; padding: 24px; min-height: 100vh; }
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            main { margin-left: 0; padding: 70px 12px 24px 12px; }
+            .kpi-value { font-size: 1.25rem; }
+        }
     </style>
 </head>
 <body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
     <div class="flex min-h-screen">
-        <aside class="sidebar w-64 fixed left-0 top-0 bottom-0 flex flex-col">
-            <div class="p-6 border-b border-gray-100">
-                <h1 class="text-xl font-bold text-indigo-600">StucAdmin</h1>
-                <p class="text-xs text-gray-400 mt-1">Professional Suite</p>
-            </div>
-            <nav class="flex-1 p-4">
+        <aside class="sidebar">
+            <div class="p-6 border-b border-gray-100"><h1 class="text-xl font-bold text-indigo-600">StucAdmin</h1><p class="text-xs text-gray-400 mt-1">Professional Suite</p></div>
+            <nav class="flex-1 p-4 overflow-y-auto">
                 <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
                 <a href="omzet.html" class="nav-item">💹 Omzet</a>
                 <a href="crm.html" class="nav-item active">👥 Klanten</a>
@@ -49,244 +59,150 @@
                 <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
                 <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
             </nav>
+            <div class="p-4 border-t border-gray-100"><button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button></div>
         </aside>
 
-        <main class="flex-1 ml-64 p-8">
-            <header class="flex items-center justify-between mb-8">
-                <div>
-                    <h1 class="text-2xl font-bold">👥 Klanten CRM</h1>
-                    <p class="text-gray-500">Beheer je klantrelaties</p>
-                </div>
-                <div class="flex gap-3">
-                    <button onclick="laadMoneybird()" class="btn-secondary">🔄 Sync Moneybird</button>
-                    <button onclick="openNieuweKlant()" class="btn-primary">+ Nieuwe Klant</button>
+        <main class="flex-1">
+            <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div><h1 class="text-lg sm:text-xl font-bold">👥 Klanten CRM</h1><p class="text-gray-500 text-sm">Beheer je klantrelaties</p></div>
+                <div class="flex gap-2 flex-wrap">
+                    <input type="text" id="zoek" class="input-field w-full sm:w-48" placeholder="🔍 Zoeken..." onkeyup="filterKlanten()">
+                    <button onclick="openNieuw()" class="btn-primary text-sm">+ Nieuwe klant</button>
                 </div>
             </header>
 
-            <div id="loading" class="hidden card p-12 text-center">
-                <div class="inline-block animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent mb-3"></div>
-                <p class="text-gray-500">Laden uit Moneybird...</p>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                <div class="card kpi-card p-4" style="--accent: #6366f1"><p class="text-gray-500 text-xs">Totaal</p><p class="kpi-value" id="kpiTotaal">0</p></div>
+                <div class="card kpi-card p-4" style="--accent: #10b981"><p class="text-gray-500 text-xs">Actief</p><p class="kpi-value" id="kpiActief">0</p></div>
+                <div class="card kpi-card p-4" style="--accent: #f59e0b"><p class="text-gray-500 text-xs">Omzet</p><p class="kpi-value" id="kpiOmzet">€0</p></div>
+                <div class="card kpi-card p-4" style="--accent: #8b5cf6"><p class="text-gray-500 text-xs">Gem/klant</p><p class="kpi-value" id="kpiGem">€0</p></div>
             </div>
 
-            <div id="content" class="hidden space-y-6">
-                <div class="grid grid-cols-5 gap-4">
-                    <div class="card kpi-card p-5" style="--accent:#6366f1"><p class="text-gray-500 text-sm">Totaal</p><p class="kpi-value" id="kpiTotaal">0</p></div>
-                    <div class="card kpi-card p-5" style="--accent:#3b82f6"><p class="text-gray-500 text-sm">Bedrijven</p><p class="kpi-value" id="kpiBedrijven">0</p></div>
-                    <div class="card kpi-card p-5" style="--accent:#10b981"><p class="text-gray-500 text-sm">Particulieren</p><p class="kpi-value" id="kpiParticulieren">0</p></div>
-                    <div class="card kpi-card p-5" style="--accent:#f59e0b"><p class="text-gray-500 text-sm">Omzet</p><p class="kpi-value" id="kpiOmzet">€0</p></div>
-                    <div class="card kpi-card p-5" style="--accent:#ef4444"><p class="text-gray-500 text-sm">Te bellen</p><p class="kpi-value" id="kpiTeBellen">0</p></div>
-                </div>
-
-                <div class="card p-4">
-                    <div class="grid grid-cols-4 gap-4">
-                        <input type="text" id="zoek" class="input-field col-span-2" placeholder="🔍 Zoeken..." onkeyup="renderKlanten()">
-                        <select id="filterType" class="input-field" onchange="renderKlanten()">
-                            <option value="">Alle types</option>
-                            <option value="bedrijf">🏢 Bedrijven</option>
-                            <option value="particulier">🏠 Particulieren</option>
-                        </select>
-                        <select id="filterStatus" class="input-field" onchange="renderKlanten()">
-                            <option value="">Alle</option>
-                            <option value="actief">Met facturen</option>
-                            <option value="terugbellen">Te bellen</option>
-                            <option value="vaste">Vaste klanten</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="card p-6">
-                    <div class="flex justify-between mb-4">
-                        <h2 class="font-bold">Klanten (<span id="aantal">0</span>)</h2>
-                        <button onclick="exportCSV()" class="btn-secondary text-sm">📥 Export</button>
-                    </div>
-                    <div id="lijst" class="grid grid-cols-3 gap-4"></div>
-                </div>
-            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="klantenGrid"></div>
         </main>
     </div>
 
-    <div id="detailModal" class="modal-overlay hidden">
-        <div class="modal-content p-8">
-            <div class="flex justify-between mb-6">
-                <h2 class="text-xl font-bold" id="detailNaam">Klant</h2>
-                <button onclick="sluitModal('detailModal')" class="text-gray-400 text-2xl">×</button>
-            </div>
-            <div id="detailContent"></div>
-            <div class="mt-6 pt-6 border-t">
-                <h3 class="font-bold mb-4">📝 Extra Info</h3>
-                <div class="grid grid-cols-2 gap-4">
-                    <label class="flex items-center gap-2"><input type="checkbox" id="extraVast" onchange="saveExtra()"> ⭐ Vaste klant</label>
-                    <div><label class="text-sm text-gray-500">Terugbellen</label><input type="date" id="extraTerugbellen" class="input-field" onchange="saveExtra()"></div>
-                    <div class="col-span-2"><label class="text-sm text-gray-500">Notities</label><textarea id="extraNotities" class="input-field" rows="2" onchange="saveExtra()"></textarea></div>
+    <div id="klantModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="flex justify-between mb-4"><h2 class="font-bold text-lg" id="modalTitle">Klant</h2><button onclick="sluitModal()" class="text-gray-400 text-2xl">&times;</button></div>
+            <form onsubmit="saveKlant(event)" class="space-y-4">
+                <input type="hidden" id="klantId">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div><label class="text-xs text-gray-500">Bedrijfsnaam</label><input type="text" id="bedrijf" class="input-field"></div>
+                    <div><label class="text-xs text-gray-500">Contactpersoon</label><input type="text" id="contact" class="input-field"></div>
+                    <div><label class="text-xs text-gray-500">Email</label><input type="email" id="email" class="input-field"></div>
+                    <div><label class="text-xs text-gray-500">Telefoon</label><input type="tel" id="telefoon" class="input-field"></div>
+                    <div class="sm:col-span-2"><label class="text-xs text-gray-500">Adres</label><input type="text" id="adres" class="input-field"></div>
+                    <div><label class="text-xs text-gray-500">Postcode</label><input type="text" id="postcode" class="input-field"></div>
+                    <div><label class="text-xs text-gray-500">Plaats</label><input type="text" id="plaats" class="input-field"></div>
                 </div>
-            </div>
-            <div class="flex gap-3 mt-6">
-                <button onclick="bel()" class="btn-primary flex-1">📞 Bellen</button>
-                <button onclick="mail()" class="btn-secondary flex-1">📧 Email</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="nieuwModal" class="modal-overlay hidden">
-        <div class="modal-content p-8">
-            <div class="flex justify-between mb-6">
-                <h2 class="text-xl font-bold">👤 Nieuwe Klant</h2>
-                <button onclick="sluitModal('nieuwModal')" class="text-gray-400 text-2xl">×</button>
-            </div>
-            <div class="space-y-4">
-                <div><label class="text-sm text-gray-500">Type</label><select id="nieuwType" class="input-field" onchange="toggleBedrijf()"><option value="particulier">🏠 Particulier</option><option value="bedrijf">🏢 Bedrijf</option></select></div>
-                <div id="bedrijfVeld" class="hidden"><label class="text-sm text-gray-500">Bedrijfsnaam *</label><input type="text" id="nieuwBedrijf" class="input-field"></div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="text-sm text-gray-500">Voornaam *</label><input type="text" id="nieuwVoornaam" class="input-field"></div>
-                    <div><label class="text-sm text-gray-500">Achternaam</label><input type="text" id="nieuwAchternaam" class="input-field"></div>
-                </div>
-                <div><label class="text-sm text-gray-500">Email</label><input type="email" id="nieuwEmail" class="input-field"></div>
-                <div><label class="text-sm text-gray-500">Telefoon</label><input type="tel" id="nieuwTelefoon" class="input-field"></div>
-                <div><label class="text-sm text-gray-500">Adres</label><input type="text" id="nieuwAdres" class="input-field"></div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="text-sm text-gray-500">Postcode</label><input type="text" id="nieuwPostcode" class="input-field"></div>
-                    <div><label class="text-sm text-gray-500">Plaats</label><input type="text" id="nieuwPlaats" class="input-field"></div>
-                </div>
-                <button onclick="maakKlant()" class="btn-primary w-full">💾 Opslaan</button>
-            </div>
+                <div><label class="text-xs text-gray-500">Notities</label><textarea id="notities" class="input-field" rows="3"></textarea></div>
+                <div class="flex gap-3"><button type="submit" class="btn-primary flex-1">💾 Opslaan</button><button type="button" onclick="sluitModal()" class="btn-secondary">Annuleren</button></div>
+            </form>
         </div>
     </div>
 
     <script>
-        const API = '/api';
-        let klanten = [], facturen = [], extra = JSON.parse(localStorage.getItem('stuc_crm_extra') || '{}'), huidigeId = null;
+        let contacts = [], invoices = [];
+        function toggleMenu() { document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open'); }
+        async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login.html'; }
 
-        window.onload = () => {
-            const cache = localStorage.getItem('stuc_crm_cache');
-            if (cache) {
-                const d = JSON.parse(cache);
-                if ((Date.now() - new Date(d.timestamp)) / 60000 < 30) {
-                    klanten = d.klanten;
-                    klanten.forEach(k => Object.assign(k, extra[k.id] || {}));
-                    render();
-                    document.getElementById('content').classList.remove('hidden');
-                    return;
-                }
-            }
-            laadMoneybird();
-        };
-
-        async function laadMoneybird() {
-            document.getElementById('loading').classList.remove('hidden');
-            document.getElementById('content').classList.add('hidden');
+        async function init() {
             try {
-                const [cRes, fRes] = await Promise.all([fetch(`${API}/contacts`), fetch(`${API}/invoices`)]);
-                const contacten = await cRes.json();
-                facturen = fRes.ok ? await fRes.json() : [];
-                klanten = contacten.map(c => {
-                    const kf = facturen.filter(f => f.contact?.id === c.id);
-                    const omzet = kf.reduce((s, f) => s + parseFloat(f.total_price_incl_tax || 0), 0);
-                    const ex = extra[c.id] || {};
-                    return { id: c.id, naam: c.company_name || `${c.firstname||''} ${c.lastname||''}`.trim() || 'Onbekend', bedrijf: c.company_name||'', email: c.email||'', telefoon: c.phone||'', adres: c.address1||'', postcode: c.zipcode||'', plaats: c.city||'', type: c.company_name ? 'bedrijf' : 'particulier', omzet, facturen: kf.length, laatst: kf[0]?.invoice_date, vast: ex.vast, terugbellen: ex.terugbellen, notities: ex.notities };
-                }).sort((a, b) => b.omzet - a.omzet);
-                localStorage.setItem('stuc_crm_cache', JSON.stringify({ klanten, timestamp: new Date().toISOString() }));
-                render();
-                document.getElementById('content').classList.remove('hidden');
-            } catch (e) { alert('Fout: ' + e.message); }
-            document.getElementById('loading').classList.add('hidden');
+                [contacts, invoices] = await Promise.all([fetch('/api/contacts').then(r => r.json()), fetch('/api/invoices').then(r => r.json())]);
+                renderKlanten(); updateKPIs();
+            } catch (e) { console.error(e); }
         }
 
-        function render() {
-            document.getElementById('kpiTotaal').textContent = klanten.length;
-            document.getElementById('kpiBedrijven').textContent = klanten.filter(k => k.type === 'bedrijf').length;
-            document.getElementById('kpiParticulieren').textContent = klanten.filter(k => k.type === 'particulier').length;
-            document.getElementById('kpiOmzet').textContent = '€' + Math.round(klanten.reduce((s, k) => s + k.omzet, 0) / 1000) + 'k';
-            document.getElementById('kpiTeBellen').textContent = klanten.filter(k => k.terugbellen && new Date(k.terugbellen) <= new Date()).length;
-            renderKlanten();
+        function updateKPIs() {
+            document.getElementById('kpiTotaal').textContent = contacts.length;
+            const actief = contacts.filter(c => invoices.some(i => i.contact_id === c.id)).length;
+            document.getElementById('kpiActief').textContent = actief;
+            const omzet = invoices.reduce((s, i) => s + parseFloat(i.total_price_incl_tax || 0), 0);
+            document.getElementById('kpiOmzet').textContent = '€' + omzet.toLocaleString('nl-NL', {maximumFractionDigits: 0});
+            document.getElementById('kpiGem').textContent = contacts.length ? '€' + Math.round(omzet / contacts.length) : '€0';
         }
 
         function renderKlanten() {
-            const z = document.getElementById('zoek').value.toLowerCase();
-            const t = document.getElementById('filterType').value;
-            const s = document.getElementById('filterStatus').value;
-            let gef = klanten.filter(k => {
-                if (z && !k.naam.toLowerCase().includes(z) && !k.email.toLowerCase().includes(z) && !k.telefoon.includes(z)) return false;
-                if (t && k.type !== t) return false;
-                if (s === 'actief' && !k.facturen) return false;
-                if (s === 'terugbellen' && (!k.terugbellen || new Date(k.terugbellen) > new Date())) return false;
-                if (s === 'vaste' && !k.vast) return false;
-                return true;
+            const zoek = document.getElementById('zoek').value.toLowerCase();
+            const filtered = contacts.filter(c => {
+                const naam = (c.company_name || c.firstname + ' ' + c.lastname || '').toLowerCase();
+                return naam.includes(zoek);
             });
-            document.getElementById('aantal').textContent = gef.length;
-            document.getElementById('lijst').innerHTML = gef.length ? gef.slice(0, 60).map(k => {
-                const alert = k.terugbellen && new Date(k.terugbellen) <= new Date();
-                return `<div class="klant-card ${alert ? 'alert' : ''}" onclick="openDetail('${k.id}')">
-                    <div class="flex justify-between mb-2">
-                        <div class="flex items-center gap-2"><span>${k.type === 'bedrijf' ? '🏢' : '🏠'}</span><h3 class="font-semibold">${k.naam}</h3>${k.vast ? '⭐' : ''}</div>
-                        ${k.facturen ? `<span class="badge badge-green">${k.facturen}</span>` : ''}
+            document.getElementById('klantenGrid').innerHTML = filtered.map(c => {
+                const omzet = invoices.filter(i => i.contact_id === c.id).reduce((s, i) => s + parseFloat(i.total_price_incl_tax || 0), 0);
+                return `<div class="klant-card" onclick="openKlant('${c.id}')">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-semibold text-sm">${c.company_name || c.firstname + ' ' + c.lastname || 'Onbekend'}</h3>
+                        <span class="badge badge-green text-xs">€${omzet.toFixed(0)}</span>
                     </div>
-                    <div class="text-sm text-gray-500 space-y-1">${k.telefoon ? `<p>📞 ${k.telefoon}</p>` : ''}${k.email ? `<p>📧 ${k.email}</p>` : ''}${k.plaats ? `<p>📍 ${k.plaats}</p>` : ''}</div>
-                    ${alert ? '<p class="text-red-500 text-sm mt-2 font-medium">📞 Terugbellen!</p>' : ''}
-                    <div class="flex justify-between mt-3 pt-3 border-t text-sm"><span class="text-gray-400">${k.laatst ? new Date(k.laatst).toLocaleDateString('nl-NL') : 'Geen facturen'}</span><span class="font-bold text-green-600">€${k.omzet.toLocaleString('nl-NL', {maximumFractionDigits: 0})}</span></div>
+                    <p class="text-gray-500 text-xs">${c.email || ''}</p>
+                    <p class="text-gray-400 text-xs">${c.city || ''}</p>
                 </div>`;
-            }).join('') : '<p class="text-gray-400 text-center py-8 col-span-3">Geen klanten gevonden</p>';
+            }).join('') || '<p class="text-gray-400 col-span-full text-center py-8">Geen klanten gevonden</p>';
         }
 
-        function openDetail(id) {
-            const k = klanten.find(x => x.id === id);
-            if (!k) return;
-            huidigeId = id;
-            document.getElementById('detailNaam').textContent = k.naam;
-            document.getElementById('extraVast').checked = k.vast || false;
-            document.getElementById('extraTerugbellen').value = k.terugbellen || '';
-            document.getElementById('extraNotities').value = k.notities || '';
-            const kf = facturen.filter(f => f.contact?.id === id).slice(0, 5);
-            document.getElementById('detailContent').innerHTML = `<div class="grid grid-cols-2 gap-6">
-                <div class="space-y-3">
-                    <div class="p-4 bg-gray-50 rounded-xl"><h4 class="font-semibold mb-2">📋 Gegevens</h4><p class="text-sm text-gray-600">${k.type === 'bedrijf' ? '🏢 Bedrijf' : '🏠 Particulier'}</p></div>
-                    <div class="p-4 bg-gray-50 rounded-xl"><h4 class="font-semibold mb-2">📞 Contact</h4><div class="text-sm text-gray-600 space-y-1"><p>Tel: ${k.telefoon || '-'}</p><p>Email: ${k.email || '-'}</p><p>Adres: ${k.adres || '-'}</p><p>Plaats: ${k.postcode} ${k.plaats}</p></div></div>
-                </div>
-                <div class="space-y-3">
-                    <div class="p-6 bg-green-50 rounded-xl border border-green-100"><p class="text-sm text-green-600">Totale omzet</p><p class="text-3xl font-bold text-green-600">€${k.omzet.toLocaleString('nl-NL', {maximumFractionDigits: 0})}</p><p class="text-sm text-green-500">${k.facturen} facturen</p></div>
-                    <div class="p-4 bg-gray-50 rounded-xl"><h4 class="font-semibold mb-2">📄 Facturen</h4>${kf.length ? kf.map(f => `<div class="flex justify-between text-sm py-1 border-b"><span class="text-gray-500">${f.invoice_id}</span><span class="text-green-600">€${parseFloat(f.total_price_incl_tax || 0).toLocaleString('nl-NL')}</span></div>`).join('') : '<p class="text-gray-400 text-sm">Geen</p>'}</div>
-                </div>
-            </div>`;
-            document.getElementById('detailModal').classList.remove('hidden');
+        function filterKlanten() { renderKlanten(); }
+
+        function openNieuw() {
+            document.getElementById('modalTitle').textContent = 'Nieuwe klant';
+            document.getElementById('klantId').value = '';
+            document.getElementById('bedrijf').value = '';
+            document.getElementById('contact').value = '';
+            document.getElementById('email').value = '';
+            document.getElementById('telefoon').value = '';
+            document.getElementById('adres').value = '';
+            document.getElementById('postcode').value = '';
+            document.getElementById('plaats').value = '';
+            document.getElementById('notities').value = '';
+            document.getElementById('klantModal').classList.remove('hidden');
         }
 
-        function saveExtra() {
-            if (!huidigeId) return;
-            extra[huidigeId] = { vast: document.getElementById('extraVast').checked, terugbellen: document.getElementById('extraTerugbellen').value, notities: document.getElementById('extraNotities').value };
-            localStorage.setItem('stuc_crm_extra', JSON.stringify(extra));
-            const k = klanten.find(x => x.id === huidigeId);
-            if (k) Object.assign(k, extra[huidigeId]);
-            render();
+        function openKlant(id) {
+            const c = contacts.find(x => x.id === id);
+            if (!c) return;
+            document.getElementById('modalTitle').textContent = 'Klant bewerken';
+            document.getElementById('klantId').value = c.id;
+            document.getElementById('bedrijf').value = c.company_name || '';
+            document.getElementById('contact').value = (c.firstname || '') + ' ' + (c.lastname || '');
+            document.getElementById('email').value = c.email || '';
+            document.getElementById('telefoon').value = c.phone || '';
+            document.getElementById('adres').value = c.address1 || '';
+            document.getElementById('postcode').value = c.zipcode || '';
+            document.getElementById('plaats').value = c.city || '';
+            document.getElementById('notities').value = '';
+            document.getElementById('klantModal').classList.remove('hidden');
         }
 
-        function bel() { const k = klanten.find(x => x.id === huidigeId); if (k?.telefoon) location.href = 'tel:' + k.telefoon; }
-        function mail() { const k = klanten.find(x => x.id === huidigeId); if (k?.email) location.href = 'mailto:' + k.email; }
-
-        function openNieuweKlant() { document.getElementById('nieuwModal').classList.remove('hidden'); }
-        function toggleBedrijf() { document.getElementById('bedrijfVeld').classList.toggle('hidden', document.getElementById('nieuwType').value !== 'bedrijf'); }
-        
-        async function maakKlant() {
-            const type = document.getElementById('nieuwType').value;
-            const bedrijf = document.getElementById('nieuwBedrijf').value.trim();
-            const voornaam = document.getElementById('nieuwVoornaam').value.trim();
-            if (type === 'bedrijf' && !bedrijf) return alert('Vul bedrijfsnaam in');
-            if (!voornaam) return alert('Vul voornaam in');
+        async function saveKlant(e) {
+            e.preventDefault();
+            const id = document.getElementById('klantId').value;
+            const naam = document.getElementById('contact').value.split(' ');
+            const data = {
+                contact: {
+                    company_name: document.getElementById('bedrijf').value,
+                    firstname: naam[0] || '',
+                    lastname: naam.slice(1).join(' ') || '',
+                    email: document.getElementById('email').value,
+                    phone: document.getElementById('telefoon').value,
+                    address1: document.getElementById('adres').value,
+                    zipcode: document.getElementById('postcode').value,
+                    city: document.getElementById('plaats').value,
+                    country: 'NL'
+                }
+            };
             try {
-                await fetch(`${API}/contacts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contact: { company_name: type === 'bedrijf' ? bedrijf : '', firstname: voornaam, lastname: document.getElementById('nieuwAchternaam').value, email: document.getElementById('nieuwEmail').value, phone: document.getElementById('nieuwTelefoon').value, address1: document.getElementById('nieuwAdres').value, zipcode: document.getElementById('nieuwPostcode').value, city: document.getElementById('nieuwPlaats').value, country: 'NL' } }) });
-                alert('✅ Klant aangemaakt!');
-                sluitModal('nieuwModal');
-                laadMoneybird();
-            } catch (e) { alert('Fout: ' + e.message); }
+                if (id) {
+                    await fetch('/api/contacts/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                } else {
+                    await fetch('/api/contacts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                }
+                sluitModal(); init();
+            } catch (e) { alert('Fout bij opslaan'); }
         }
 
-        function sluitModal(id) { document.getElementById(id).classList.add('hidden'); }
-        function exportCSV() {
-            let csv = 'Naam,Type,Email,Telefoon,Plaats,Omzet\n';
-            klanten.forEach(k => csv += `"${k.naam}","${k.type}","${k.email}","${k.telefoon}","${k.plaats}",${k.omzet}\n`);
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-            a.download = 'klanten.csv';
-            a.click();
-        }
+        function sluitModal() { document.getElementById('klantModal').classList.add('hidden'); }
+        init();
     </script>
 </body>
 </html>

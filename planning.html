@@ -2,46 +2,50 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Planning - StucAdmin Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * { font-family: 'Inter', sans-serif; }
-        body { background: #f5f7fa; color: #1a1a2e; }
-        .sidebar { background: #ffffff; border-right: 1px solid #e5e7eb; }
-        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; transition: all 0.2s; text-decoration: none; margin-bottom: 4px; }
-        .nav-item:hover { background: #f1f5f9; color: #1e293b; }
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; }
+        .sidebar { background: #fff; border-right: 1px solid #e5e7eb; position: fixed; left: 0; top: 0; bottom: 0; width: 256px; display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s ease; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; text-decoration: none; margin-bottom: 4px; }
+        .nav-item:hover { background: #f1f5f9; }
         .nav-item.active { background: #6366f1; color: white; }
-        .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; }
-        .btn-primary { background: #6366f1; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .logout-btn { color: #ef4444; }
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; }
+        .btn-primary { background: #6366f1; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; min-height: 44px; }
         .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
-        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; width: 100%; }
+        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; width: 100%; font-size: 16px; min-height: 44px; }
         .input-field:focus { outline: none; border-color: #6366f1; }
-        .calendar-day { min-height: 110px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 8px; }
-        .calendar-day:hover { border-color: #6366f1; }
-        .calendar-day.today { background: #eef2ff; border-color: #6366f1; }
-        .calendar-day.weekend { background: #fafafa; }
-        .project-block { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; margin-bottom: 4px; cursor: pointer; }
-        .project-block.blue { background: #dbeafe; color: #1d4ed8; }
-        .project-block.green { background: #dcfce7; color: #15803d; }
-        .project-block.yellow { background: #fef3c7; color: #b45309; }
-        .project-block.red { background: #fee2e2; color: #dc2626; }
-        .project-block.purple { background: #ede9fe; color: #7c3aed; }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
-        .modal-content { background: white; border-radius: 20px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
-        .color-option { width: 28px; height: 28px; border-radius: 6px; cursor: pointer; border: 2px solid transparent; }
-        .color-option.selected { border-color: #1e293b; }
+        .project-card { background: #fff; border-left: 4px solid #6366f1; border-radius: 0 12px 12px 0; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+        .modal-content { background: white; border-radius: 16px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 20px; }
+        .calendar-day { min-height: 80px; border: 1px solid #e5e7eb; padding: 8px; font-size: 12px; }
+        .calendar-day.today { background: #eef2ff; }
+        .calendar-day.other-month { background: #f8fafc; color: #94a3b8; }
+        main { margin-left: 256px; padding: 24px; min-height: 100vh; }
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            main { margin-left: 0; padding: 70px 12px 24px 12px; }
+            .calendar-day { min-height: 60px; padding: 4px; }
+        }
     </style>
 </head>
 <body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
     <div class="flex min-h-screen">
-        <aside class="sidebar w-64 fixed left-0 top-0 bottom-0 flex flex-col">
-            <div class="p-6 border-b border-gray-100">
-                <h1 class="text-xl font-bold text-indigo-600">StucAdmin</h1>
-                <p class="text-xs text-gray-400 mt-1">Professional Suite</p>
-            </div>
-            <nav class="flex-1 p-4">
+        <aside class="sidebar">
+            <div class="p-6 border-b border-gray-100"><h1 class="text-xl font-bold text-indigo-600">StucAdmin</h1><p class="text-xs text-gray-400 mt-1">Professional Suite</p></div>
+            <nav class="flex-1 p-4 overflow-y-auto">
                 <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
                 <a href="omzet.html" class="nav-item">💹 Omzet</a>
                 <a href="crm.html" class="nav-item">👥 Klanten</a>
@@ -51,223 +55,188 @@
                 <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
                 <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
             </nav>
+            <div class="p-4 border-t border-gray-100"><button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button></div>
         </aside>
 
-        <main class="flex-1 ml-64 p-8">
-            <header class="flex items-center justify-between mb-8">
-                <div>
-                    <h1 class="text-2xl font-bold">📅 Werkplanning</h1>
-                    <p class="text-gray-500">Plan je projecten en team</p>
-                </div>
-                <div class="flex gap-3">
-                    <button onclick="openMedewerkerModal()" class="btn-secondary">👷 + Medewerker</button>
-                    <button onclick="openProjectModal()" class="btn-primary">📋 + Project</button>
-                </div>
+        <main class="flex-1">
+            <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div><h1 class="text-lg sm:text-xl font-bold">📅 Planning</h1><p class="text-gray-500 text-sm">Beheer je projecten</p></div>
+                <button onclick="openNieuwProject()" class="btn-primary text-sm">+ Nieuw project</button>
             </header>
 
-            <div class="card p-4 mb-6 flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <button onclick="navigeer(-1)" class="btn-secondary px-3">←</button>
-                    <div>
-                        <p class="font-bold text-lg" id="weekTitel">Week 1</p>
-                        <p class="text-gray-500 text-sm" id="weekDatum">1 - 7 jan 2025</p>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <div class="card p-4 mb-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <button onclick="vorigeMaand()" class="btn-secondary text-sm">◀</button>
+                            <h2 class="font-bold" id="maandTitel">December 2024</h2>
+                            <button onclick="volgendeMaand()" class="btn-secondary text-sm">▶</button>
+                        </div>
+                        <div class="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-2">
+                            <div>Ma</div><div>Di</div><div>Wo</div><div>Do</div><div>Vr</div><div>Za</div><div>Zo</div>
+                        </div>
+                        <div class="grid grid-cols-7 gap-1" id="kalender"></div>
                     </div>
-                    <button onclick="navigeer(1)" class="btn-secondary px-3">→</button>
                 </div>
-                <button onclick="vandaag()" class="btn-secondary">Vandaag</button>
-            </div>
 
-            <div class="card p-6 mb-6">
-                <div class="grid grid-cols-7 gap-2 mb-2">
-                    <div class="text-center text-sm font-semibold text-gray-500">Ma</div>
-                    <div class="text-center text-sm font-semibold text-gray-500">Di</div>
-                    <div class="text-center text-sm font-semibold text-gray-500">Wo</div>
-                    <div class="text-center text-sm font-semibold text-gray-500">Do</div>
-                    <div class="text-center text-sm font-semibold text-gray-500">Vr</div>
-                    <div class="text-center text-sm font-semibold text-gray-400">Za</div>
-                    <div class="text-center text-sm font-semibold text-gray-400">Zo</div>
-                </div>
-                <div class="grid grid-cols-7 gap-2" id="kalender"></div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-6">
-                <div class="card p-6">
-                    <h2 class="font-bold mb-4">📋 Projecten deze week</h2>
-                    <div id="projectenLijst" class="space-y-2"></div>
-                </div>
-                <div class="card p-6">
-                    <h2 class="font-bold mb-4">👷 Medewerkers</h2>
-                    <div id="medewerkersLijst" class="space-y-2"></div>
+                <div>
+                    <h2 class="font-bold mb-4 text-sm">📋 Komende projecten</h2>
+                    <div id="projectenLijst"></div>
                 </div>
             </div>
         </main>
     </div>
 
     <div id="projectModal" class="modal-overlay hidden">
-        <div class="modal-content p-8">
-            <div class="flex justify-between mb-6">
-                <h2 class="text-xl font-bold" id="projectModalTitel">📋 Nieuw Project</h2>
-                <button onclick="sluitModal('projectModal')" class="text-gray-400 text-2xl">×</button>
-            </div>
-            <div class="space-y-4">
-                <div><label class="text-sm text-gray-500">Naam *</label><input type="text" id="projNaam" class="input-field"></div>
-                <div><label class="text-sm text-gray-500">Adres</label><input type="text" id="projAdres" class="input-field"></div>
+        <div class="modal-content">
+            <div class="flex justify-between mb-4"><h2 class="font-bold">Nieuw project</h2><button onclick="sluitModal()" class="text-gray-400 text-2xl">&times;</button></div>
+            <form onsubmit="saveProject(event)" class="space-y-4">
+                <input type="hidden" id="projectId">
+                <div><label class="text-xs text-gray-500">Projectnaam</label><input type="text" id="projectNaam" class="input-field" required></div>
+                <div><label class="text-xs text-gray-500">Klant</label><input type="text" id="projectKlant" class="input-field"></div>
+                <div><label class="text-xs text-gray-500">Adres</label><input type="text" id="projectAdres" class="input-field"></div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div><label class="text-sm text-gray-500">Start *</label><input type="date" id="projStart" class="input-field"></div>
-                    <div><label class="text-sm text-gray-500">Eind *</label><input type="date" id="projEind" class="input-field"></div>
+                    <div><label class="text-xs text-gray-500">Startdatum</label><input type="date" id="projectStart" class="input-field" required></div>
+                    <div><label class="text-xs text-gray-500">Einddatum</label><input type="date" id="projectEind" class="input-field"></div>
                 </div>
-                <div><label class="text-sm text-gray-500">Medewerkers</label><select id="projMedewerkers" class="input-field" multiple style="min-height:80px"></select></div>
-                <div><label class="text-sm text-gray-500">Kleur</label>
-                    <div class="flex gap-2 mt-1">
-                        <div class="color-option selected" data-color="blue" style="background:#dbeafe" onclick="selectColor('blue')"></div>
-                        <div class="color-option" data-color="green" style="background:#dcfce7" onclick="selectColor('green')"></div>
-                        <div class="color-option" data-color="yellow" style="background:#fef3c7" onclick="selectColor('yellow')"></div>
-                        <div class="color-option" data-color="red" style="background:#fee2e2" onclick="selectColor('red')"></div>
-                        <div class="color-option" data-color="purple" style="background:#ede9fe" onclick="selectColor('purple')"></div>
-                    </div>
+                <div><label class="text-xs text-gray-500">Notities</label><textarea id="projectNotities" class="input-field" rows="3"></textarea></div>
+                <div class="flex gap-3">
+                    <button type="submit" class="btn-primary flex-1">💾 Opslaan</button>
+                    <button type="button" onclick="verwijderProject()" class="btn-secondary text-red-500" id="btnVerwijder" style="display:none">🗑️</button>
                 </div>
-                <input type="hidden" id="projId"><input type="hidden" id="projKleur" value="blue">
-                <button onclick="saveProject()" class="btn-primary w-full">💾 Opslaan</button>
-                <button id="deleteBtn" onclick="deleteProject()" class="hidden w-full text-red-500 text-sm py-2">🗑️ Verwijderen</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="medewerkerModal" class="modal-overlay hidden">
-        <div class="modal-content p-8">
-            <div class="flex justify-between mb-6">
-                <h2 class="text-xl font-bold">👷 Nieuwe Medewerker</h2>
-                <button onclick="sluitModal('medewerkerModal')" class="text-gray-400 text-2xl">×</button>
-            </div>
-            <div class="space-y-4">
-                <div><label class="text-sm text-gray-500">Naam *</label><input type="text" id="medNaam" class="input-field"></div>
-                <div><label class="text-sm text-gray-500">Telefoon</label><input type="tel" id="medTelefoon" class="input-field"></div>
-                <div><label class="text-sm text-gray-500">Functie</label><select id="medFunctie" class="input-field"><option value="stukadoor">Stukadoor</option><option value="leerling">Leerling</option><option value="voorman">Voorman</option></select></div>
-                <button onclick="saveMedewerker()" class="btn-primary w-full">💾 Opslaan</button>
-            </div>
+            </form>
         </div>
     </div>
 
     <script>
-        let projecten = JSON.parse(localStorage.getItem('stuc_planning_projecten') || '[]');
-        let medewerkers = JSON.parse(localStorage.getItem('stuc_planning_medewerkers') || '[{"id":1,"naam":"Jezelf","functie":"voorman"}]');
-        let weekStart = getWeekStart(new Date());
+        let projecten = JSON.parse(localStorage.getItem('stuc_planning') || '[]');
+        let huidigeDatum = new Date();
 
-        function getWeekStart(d) { const date = new Date(d); const day = date.getDay(); return new Date(date.setDate(date.getDate() - day + (day === 0 ? -6 : 1))); }
-        function getWeekNr(d) { const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const dayNum = date.getUTCDay() || 7; date.setUTCDate(date.getUTCDate() + 4 - dayNum); const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1)); return Math.ceil((((date - yearStart) / 86400000) + 1) / 7); }
-        function formatDate(d) { return d.toISOString().split('T')[0]; }
-        function formatNL(d) { return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }); }
+        function toggleMenu() { document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open'); }
+        async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login.html'; }
 
-        function render() {
-            const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6);
-            document.getElementById('weekTitel').textContent = `Week ${getWeekNr(weekStart)}`;
-            document.getElementById('weekDatum').textContent = `${formatNL(weekStart)} - ${formatNL(weekEnd)} ${weekStart.getFullYear()}`;
+        function renderKalender() {
+            const jaar = huidigeDatum.getFullYear();
+            const maand = huidigeDatum.getMonth();
+            const maanden = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+            document.getElementById('maandTitel').textContent = maanden[maand] + ' ' + jaar;
 
-            const vandaagStr = formatDate(new Date());
+            const eersteDag = new Date(jaar, maand, 1);
+            const laatsteDag = new Date(jaar, maand + 1, 0);
+            let startDag = eersteDag.getDay() || 7;
+            startDag--;
+
+            const vandaag = new Date();
             let html = '';
-            for (let i = 0; i < 7; i++) {
-                const dag = new Date(weekStart); dag.setDate(dag.getDate() + i);
-                const dagStr = formatDate(dag);
-                const isVandaag = dagStr === vandaagStr;
-                const dagProjecten = projecten.filter(p => dag >= new Date(p.startDatum) && dag <= new Date(p.eindDatum));
-                html += `<div class="calendar-day ${isVandaag ? 'today' : ''} ${i >= 5 ? 'weekend' : ''}">
-                    <div class="font-bold text-sm mb-2 ${isVandaag ? 'text-indigo-600' : ''}">${dag.getDate()}</div>
-                    ${dagProjecten.map(p => `<div class="project-block ${p.kleur || 'blue'}" onclick="editProject(${p.id})">${p.naam}</div>`).join('')}
+            
+            for (let i = 0; i < startDag; i++) {
+                const d = new Date(jaar, maand, -startDag + i + 1);
+                html += `<div class="calendar-day other-month rounded">${d.getDate()}</div>`;
+            }
+
+            for (let dag = 1; dag <= laatsteDag.getDate(); dag++) {
+                const datum = new Date(jaar, maand, dag);
+                const isVandaag = datum.toDateString() === vandaag.toDateString();
+                const dagProjecten = projecten.filter(p => {
+                    const start = new Date(p.startDatum);
+                    const eind = p.eindDatum ? new Date(p.eindDatum) : start;
+                    return datum >= start && datum <= eind;
+                });
+                
+                html += `<div class="calendar-day ${isVandaag ? 'today' : ''} rounded cursor-pointer hover:bg-indigo-50" onclick="openDag('${datum.toISOString()}')">
+                    <div class="font-semibold ${isVandaag ? 'text-indigo-600' : ''}">${dag}</div>
+                    ${dagProjecten.slice(0, 2).map(p => `<div class="text-xs bg-indigo-100 text-indigo-700 rounded px-1 mt-1 truncate">${p.naam}</div>`).join('')}
+                    ${dagProjecten.length > 2 ? `<div class="text-xs text-gray-400">+${dagProjecten.length - 2}</div>` : ''}
                 </div>`;
             }
+
             document.getElementById('kalender').innerHTML = html;
-
-            const weekProjecten = projecten.filter(p => new Date(p.startDatum) <= weekEnd && new Date(p.eindDatum) >= weekStart);
-            document.getElementById('projectenLijst').innerHTML = weekProjecten.length ? weekProjecten.map(p => {
-                const meds = p.medewerkers?.map(id => medewerkers.find(m => m.id === id)?.naam).filter(Boolean).join(', ') || '-';
-                return `<div class="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100" onclick="editProject(${p.id})">
-                    <div class="font-semibold">${p.naam}</div>
-                    <div class="text-sm text-gray-500">${p.startDatum} → ${p.eindDatum}</div>
-                    <div class="text-sm text-gray-400">👷 ${meds}</div>
-                </div>`;
-            }).join('') : '<p class="text-gray-400 text-center py-4">Geen projecten deze week</p>';
-
-            document.getElementById('medewerkersLijst').innerHTML = medewerkers.map(m => `<div class="p-3 bg-gray-50 rounded-lg flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">${m.naam.charAt(0)}</div>
-                <div><div class="font-semibold">${m.naam}</div><div class="text-sm text-gray-500">${m.functie}</div></div>
-            </div>`).join('');
-
-            document.getElementById('projMedewerkers').innerHTML = medewerkers.map(m => `<option value="${m.id}">${m.naam}</option>`).join('');
         }
 
-        function navigeer(dir) { weekStart.setDate(weekStart.getDate() + dir * 7); render(); }
-        function vandaag() { weekStart = getWeekStart(new Date()); render(); }
-
-        function selectColor(c) {
-            document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
-            document.querySelector(`.color-option[data-color="${c}"]`).classList.add('selected');
-            document.getElementById('projKleur').value = c;
+        function renderProjecten() {
+            const komend = projecten.filter(p => new Date(p.startDatum) >= new Date()).sort((a, b) => new Date(a.startDatum) - new Date(b.startDatum));
+            document.getElementById('projectenLijst').innerHTML = komend.length === 0 
+                ? '<p class="text-gray-400 text-sm text-center py-8">Geen projecten gepland</p>'
+                : komend.map(p => `<div class="project-card" onclick="openProject('${p.id}')">
+                    <h3 class="font-semibold text-sm">${p.naam}</h3>
+                    <p class="text-gray-500 text-xs">${p.klant || ''}</p>
+                    <p class="text-indigo-600 text-xs mt-2">📅 ${new Date(p.startDatum).toLocaleDateString('nl-NL')}</p>
+                </div>`).join('');
         }
 
-        function openProjectModal() {
-            document.getElementById('projectModalTitel').textContent = '📋 Nieuw Project';
-            document.getElementById('projId').value = '';
-            document.getElementById('projNaam').value = '';
-            document.getElementById('projAdres').value = '';
-            document.getElementById('projStart').value = formatDate(new Date());
-            document.getElementById('projEind').value = formatDate(new Date());
-            selectColor('blue');
-            document.getElementById('deleteBtn').classList.add('hidden');
+        function vorigeMaand() { huidigeDatum.setMonth(huidigeDatum.getMonth() - 1); renderKalender(); }
+        function volgendeMaand() { huidigeDatum.setMonth(huidigeDatum.getMonth() + 1); renderKalender(); }
+
+        function openNieuwProject() {
+            document.getElementById('projectId').value = '';
+            document.getElementById('projectNaam').value = '';
+            document.getElementById('projectKlant').value = '';
+            document.getElementById('projectAdres').value = '';
+            document.getElementById('projectStart').value = new Date().toISOString().split('T')[0];
+            document.getElementById('projectEind').value = '';
+            document.getElementById('projectNotities').value = '';
+            document.getElementById('btnVerwijder').style.display = 'none';
             document.getElementById('projectModal').classList.remove('hidden');
         }
 
-        function editProject(id) {
+        function openProject(id) {
             const p = projecten.find(x => x.id === id);
             if (!p) return;
-            document.getElementById('projectModalTitel').textContent = '✏️ Bewerken';
-            document.getElementById('projId').value = p.id;
-            document.getElementById('projNaam').value = p.naam;
-            document.getElementById('projAdres').value = p.adres || '';
-            document.getElementById('projStart').value = p.startDatum;
-            document.getElementById('projEind').value = p.eindDatum;
-            selectColor(p.kleur || 'blue');
-            Array.from(document.getElementById('projMedewerkers').options).forEach(o => o.selected = p.medewerkers?.includes(parseInt(o.value)));
-            document.getElementById('deleteBtn').classList.remove('hidden');
+            document.getElementById('projectId').value = p.id;
+            document.getElementById('projectNaam').value = p.naam;
+            document.getElementById('projectKlant').value = p.klant || '';
+            document.getElementById('projectAdres').value = p.adres || '';
+            document.getElementById('projectStart').value = p.startDatum;
+            document.getElementById('projectEind').value = p.eindDatum || '';
+            document.getElementById('projectNotities').value = p.notities || '';
+            document.getElementById('btnVerwijder').style.display = 'block';
             document.getElementById('projectModal').classList.remove('hidden');
         }
 
-        function saveProject() {
-            const naam = document.getElementById('projNaam').value.trim();
-            const start = document.getElementById('projStart').value;
-            const eind = document.getElementById('projEind').value;
-            if (!naam || !start || !eind) return alert('Vul alle velden in');
-            const meds = Array.from(document.getElementById('projMedewerkers').selectedOptions).map(o => parseInt(o.value));
-            const data = { naam, adres: document.getElementById('projAdres').value, startDatum: start, eindDatum: eind, kleur: document.getElementById('projKleur').value, medewerkers: meds };
-            const id = document.getElementById('projId').value;
-            if (id) { const idx = projecten.findIndex(p => p.id === parseInt(id)); if (idx !== -1) projecten[idx] = { ...projecten[idx], ...data }; }
-            else { data.id = Date.now(); projecten.push(data); }
-            localStorage.setItem('stuc_planning_projecten', JSON.stringify(projecten));
-            sluitModal('projectModal');
-            render();
+        function openDag(datum) {
+            document.getElementById('projectStart').value = datum.split('T')[0];
+            openNieuwProject();
+            document.getElementById('projectStart').value = datum.split('T')[0];
         }
 
-        function deleteProject() {
-            const id = document.getElementById('projId').value;
-            if (!id || !confirm('Verwijderen?')) return;
-            projecten = projecten.filter(p => p.id !== parseInt(id));
-            localStorage.setItem('stuc_planning_projecten', JSON.stringify(projecten));
-            sluitModal('projectModal');
-            render();
+        function saveProject(e) {
+            e.preventDefault();
+            const id = document.getElementById('projectId').value;
+            const project = {
+                id: id || Date.now().toString(),
+                naam: document.getElementById('projectNaam').value,
+                klant: document.getElementById('projectKlant').value,
+                adres: document.getElementById('projectAdres').value,
+                startDatum: document.getElementById('projectStart').value,
+                eindDatum: document.getElementById('projectEind').value,
+                notities: document.getElementById('projectNotities').value
+            };
+            if (id) {
+                projecten = projecten.map(p => p.id === id ? project : p);
+            } else {
+                projecten.push(project);
+            }
+            localStorage.setItem('stuc_planning', JSON.stringify(projecten));
+            sluitModal();
+            renderKalender();
+            renderProjecten();
         }
 
-        function openMedewerkerModal() { document.getElementById('medNaam').value = ''; document.getElementById('medewerkerModal').classList.remove('hidden'); }
-        function saveMedewerker() {
-            const naam = document.getElementById('medNaam').value.trim();
-            if (!naam) return alert('Vul naam in');
-            medewerkers.push({ id: Date.now(), naam, telefoon: document.getElementById('medTelefoon').value, functie: document.getElementById('medFunctie').value });
-            localStorage.setItem('stuc_planning_medewerkers', JSON.stringify(medewerkers));
-            sluitModal('medewerkerModal');
-            render();
+        function verwijderProject() {
+            const id = document.getElementById('projectId').value;
+            if (confirm('Project verwijderen?')) {
+                projecten = projecten.filter(p => p.id !== id);
+                localStorage.setItem('stuc_planning', JSON.stringify(projecten));
+                sluitModal();
+                renderKalender();
+                renderProjecten();
+            }
         }
 
-        function sluitModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function sluitModal() { document.getElementById('projectModal').classList.add('hidden'); }
 
-        render();
+        renderKalender();
+        renderProjecten();
     </script>
 </body>
 </html>
