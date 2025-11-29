@@ -14,16 +14,25 @@
         .nav-item:hover { background: #f1f5f9; color: #1e293b; }
         .nav-item.active { background: #6366f1; color: white; }
         .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; }
-        .btn-primary { background: #6366f1; color: white; padding: 12px 24px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; width: 100%; }
+        .btn-primary { background: #6366f1; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
         .btn-primary:hover { background: #4f46e5; }
-        .btn-secondary { background: #f1f5f9; color: #475569; padding: 12px 24px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; width: 100%; }
-        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; width: 100%; font-size: 1rem; }
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-danger { background: #fee2e2; color: #dc2626; padding: 6px 12px; border-radius: 8px; font-weight: 500; border: none; cursor: pointer; }
+        .btn-danger:hover { background: #fecaca; }
+        .btn-success { background: #dcfce7; color: #15803d; padding: 6px 12px; border-radius: 8px; font-weight: 500; border: none; cursor: pointer; }
+        .btn-success:hover { background: #bbf7d0; }
+        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; width: 100%; font-size: 0.95rem; }
         .input-field:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
         .result-card { background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 16px; padding: 24px; color: white; text-align: center; }
-        .result-value { font-size: 3rem; font-weight: 800; }
-        .work-type { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; }
-        .work-type:hover { border-color: #6366f1; }
+        .result-value { font-size: 2.5rem; font-weight: 800; }
+        .service-row { display: grid; grid-template-columns: 1fr 100px 100px 80px; gap: 12px; align-items: center; padding: 12px; background: #f8fafc; border-radius: 10px; margin-bottom: 8px; }
+        .service-row:hover { background: #f1f5f9; }
         .breakdown-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
+        .modal-content { background: white; border-radius: 20px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .category-header { background: #f1f5f9; padding: 8px 12px; border-radius: 8px; font-weight: 600; color: #475569; margin: 16px 0 8px 0; }
+        .totals-row { display: grid; grid-template-columns: 1fr 100px 100px 80px; gap: 12px; padding: 12px; font-weight: 600; border-top: 2px solid #e5e7eb; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -46,69 +55,74 @@
         </aside>
 
         <main class="flex-1 ml-64 p-8">
-            <header class="mb-8">
-                <h1 class="text-2xl font-bold">🧮 Project Calculator</h1>
-                <p class="text-gray-500">Bereken snel je projectkosten</p>
+            <header class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold">🧮 Project Calculator</h1>
+                    <p class="text-gray-500">Bereken projectkosten met alle diensten</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="openDienstModal()" class="btn-secondary">⚙️ Diensten beheren</button>
+                    <button onclick="resetCalculator()" class="btn-secondary">🔄 Reset</button>
+                </div>
             </header>
 
-            <div class="grid grid-cols-3 gap-8">
+            <div class="grid grid-cols-3 gap-6">
+                <!-- Left: Project info & Services -->
                 <div class="col-span-2 space-y-6">
                     <div class="card p-6">
-                        <h2 class="font-bold mb-4">📋 Project Info</h2>
+                        <h2 class="font-bold mb-4">📋 Project Informatie</h2>
                         <div class="grid grid-cols-2 gap-4">
-                            <div><label class="text-sm text-gray-500">Projectnaam</label><input type="text" id="projectNaam" class="input-field" placeholder="Bijv. Stucwerk Fam. Jansen"></div>
+                            <div><label class="text-sm text-gray-500">Projectnaam</label><input type="text" id="projectNaam" class="input-field" placeholder="Bijv. Renovatie Fam. Jansen"></div>
                             <div><label class="text-sm text-gray-500">Klant</label><input type="text" id="klantNaam" class="input-field" placeholder="Klantnaam"></div>
+                            <div><label class="text-sm text-gray-500">Adres</label><input type="text" id="projectAdres" class="input-field" placeholder="Straat en huisnummer"></div>
+                            <div><label class="text-sm text-gray-500">Plaats</label><input type="text" id="projectPlaats" class="input-field" placeholder="Plaats"></div>
                         </div>
                     </div>
 
                     <div class="card p-6">
-                        <h2 class="font-bold mb-4">🔨 Type werk & oppervlakte</h2>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="work-type">
-                                <div class="flex justify-between mb-2"><span class="font-medium">Stucen wanden</span><span class="text-indigo-600 text-sm">€18/m²</span></div>
-                                <input type="number" class="input-field" id="m2_wanden" value="0" onchange="bereken()" placeholder="m²">
-                            </div>
-                            <div class="work-type">
-                                <div class="flex justify-between mb-2"><span class="font-medium">Stucen plafonds</span><span class="text-indigo-600 text-sm">€22/m²</span></div>
-                                <input type="number" class="input-field" id="m2_plafonds" value="0" onchange="bereken()" placeholder="m²">
-                            </div>
-                            <div class="work-type">
-                                <div class="flex justify-between mb-2"><span class="font-medium">Voorstrijk</span><span class="text-indigo-600 text-sm">€3/m²</span></div>
-                                <input type="number" class="input-field" id="m2_voorstrijk" value="0" onchange="bereken()" placeholder="m²">
-                            </div>
-                            <div class="work-type">
-                                <div class="flex justify-between mb-2"><span class="font-medium">Sauzen</span><span class="text-indigo-600 text-sm">€6/m²</span></div>
-                                <input type="number" class="input-field" id="m2_sauzen" value="0" onchange="bereken()" placeholder="m²">
-                            </div>
-                            <div class="work-type">
-                                <div class="flex justify-between mb-2"><span class="font-medium">Sierpleister</span><span class="text-indigo-600 text-sm">€35/m²</span></div>
-                                <input type="number" class="input-field" id="m2_sierpleister" value="0" onchange="bereken()" placeholder="m²">
-                            </div>
-                            <div class="work-type">
-                                <div class="flex justify-between mb-2"><span class="font-medium">Reparatie/Schuren</span><span class="text-indigo-600 text-sm">€8/m²</span></div>
-                                <input type="number" class="input-field" id="m2_reparatie" value="0" onchange="bereken()" placeholder="m²">
-                            </div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="font-bold">🔨 Diensten & Oppervlaktes</h2>
+                            <button onclick="openDienstToevoegen()" class="btn-success text-sm">+ Dienst toevoegen</button>
+                        </div>
+                        
+                        <div class="service-row font-semibold text-gray-500 text-sm">
+                            <div>Dienst</div>
+                            <div class="text-center">Aantal</div>
+                            <div class="text-center">Prijs</div>
+                            <div></div>
+                        </div>
+                        
+                        <div id="dienstenLijst"></div>
+                        
+                        <div class="totals-row text-gray-700">
+                            <div>Totaal oppervlakte</div>
+                            <div class="text-center" id="totaalM2">0 m²</div>
+                            <div></div>
+                            <div></div>
                         </div>
                     </div>
 
                     <div class="card p-6">
-                        <h2 class="font-bold mb-4">➕ Extra kosten</h2>
+                        <h2 class="font-bold mb-4">➕ Extra Kosten</h2>
+                        <div class="grid grid-cols-4 gap-4">
+                            <div><label class="text-sm text-gray-500">Materiaal (€)</label><input type="number" id="extraMateriaal" class="input-field" value="0" onchange="bereken()"></div>
+                            <div><label class="text-sm text-gray-500">Voorrijkosten (€)</label><input type="number" id="extraVoorrijkosten" class="input-field" value="0" onchange="bereken()"></div>
+                            <div><label class="text-sm text-gray-500">Steigerwerk (€)</label><input type="number" id="extraSteiger" class="input-field" value="0" onchange="bereken()"></div>
+                            <div><label class="text-sm text-gray-500">Overig (€)</label><input type="number" id="extraOverig" class="input-field" value="0" onchange="bereken()"></div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h2 class="font-bold mb-4">📊 Marges & BTW</h2>
                         <div class="grid grid-cols-3 gap-4">
-                            <div><label class="text-sm text-gray-500">Materiaal (€)</label><input type="number" id="materiaal" class="input-field" value="0" onchange="bereken()"></div>
-                            <div><label class="text-sm text-gray-500">Voorrijkosten (€)</label><input type="number" id="voorrijkosten" class="input-field" value="0" onchange="bereken()"></div>
-                            <div><label class="text-sm text-gray-500">Overig (€)</label><input type="number" id="overig" class="input-field" value="0" onchange="bereken()"></div>
-                        </div>
-                    </div>
-
-                    <div class="card p-6">
-                        <h2 class="font-bold mb-4">📊 Marges</h2>
-                        <div class="grid grid-cols-2 gap-4">
                             <div><label class="text-sm text-gray-500">Winstmarge (%)</label><input type="number" id="winstmarge" class="input-field" value="15" onchange="bereken()"></div>
-                            <div><label class="text-sm text-gray-500">BTW (%)</label><input type="number" id="btw" class="input-field" value="21" onchange="bereken()"></div>
+                            <div><label class="text-sm text-gray-500">BTW (%)</label><select id="btw" class="input-field" onchange="bereken()"><option value="21">21% (standaard)</option><option value="9">9% (verlaagd)</option><option value="0">0% (vrijgesteld)</option></select></div>
+                            <div><label class="text-sm text-gray-500">Korting (%)</label><input type="number" id="korting" class="input-field" value="0" onchange="bereken()"></div>
                         </div>
                     </div>
                 </div>
 
+                <!-- Right: Results -->
                 <div class="space-y-6">
                     <div class="result-card">
                         <p class="text-white/80 text-sm mb-1">Totaal incl. BTW</p>
@@ -117,94 +131,442 @@
                     </div>
 
                     <div class="card p-6">
-                        <h3 class="font-bold mb-4">📐 Oppervlakte</h3>
-                        <div class="space-y-2">
-                            <div class="flex justify-between"><span class="text-gray-500">Wanden</span><span id="totWanden">0 m²</span></div>
-                            <div class="flex justify-between"><span class="text-gray-500">Plafonds</span><span id="totPlafonds">0 m²</span></div>
-                            <div class="flex justify-between pt-2 border-t font-bold"><span>Totaal</span><span class="text-indigo-600" id="totM2">0 m²</span></div>
-                        </div>
-                    </div>
-
-                    <div class="card p-6">
                         <h3 class="font-bold mb-4">💵 Specificatie</h3>
                         <div id="breakdown"></div>
                     </div>
 
-                    <button onclick="exportOfferte()" class="btn-primary">📄 Exporteer Offerte</button>
-                    <button onclick="reset()" class="btn-secondary">🔄 Reset</button>
+                    <div class="card p-6">
+                        <h3 class="font-bold mb-4">📐 Samenvatting</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between"><span class="text-gray-500">Totaal m²</span><span class="font-semibold" id="samenvattingM2">0</span></div>
+                            <div class="flex justify-between"><span class="text-gray-500">Aantal diensten</span><span class="font-semibold" id="samenvattingDiensten">0</span></div>
+                            <div class="flex justify-between"><span class="text-gray-500">Prijs per m²</span><span class="font-semibold" id="samenvattingPerM2">€0</span></div>
+                        </div>
+                    </div>
+
+                    <button onclick="exportOfferte()" class="btn-primary w-full">📄 Exporteer Offerte</button>
+                    <button onclick="opslaanProject()" class="btn-secondary w-full">💾 Opslaan als concept</button>
                 </div>
             </div>
         </main>
     </div>
 
+    <!-- Modal: Dienst toevoegen aan project -->
+    <div id="dienstToevoegenModal" class="modal-overlay hidden">
+        <div class="modal-content p-6">
+            <div class="flex justify-between mb-4">
+                <h2 class="text-lg font-bold">➕ Dienst toevoegen</h2>
+                <button onclick="sluitModal('dienstToevoegenModal')" class="text-gray-400 text-2xl">×</button>
+            </div>
+            <div class="space-y-3 max-h-96 overflow-y-auto">
+                <div id="beschikbareDiensten"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Diensten beheren -->
+    <div id="dienstBeheerModal" class="modal-overlay hidden">
+        <div class="modal-content p-6" style="max-width: 600px;">
+            <div class="flex justify-between mb-4">
+                <h2 class="text-lg font-bold">⚙️ Diensten Beheren</h2>
+                <button onclick="sluitModal('dienstBeheerModal')" class="text-gray-400 text-2xl">×</button>
+            </div>
+            <div class="mb-4">
+                <button onclick="openNieuweDienst()" class="btn-primary text-sm">+ Nieuwe dienst</button>
+                <button onclick="resetDiensten()" class="btn-secondary text-sm ml-2">🔄 Reset naar standaard</button>
+            </div>
+            <div class="space-y-2 max-h-96 overflow-y-auto" id="beheerDienstenLijst"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Nieuwe/Bewerk dienst -->
+    <div id="nieuweDienstModal" class="modal-overlay hidden">
+        <div class="modal-content p-6">
+            <div class="flex justify-between mb-4">
+                <h2 class="text-lg font-bold" id="dienstModalTitel">Nieuwe Dienst</h2>
+                <button onclick="sluitModal('nieuweDienstModal')" class="text-gray-400 text-2xl">×</button>
+            </div>
+            <div class="space-y-4">
+                <div><label class="text-sm text-gray-500">Naam *</label><input type="text" id="dienstNaam" class="input-field" placeholder="Bijv. Glad Stucwerk"></div>
+                <div><label class="text-sm text-gray-500">Categorie</label>
+                    <select id="dienstCategorie" class="input-field">
+                        <option value="Stucwerk">Stucwerk</option>
+                        <option value="Schilderwerk">Schilderwerk</option>
+                        <option value="Spuitwerk">Spuitwerk</option>
+                        <option value="Gevel">Gevel</option>
+                        <option value="Coating">Coating</option>
+                        <option value="Overig">Overig</option>
+                    </select>
+                </div>
+                <div><label class="text-sm text-gray-500">Standaard prijs (€) *</label><input type="number" id="dienstPrijs" class="input-field" step="0.50" placeholder="25.00"></div>
+                <div><label class="text-sm text-gray-500">Eenheid</label>
+                    <select id="dienstEenheid" class="input-field">
+                        <option value="m²">Per m²</option>
+                        <option value="stuk">Per stuk</option>
+                        <option value="meter">Per meter</option>
+                        <option value="uur">Per uur</option>
+                    </select>
+                </div>
+                <input type="hidden" id="dienstEditId">
+                <button onclick="saveDienst()" class="btn-primary w-full">💾 Opslaan</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        const prijzen = { wanden: 18, plafonds: 22, voorstrijk: 3, sauzen: 6, sierpleister: 35, reparatie: 8 };
+        // Standaard diensten van Stucologie
+        const standaardDiensten = [
+            // Stucwerk
+            { id: 1, naam: 'Glad Stucwerk', categorie: 'Stucwerk', prijs: 28, eenheid: 'm²' },
+            { id: 2, naam: 'Waterpas Stucwerk', categorie: 'Stucwerk', prijs: 32, eenheid: 'm²' },
+            { id: 3, naam: 'Waterdicht Stucwerk', categorie: 'Stucwerk', prijs: 35, eenheid: 'm²' },
+            { id: 4, naam: 'Extra Sterk Stucwerk', categorie: 'Stucwerk', prijs: 38, eenheid: 'm²' },
+            { id: 5, naam: 'Betonlook Stucwerk', categorie: 'Stucwerk', prijs: 45, eenheid: 'm²' },
+            { id: 6, naam: 'Stucwerk Restauratie', categorie: 'Stucwerk', prijs: 42, eenheid: 'm²' },
+            { id: 7, naam: 'Dunpleister', categorie: 'Stucwerk', prijs: 22, eenheid: 'm²' },
+            { id: 8, naam: 'Spachtelputz', categorie: 'Stucwerk', prijs: 26, eenheid: 'm²' },
+            // Gevel
+            { id: 9, naam: 'Gevelstucwerk (Glad)', categorie: 'Gevel', prijs: 38, eenheid: 'm²' },
+            { id: 10, naam: 'Gevelisolatie', categorie: 'Gevel', prijs: 85, eenheid: 'm²' },
+            // Spuitwerk
+            { id: 11, naam: 'Muren & Plafonds Spuiten', categorie: 'Spuitwerk', prijs: 12, eenheid: 'm²' },
+            { id: 12, naam: 'Spack Plafond Spuiten', categorie: 'Spuitwerk', prijs: 15, eenheid: 'm²' },
+            // Schilderwerk
+            { id: 13, naam: 'Trap Schilderen/Spuiten', categorie: 'Schilderwerk', prijs: 350, eenheid: 'stuk' },
+            { id: 14, naam: 'Kozijnen Schilderen/Spuiten', categorie: 'Schilderwerk', prijs: 45, eenheid: 'stuk' },
+            { id: 15, naam: 'Deuren Schilderen/Spuiten', categorie: 'Schilderwerk', prijs: 85, eenheid: 'stuk' },
+            { id: 16, naam: 'Plinten Schilderen/Spuiten', categorie: 'Schilderwerk', prijs: 8, eenheid: 'meter' },
+            // Coating
+            { id: 17, naam: 'Brandwerende Coating', categorie: 'Coating', prijs: 55, eenheid: 'm²' },
+            { id: 18, naam: '2K Coating', categorie: 'Coating', prijs: 48, eenheid: 'm²' },
+            // Overig
+            { id: 19, naam: 'Kit Werkzaamheden', categorie: 'Overig', prijs: 12, eenheid: 'meter' },
+        ];
 
-        function bereken() {
-            let arbeid = 0, breakdown = [], totM2 = 0, wanden = 0, plafonds = 0;
+        // State
+        let diensten = JSON.parse(localStorage.getItem('stuc_calc_diensten')) || [...standaardDiensten];
+        let projectDiensten = [];
 
-            Object.keys(prijzen).forEach(type => {
-                const m2 = parseFloat(document.getElementById('m2_' + type)?.value) || 0;
-                if (m2 > 0) {
-                    const sub = m2 * prijzen[type];
-                    arbeid += sub;
-                    totM2 += m2;
-                    if (type === 'plafonds') plafonds += m2; else wanden += m2;
-                    breakdown.push({ label: `${type.charAt(0).toUpperCase() + type.slice(1)} (${m2}m² × €${prijzen[type]})`, value: sub });
+        function saveDienstenStorage() {
+            localStorage.setItem('stuc_calc_diensten', JSON.stringify(diensten));
+        }
+
+        function renderProjectDiensten() {
+            const container = document.getElementById('dienstenLijst');
+            if (projectDiensten.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-8">Nog geen diensten toegevoegd. Klik op "+ Dienst toevoegen"</p>';
+                bereken();
+                return;
+            }
+
+            const perCategorie = {};
+            projectDiensten.forEach(pd => {
+                const dienst = diensten.find(d => d.id === pd.dienstId);
+                if (dienst) {
+                    if (!perCategorie[dienst.categorie]) perCategorie[dienst.categorie] = [];
+                    perCategorie[dienst.categorie].push({ ...pd, dienst });
                 }
             });
 
-            const materiaal = parseFloat(document.getElementById('materiaal').value) || 0;
-            const voorrijkosten = parseFloat(document.getElementById('voorrijkosten').value) || 0;
-            const overig = parseFloat(document.getElementById('overig').value) || 0;
+            let html = '';
+            Object.keys(perCategorie).sort().forEach(cat => {
+                html += `<div class="category-header">${cat}</div>`;
+                perCategorie[cat].forEach(pd => {
+                    const subtotaal = pd.hoeveelheid * pd.prijs;
+                    html += `
+                        <div class="service-row">
+                            <div>
+                                <span class="font-medium">${pd.dienst.naam}</span>
+                                <span class="text-xs text-gray-400 ml-2">(${pd.dienst.eenheid})</span>
+                            </div>
+                            <div><input type="number" class="input-field text-center py-1" value="${pd.hoeveelheid}" min="0" step="0.5" onchange="updateHoeveelheid(${pd.id}, this.value)"></div>
+                            <div><input type="number" class="input-field text-center py-1" value="${pd.prijs}" min="0" step="0.50" onchange="updatePrijs(${pd.id}, this.value)"></div>
+                            <div class="flex gap-2 items-center">
+                                <span class="text-green-600 font-semibold text-sm">€${subtotaal.toFixed(0)}</span>
+                                <button onclick="verwijderProjectDienst(${pd.id})" class="text-red-400 hover:text-red-600">🗑️</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
 
-            if (materiaal) breakdown.push({ label: 'Materiaal', value: materiaal });
-            if (voorrijkosten) breakdown.push({ label: 'Voorrijkosten', value: voorrijkosten });
-            if (overig) breakdown.push({ label: 'Overig', value: overig });
+            container.innerHTML = html;
+            bereken();
+        }
 
-            const subtotaal = arbeid + materiaal + voorrijkosten + overig;
+        function updateHoeveelheid(id, value) {
+            const pd = projectDiensten.find(p => p.id === id);
+            if (pd) pd.hoeveelheid = parseFloat(value) || 0;
+            renderProjectDiensten();
+        }
+
+        function updatePrijs(id, value) {
+            const pd = projectDiensten.find(p => p.id === id);
+            if (pd) pd.prijs = parseFloat(value) || 0;
+            renderProjectDiensten();
+        }
+
+        function verwijderProjectDienst(id) {
+            projectDiensten = projectDiensten.filter(p => p.id !== id);
+            renderProjectDiensten();
+        }
+
+        function openDienstToevoegen() {
+            const container = document.getElementById('beschikbareDiensten');
+            
+            const perCategorie = {};
+            diensten.forEach(d => {
+                if (!perCategorie[d.categorie]) perCategorie[d.categorie] = [];
+                perCategorie[d.categorie].push(d);
+            });
+
+            let html = '';
+            Object.keys(perCategorie).sort().forEach(cat => {
+                html += `<div class="category-header">${cat}</div>`;
+                perCategorie[cat].forEach(d => {
+                    const alToegevoegd = projectDiensten.some(pd => pd.dienstId === d.id);
+                    html += `
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg mb-2 ${alToegevoegd ? 'opacity-50' : ''}">
+                            <div>
+                                <span class="font-medium">${d.naam}</span>
+                                <span class="text-indigo-600 text-sm ml-2">€${d.prijs}/${d.eenheid}</span>
+                            </div>
+                            <button onclick="voegDienstToe(${d.id})" class="btn-success text-sm" ${alToegevoegd ? 'disabled' : ''}>
+                                ${alToegevoegd ? '✓' : '+'}
+                            </button>
+                        </div>
+                    `;
+                });
+            });
+
+            container.innerHTML = html;
+            document.getElementById('dienstToevoegenModal').classList.remove('hidden');
+        }
+
+        function voegDienstToe(dienstId) {
+            const dienst = diensten.find(d => d.id === dienstId);
+            if (!dienst || projectDiensten.some(pd => pd.dienstId === dienstId)) return;
+
+            projectDiensten.push({
+                id: Date.now(),
+                dienstId: dienst.id,
+                hoeveelheid: 0,
+                prijs: dienst.prijs
+            });
+
+            sluitModal('dienstToevoegenModal');
+            renderProjectDiensten();
+        }
+
+        function bereken() {
+            let arbeidTotaal = 0;
+            let totaalM2 = 0;
+            let breakdown = [];
+
+            projectDiensten.forEach(pd => {
+                const dienst = diensten.find(d => d.id === pd.dienstId);
+                if (dienst && pd.hoeveelheid > 0) {
+                    const subtotaal = pd.hoeveelheid * pd.prijs;
+                    arbeidTotaal += subtotaal;
+                    if (dienst.eenheid === 'm²') totaalM2 += pd.hoeveelheid;
+                    breakdown.push({
+                        label: `${dienst.naam} (${pd.hoeveelheid} ${dienst.eenheid} × €${pd.prijs})`,
+                        value: subtotaal
+                    });
+                }
+            });
+
+            const extraMateriaal = parseFloat(document.getElementById('extraMateriaal').value) || 0;
+            const extraVoorrijkosten = parseFloat(document.getElementById('extraVoorrijkosten').value) || 0;
+            const extraSteiger = parseFloat(document.getElementById('extraSteiger').value) || 0;
+            const extraOverig = parseFloat(document.getElementById('extraOverig').value) || 0;
+
+            if (extraMateriaal) breakdown.push({ label: 'Materiaal', value: extraMateriaal });
+            if (extraVoorrijkosten) breakdown.push({ label: 'Voorrijkosten', value: extraVoorrijkosten });
+            if (extraSteiger) breakdown.push({ label: 'Steigerwerk', value: extraSteiger });
+            if (extraOverig) breakdown.push({ label: 'Overige kosten', value: extraOverig });
+
+            const subtotaal = arbeidTotaal + extraMateriaal + extraVoorrijkosten + extraSteiger + extraOverig;
+
+            const kortingPerc = parseFloat(document.getElementById('korting').value) || 0;
+            const kortingBedrag = subtotaal * (kortingPerc / 100);
+            const naKorting = subtotaal - kortingBedrag;
+
+            if (kortingBedrag > 0) breakdown.push({ label: `Korting (${kortingPerc}%)`, value: -kortingBedrag });
+
             const winstPerc = parseFloat(document.getElementById('winstmarge').value) || 0;
-            const winst = subtotaal * (winstPerc / 100);
-            const totaalExcl = subtotaal + winst;
+            const winst = naKorting * (winstPerc / 100);
+            const totaalExcl = naKorting + winst;
+
+            if (winst > 0) breakdown.push({ label: `Winstmarge (${winstPerc}%)`, value: winst });
+
             const btwPerc = parseFloat(document.getElementById('btw').value) || 21;
             const btwBedrag = totaalExcl * (btwPerc / 100);
             const totaalIncl = totaalExcl + btwBedrag;
 
-            if (winst) breakdown.push({ label: `Winstmarge (${winstPerc}%)`, value: winst });
             breakdown.push({ label: 'Subtotaal excl. BTW', value: totaalExcl, bold: true });
-            breakdown.push({ label: `BTW (${btwPerc}%)`, value: btwBedrag });
+            if (btwPerc > 0) breakdown.push({ label: `BTW (${btwPerc}%)`, value: btwBedrag });
 
             document.getElementById('totaalIncl').textContent = '€' + totaalIncl.toLocaleString('nl-NL', { maximumFractionDigits: 0 });
             document.getElementById('totaalExcl').textContent = '€' + totaalExcl.toLocaleString('nl-NL', { maximumFractionDigits: 0 });
-            document.getElementById('totWanden').textContent = wanden + ' m²';
-            document.getElementById('totPlafonds').textContent = plafonds + ' m²';
-            document.getElementById('totM2').textContent = totM2 + ' m²';
+            document.getElementById('totaalM2').textContent = totaalM2.toFixed(1) + ' m²';
+
+            document.getElementById('samenvattingM2').textContent = totaalM2.toFixed(1) + ' m²';
+            document.getElementById('samenvattingDiensten').textContent = projectDiensten.filter(pd => pd.hoeveelheid > 0).length;
+            document.getElementById('samenvattingPerM2').textContent = totaalM2 > 0 ? '€' + (totaalExcl / totaalM2).toFixed(2) : '€0';
 
             document.getElementById('breakdown').innerHTML = breakdown.map(b => `
-                <div class="breakdown-item ${b.bold ? 'font-bold' : ''}">
+                <div class="breakdown-item ${b.bold ? 'font-bold border-t-2 border-gray-200 mt-2 pt-2' : ''}">
                     <span class="${b.bold ? '' : 'text-gray-500'}">${b.label}</span>
-                    <span>${b.bold ? 'text-indigo-600' : ''}>€${b.value.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}</span>
+                    <span class="${b.value < 0 ? 'text-red-500' : ''}">${b.value < 0 ? '-' : ''}€${Math.abs(b.value).toLocaleString('nl-NL', { maximumFractionDigits: 0 })}</span>
                 </div>
             `).join('');
         }
 
-        function reset() {
+        function openDienstModal() {
+            renderBeheerDiensten();
+            document.getElementById('dienstBeheerModal').classList.remove('hidden');
+        }
+
+        function renderBeheerDiensten() {
+            const container = document.getElementById('beheerDienstenLijst');
+            
+            const perCategorie = {};
+            diensten.forEach(d => {
+                if (!perCategorie[d.categorie]) perCategorie[d.categorie] = [];
+                perCategorie[d.categorie].push(d);
+            });
+
+            let html = '';
+            Object.keys(perCategorie).sort().forEach(cat => {
+                html += `<div class="category-header">${cat}</div>`;
+                perCategorie[cat].forEach(d => {
+                    html += `
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg mb-2">
+                            <div>
+                                <span class="font-medium">${d.naam}</span>
+                                <span class="text-indigo-600 text-sm ml-2">€${d.prijs}/${d.eenheid}</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="editDienst(${d.id})" class="text-gray-400 hover:text-gray-600">✏️</button>
+                                <button onclick="deleteDienst(${d.id})" class="text-red-400 hover:text-red-600">🗑️</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+
+            container.innerHTML = html;
+        }
+
+        function openNieuweDienst() {
+            document.getElementById('dienstModalTitel').textContent = 'Nieuwe Dienst';
+            document.getElementById('dienstNaam').value = '';
+            document.getElementById('dienstCategorie').value = 'Stucwerk';
+            document.getElementById('dienstPrijs').value = '';
+            document.getElementById('dienstEenheid').value = 'm²';
+            document.getElementById('dienstEditId').value = '';
+            document.getElementById('nieuweDienstModal').classList.remove('hidden');
+        }
+
+        function editDienst(id) {
+            const d = diensten.find(x => x.id === id);
+            if (!d) return;
+            document.getElementById('dienstModalTitel').textContent = 'Dienst Bewerken';
+            document.getElementById('dienstNaam').value = d.naam;
+            document.getElementById('dienstCategorie').value = d.categorie;
+            document.getElementById('dienstPrijs').value = d.prijs;
+            document.getElementById('dienstEenheid').value = d.eenheid || 'm²';
+            document.getElementById('dienstEditId').value = d.id;
+            document.getElementById('nieuweDienstModal').classList.remove('hidden');
+        }
+
+        function saveDienst() {
+            const naam = document.getElementById('dienstNaam').value.trim();
+            const categorie = document.getElementById('dienstCategorie').value;
+            const prijs = parseFloat(document.getElementById('dienstPrijs').value);
+            const eenheid = document.getElementById('dienstEenheid').value;
+            const editId = document.getElementById('dienstEditId').value;
+
+            if (!naam || isNaN(prijs)) return alert('Vul naam en prijs in');
+
+            if (editId) {
+                const idx = diensten.findIndex(d => d.id === parseInt(editId));
+                if (idx !== -1) diensten[idx] = { ...diensten[idx], naam, categorie, prijs, eenheid };
+            } else {
+                diensten.push({ id: Date.now(), naam, categorie, prijs, eenheid });
+            }
+
+            saveDienstenStorage();
+            sluitModal('nieuweDienstModal');
+            renderBeheerDiensten();
+        }
+
+        function deleteDienst(id) {
+            if (!confirm('Deze dienst verwijderen?')) return;
+            diensten = diensten.filter(d => d.id !== id);
+            saveDienstenStorage();
+            renderBeheerDiensten();
+        }
+
+        function resetDiensten() {
+            if (!confirm('Alle diensten resetten naar standaard?')) return;
+            diensten = [...standaardDiensten];
+            saveDienstenStorage();
+            renderBeheerDiensten();
+        }
+
+        function resetCalculator() {
+            projectDiensten = [];
             document.getElementById('projectNaam').value = '';
             document.getElementById('klantNaam').value = '';
-            Object.keys(prijzen).forEach(t => { const el = document.getElementById('m2_' + t); if (el) el.value = 0; });
-            document.getElementById('materiaal').value = 0;
-            document.getElementById('voorrijkosten').value = 0;
-            document.getElementById('overig').value = 0;
-            bereken();
+            document.getElementById('projectAdres').value = '';
+            document.getElementById('projectPlaats').value = '';
+            document.getElementById('extraMateriaal').value = 0;
+            document.getElementById('extraVoorrijkosten').value = 0;
+            document.getElementById('extraSteiger').value = 0;
+            document.getElementById('extraOverig').value = 0;
+            document.getElementById('korting').value = 0;
+            renderProjectDiensten();
+        }
+
+        function opslaanProject() {
+            const project = {
+                id: Date.now(),
+                naam: document.getElementById('projectNaam').value || 'Naamloos',
+                klant: document.getElementById('klantNaam').value,
+                adres: document.getElementById('projectAdres').value,
+                plaats: document.getElementById('projectPlaats').value,
+                diensten: projectDiensten,
+                extra: {
+                    materiaal: document.getElementById('extraMateriaal').value,
+                    voorrijkosten: document.getElementById('extraVoorrijkosten').value,
+                    steiger: document.getElementById('extraSteiger').value,
+                    overig: document.getElementById('extraOverig').value
+                },
+                winstmarge: document.getElementById('winstmarge').value,
+                btw: document.getElementById('btw').value,
+                korting: document.getElementById('korting').value,
+                datum: new Date().toISOString()
+            };
+
+            let projecten = JSON.parse(localStorage.getItem('stuc_calc_projecten') || '[]');
+            projecten.push(project);
+            localStorage.setItem('stuc_calc_projecten', JSON.stringify(projecten));
+            alert('✅ Project opgeslagen!');
         }
 
         function exportOfferte() {
-            const project = document.getElementById('projectNaam').value || 'Project';
+            const naam = document.getElementById('projectNaam').value || 'Offerte';
             const klant = document.getElementById('klantNaam').value || 'Klant';
-            alert(`📄 Offerte "${project}" voor ${klant} wordt voorbereid...\n\n(PDF export komt in volgende update)`);
+            alert(`📄 Offerte "${naam}" voor ${klant} wordt voorbereid...\n\n(PDF export komt in volgende update)`);
         }
 
-        bereken();
+        function sluitModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        renderProjectDiensten();
     </script>
 </body>
 </html>
