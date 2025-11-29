@@ -147,7 +147,7 @@
                         <div id="specificatie" class="text-sm space-y-1"></div>
                     </div>
 
-                    <button onclick="verstuurNaarMoneybird()" class="btn-moneybird w-full">📤 Verstuur naar Moneybird</button>
+                    <button onclick="verstuurNaarMoneybird()" class="btn-moneybird w-full">📤 Verstuur als Offerte</button>
                     <button onclick="opslaanProject()" class="btn-primary w-full">💾 Opslaan als concept</button>
                 </div>
             </div>
@@ -486,10 +486,17 @@
             console.log('Versturen naar Moneybird:', JSON.stringify(payload, null, 2));
 
             try {
-                const res = await fetch(API_BASE + '/invoices', {
+                const res = await fetch(API_BASE + '/estimates', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        estimate: {
+                            contact_id: selectedContact.id,
+                            reference: document.getElementById('projectNaam').value || 'Offerte',
+                            details_attributes: details,
+                            prices_are_incl_tax: false
+                        }
+                    })
                 });
                 
                 const responseText = await res.text();
@@ -499,7 +506,7 @@
                 try { data = JSON.parse(responseText); } catch(e) { data = { error: responseText }; }
                 
                 if (res.ok) {
-                    alert('✅ Concept factuur aangemaakt in Moneybird!\n\nFactuur ID: ' + (data.id || 'onbekend'));
+                    alert('✅ Offerte aangemaakt in Moneybird!\n\nOfferte ID: ' + (data.id || 'onbekend'));
                 } else {
                     console.error('Moneybird error:', data);
                     alert('❌ Moneybird fout:\n\n' + (data.error || JSON.stringify(data, null, 2)));
