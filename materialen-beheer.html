@@ -605,6 +605,15 @@
         const content = document.getElementById('contentArea');
         
         content.innerHTML = `
+            <div class="flex flex-wrap gap-2 mb-4 justify-between items-center">
+                <div class="text-sm text-gray-500">
+                    ${filtered.length} materialen ${filtered.length !== materialen.length ? `(gefilterd van ${materialen.length})` : ''}
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="openModal('importModal')" class="btn btn-secondary text-xs">📥 Importeren</button>
+                    <button onclick="clearAllMaterials()" class="btn text-xs bg-red-100 text-red-600 hover:bg-red-200">🗑️ Alles verwijderen</button>
+                </div>
+            </div>
             <div class="card overflow-hidden">
                 <div class="table-header table-row">
                     <div>Materiaal</div>
@@ -636,6 +645,7 @@
                 `).join('')}
             </div>
             ${filtered.length > 100 ? `<p class="text-center text-gray-400 mt-4">Toont 100 van ${filtered.length} resultaten</p>` : ''}
+        `;
         `;
     }
 
@@ -1857,16 +1867,43 @@
             return;
         }
         
-        // Check for duplicates
-        const existingNames = new Set(materialen.map(m => m.naam.toLowerCase()));
-        const newMaterials = importData.filter(m => !existingNames.has(m.naam.toLowerCase()));
-        const duplicates = importData.length - newMaterials.length;
+        let updated = 0;
+        let added = 0;
         
-        // Add new materials
-        materialen = [...materialen, ...newMaterials];
+        // Create lookup map for existing materials (by name, case-insensitive)
+        const existingMap = new Map();
+        materialen.forEach((m, idx) => {
+            existingMap.set(m.naam.toLowerCase().trim(), idx);
+        });
+        
+        // Process import data - UPDATE existing, ADD new
+        for (const importMat of importData) {
+            const key = importMat.naam.toLowerCase().trim();
+            
+            if (existingMap.has(key)) {
+                // UPDATE existing material with new price and data
+                const idx = existingMap.get(key);
+                materialen[idx].standaardPrijs = importMat.standaardPrijs;
+                materialen[idx].categorie = importMat.categorie || materialen[idx].categorie;
+                materialen[idx].eenheid = importMat.eenheid || materialen[idx].eenheid;
+                materialen[idx].leverancier = importMat.leverancier || materialen[idx].leverancier;
+                if (importMat.artikelnummer) materialen[idx].artikelnummer = importMat.artikelnummer;
+                updated++;
+            } else {
+                // ADD new material
+                materialen.push(importMat);
+                added++;
+            }
+        }
+        
         localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen));
         
-        showToast(`✅ ${newMaterials.length} materialen geïmporteerd${duplicates > 0 ? ` (${duplicates} duplicaten overgeslagen)` : ''}`, 'success');
+        let message = '✅ Import voltooid: ';
+        if (added > 0) message += `${added} nieuw`;
+        if (added > 0 && updated > 0) message += ', ';
+        if (updated > 0) message += `${updated} bijgewerkt`;
+        
+        showToast(message, 'success');
         
         closeModal('importModal');
         importData = [];
@@ -1876,6 +1913,17 @@
         updateFilterOptions();
         updateStats();
         renderContent();
+    }
+    
+    function clearAllMaterials() {
+        if (confirm('⚠️ Weet je zeker dat je ALLE materialen wilt verwijderen? Dit kan niet ongedaan worden!')) {
+            materialen = [];
+            localStorage.removeItem('stuc_materialen_db');
+            showToast('Alle materialen verwijderd', 'success');
+            updateFilterOptions();
+            updateStats();
+            renderContent();
+        }
     }
     </script>
 </body>
