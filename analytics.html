@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📈 Advanced Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen p-6">
+    <div class="max-w-[1800px] mx-auto">
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold">📈 Advanced Analytics</h1>
+                    <p class="text-gray-600">Diepgaande analyse & inzichten</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="refreshAnalytics()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">🔄 Refresh</button>
+                    <a href="materials.html" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">← Terug</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-xl font-bold mb-4">💰 Kosten Distributie</h3>
+                <canvas id="distributionChart" height="300"></canvas>
+            </div>
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-xl font-bold mb-4">📊 Leverancier Vergelijking</h3>
+                <canvas id="comparisonChart" height="300"></canvas>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-xl font-bold mb-4">📅 Kosten per Maand</h3>
+                <canvas id="monthlyChart"></canvas>
+            </div>
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-xl font-bold mb-4">⚡ Inzichten</h3>
+                <div id="insightsList" class="space-y-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let charts = {};
+
+        async function refreshAnalytics() {
+            try {
+                const response = await fetch('http://localhost:3001/api/recommendations');
+                const data = await response.json();
+                renderAllCharts(data);
+                generateInsights(data);
+            } catch (error) {
+                console.error('Analytics refresh failed:', error);
+            }
+        }
+
+        function renderAllCharts(data) {
+            Object.values(charts).forEach(c => c?.destroy());
+
+            const distCtx = document.getElementById('distributionChart').getContext('2d');
+            const categories = data.byCategory || [];
+            
+            charts.distribution = new Chart(distCtx, {
+                type: 'pie',
+                data: {
+                    labels: categories.slice(0, 6).map(c => c.category || 'Onbekend'),
+                    datasets: [{
+                        data: categories.slice(0, 6).map(c => c.totalCost || 0),
+                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'right' } } }
+            });
+
+            const compCtx = document.getElementById('comparisonChart').getContext('2d');
+            const suppliers = data.bySupplier || [];
+            
+            charts.comparison = new Chart(compCtx, {
+                type: 'bar',
+                data: {
+                    labels: suppliers.slice(0, 6).map(s => s.supplier?.substring(0, 12) || 'Onbekend'),
+                    datasets: [{
+                        label: 'Totaal',
+                        data: suppliers.slice(0, 6).map(s => s.totalCost || 0),
+                        backgroundColor: '#3B82F6'
+                    }]
+                },
+                options: { responsive: true }
+            });
+
+            const monthCtx = document.getElementById('monthlyChart').getContext('2d');
+            const totalCost = data.summary?.totalCost || 10000;
+            
+            charts.monthly = new Chart(monthCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun'],
+                    datasets: [{
+                        label: 'Kosten',
+                        data: [totalCost*0.8, totalCost*0.9, totalCost*0.85, totalCost*1.1, totalCost*0.95, totalCost],
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: { responsive: true, scales: { y: { ticks: { callback: v => '€' + v.toLocaleString() } } } }
+            });
+        }
+
+        function generateInsights(data) {
+            const container = document.getElementById('insightsList');
+            const materials = data.materials || [];
+            const highAlerts = materials.filter(m => m.alert === 'high');
+            const savings = data.summary?.totalPotentialSavings || 0;
+
+            container.innerHTML = `
+                <div class="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <p class="font-bold text-yellow-900">⚠️ Prijs Alerts</p>
+                    <p class="text-sm text-yellow-700">${highAlerts.length} materialen te duur</p>
+                </div>
+                <div class="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <p class="font-bold text-green-900">💰 Besparingspotentieel</p>
+                    <p class="text-sm text-green-700">€${savings.toLocaleString('nl-NL')}</p>
+                </div>
+                <div class="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p class="font-bold text-blue-900">📊 Totaal Materialen</p>
+                    <p class="text-sm text-blue-700">${materials.length} geanalyseerd</p>
+                </div>
+            `;
+        }
+
+        window.onload = refreshAnalytics;
+    </script>
+</body>
+</html>

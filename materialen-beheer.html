@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Materialen - StucAdmin Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f5f7fa; color: #1a1a2e; }
+        .sidebar { background: #ffffff; border-right: 1px solid #e5e7eb; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; transition: all 0.2s; text-decoration: none; margin-bottom: 4px; }
+        .nav-item:hover { background: #f1f5f9; color: #1e293b; }
+        .nav-item.active { background: #6366f1; color: white; }
+        .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent, #6366f1); border-radius: 16px 16px 0 0; }
+        .kpi-card { position: relative; overflow: hidden; }
+        .kpi-value { font-size: 2rem; font-weight: 800; color: var(--accent, #6366f1); }
+        .btn-primary { background: #6366f1; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; width: 100%; }
+        .input-field:focus { outline: none; border-color: #6366f1; }
+        .data-table { width: 100%; }
+        .data-table th { text-align: left; padding: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #94a3b8; border-bottom: 1px solid #e5e7eb; cursor: pointer; }
+        .data-table th:hover { color: #64748b; }
+        .data-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+        .data-table tr:hover { background: #f8fafc; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .badge-blue { background: #dbeafe; color: #1d4ed8; }
+        .badge-green { background: #ecfdf5; color: #059669; }
+        .badge-purple { background: #ede9fe; color: #7c3aed; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
+        .modal-content { background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .drop-zone { border: 2px dashed #e2e8f0; border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: #6366f1; background: #f8fafc; }
+    </style>
+</head>
+<body>
+    <div class="flex min-h-screen">
+        <aside class="sidebar w-64 fixed left-0 top-0 bottom-0 flex flex-col">
+            <div class="p-6 border-b border-gray-100">
+                <h1 class="text-xl font-bold text-indigo-600">StucAdmin</h1>
+                <p class="text-xs text-gray-400 mt-1">Professional Suite</p>
+            </div>
+            <nav class="flex-1 p-4">
+                <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+                <a href="omzet.html" class="nav-item">💹 Omzet</a>
+                <a href="crm.html" class="nav-item">👥 Klanten</a>
+                <a href="planning.html" class="nav-item">📅 Planning</a>
+                <a href="uren.html" class="nav-item">⏱️ Uren</a>
+                <a href="calculator.html" class="nav-item">🧮 Calculator</a>
+                <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
+                <a href="materialen-beheer.html" class="nav-item active">📦 Materialen</a>
+            </nav>
+        </aside>
+
+        <main class="flex-1 ml-64 p-8">
+            <header class="flex items-center justify-between mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold">📦 Materialen Beheer</h1>
+                    <p class="text-gray-500">Beheer je materiaal database</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="syncMoneybird()" class="btn-secondary">🔄 Sync Moneybird</button>
+                    <button onclick="openUploadModal()" class="btn-secondary">📤 CSV Upload</button>
+                    <button onclick="openNieuwModal()" class="btn-primary">+ Nieuw</button>
+                </div>
+            </header>
+
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="card kpi-card p-5" style="--accent:#6366f1"><p class="text-gray-500 text-sm">Totaal</p><p class="kpi-value" id="kpiTotaal">0</p></div>
+                <div class="card kpi-card p-5" style="--accent:#10b981"><p class="text-gray-500 text-sm">Categorieën</p><p class="kpi-value" id="kpiCat">0</p></div>
+                <div class="card kpi-card p-5" style="--accent:#3b82f6"><p class="text-gray-500 text-sm">Moneybird</p><p class="kpi-value" id="kpiMB">0</p></div>
+                <div class="card kpi-card p-5" style="--accent:#8b5cf6"><p class="text-gray-500 text-sm">Handmatig</p><p class="kpi-value" id="kpiHand">0</p></div>
+            </div>
+
+            <div id="syncStatus" class="hidden card p-4 mb-6 flex items-center gap-3">
+                <div class="animate-spin rounded-full h-5 w-5 border-2 border-indigo-500 border-t-transparent"></div>
+                <span id="syncMsg" class="text-gray-500">Synchroniseren...</span>
+            </div>
+
+            <div class="card p-4 mb-6">
+                <div class="grid grid-cols-4 gap-4">
+                    <input type="text" id="zoek" class="input-field col-span-2" placeholder="🔍 Zoek op naam..." onkeyup="render()">
+                    <select id="filterCat" class="input-field" onchange="render()"><option value="">Alle categorieën</option></select>
+                    <select id="filterBron" class="input-field" onchange="render()">
+                        <option value="">Alle bronnen</option>
+                        <option value="moneybird">🔄 Moneybird</option>
+                        <option value="csv">📤 CSV</option>
+                        <option value="handmatig">📝 Handmatig</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-bold">Materialen (<span id="aantal">0</span>)</h2>
+                    <div class="flex gap-2">
+                        <button onclick="exportCSV()" class="btn-secondary text-sm">📥 Export</button>
+                        <button onclick="downloadTemplate()" class="btn-secondary text-sm">📄 Template</button>
+                    </div>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th onclick="sorteer('naam')">Materiaal ↕</th>
+                            <th onclick="sorteer('categorie')">Categorie ↕</th>
+                            <th onclick="sorteer('prijs')" class="text-right">Prijs ↕</th>
+                            <th>Eenheid</th>
+                            <th>Bron</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabel"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="uploadModal" class="modal-overlay hidden">
+        <div class="modal-content p-8">
+            <div class="flex justify-between mb-6">
+                <h2 class="text-xl font-bold">📤 CSV Uploaden</h2>
+                <button onclick="sluitModal('uploadModal')" class="text-gray-400 text-2xl">×</button>
+            </div>
+            <div class="p-4 bg-indigo-50 rounded-xl mb-6">
+                <p class="font-semibold text-indigo-700 mb-1">📋 CSV Formaat</p>
+                <code class="text-sm text-indigo-600">naam,standaardPrijs,eenheid,categorie</code>
+            </div>
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('csvFile').click()">
+                <input type="file" id="csvFile" accept=".csv" class="hidden" onchange="handleFile(event)">
+                <div class="text-4xl mb-2">📄</div>
+                <p class="text-gray-500">Sleep CSV hier of klik om te selecteren</p>
+            </div>
+            <div id="preview" class="hidden mt-6">
+                <h4 class="font-bold mb-2">Preview</h4>
+                <div id="previewTabel" class="border rounded-lg overflow-hidden"></div>
+                <div class="flex justify-between items-center mt-4">
+                    <p id="uploadInfo" class="text-gray-500 text-sm"></p>
+                    <button onclick="importCSV()" class="btn-primary">✓ Importeren</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="nieuwModal" class="modal-overlay hidden">
+        <div class="modal-content p-8">
+            <div class="flex justify-between mb-6">
+                <h2 class="text-xl font-bold" id="modalTitel">📦 Nieuw Materiaal</h2>
+                <button onclick="sluitModal('nieuwModal')" class="text-gray-400 text-2xl">×</button>
+            </div>
+            <div class="space-y-4">
+                <div><label class="text-sm text-gray-500">Naam *</label><input type="text" id="matNaam" class="input-field" placeholder="Bijv. Stucmortel 25kg"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="text-sm text-gray-500">Prijs (€) *</label><input type="number" id="matPrijs" class="input-field" step="0.01"></div>
+                    <div><label class="text-sm text-gray-500">Eenheid</label>
+                        <select id="matEenheid" class="input-field">
+                            <option value="zak">Zak</option>
+                            <option value="emmer">Emmer</option>
+                            <option value="stuk">Stuk</option>
+                            <option value="m²">m²</option>
+                            <option value="m">Meter</option>
+                            <option value="kg">Kilogram</option>
+                            <option value="liter">Liter</option>
+                        </select>
+                    </div>
+                </div>
+                <div><label class="text-sm text-gray-500">Categorie</label><input type="text" id="matCat" class="input-field" placeholder="Bijv. Stuc, Verf" list="catList"><datalist id="catList"></datalist></div>
+                <input type="hidden" id="matId">
+                <button onclick="saveMat()" class="btn-primary w-full">💾 Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = 'http://localhost:3001/api';
+        let materialen = JSON.parse(localStorage.getItem('stuc_materialen_db') || '[]');
+        let csvData = [];
+        let sort = { col: 'naam', dir: 'asc' };
+
+        function render() {
+            // KPIs
+            document.getElementById('kpiTotaal').textContent = materialen.length;
+            document.getElementById('kpiCat').textContent = [...new Set(materialen.map(m => m.categorie).filter(Boolean))].length;
+            document.getElementById('kpiMB').textContent = materialen.filter(m => m.bron === 'moneybird').length;
+            document.getElementById('kpiHand').textContent = materialen.filter(m => m.bron !== 'moneybird').length;
+
+            // Filter dropdown
+            const cats = [...new Set(materialen.map(m => m.categorie).filter(Boolean))].sort();
+            document.getElementById('filterCat').innerHTML = '<option value="">Alle categorieën</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+            document.getElementById('catList').innerHTML = cats.map(c => `<option value="${c}">`).join('');
+
+            // Filter & sort
+            const zoek = document.getElementById('zoek').value.toLowerCase();
+            const cat = document.getElementById('filterCat').value;
+            const bron = document.getElementById('filterBron').value;
+
+            let data = materialen.filter(m => {
+                if (zoek && !m.naam.toLowerCase().includes(zoek)) return false;
+                if (cat && m.categorie !== cat) return false;
+                if (bron && m.bron !== bron) return false;
+                return true;
+            });
+
+            data.sort((a, b) => {
+                let vA = a[sort.col], vB = b[sort.col];
+                if (sort.col === 'prijs') { vA = parseFloat(vA) || 0; vB = parseFloat(vB) || 0; }
+                else { vA = (vA || '').toLowerCase(); vB = (vB || '').toLowerCase(); }
+                return sort.dir === 'asc' ? (vA > vB ? 1 : -1) : (vA < vB ? 1 : -1);
+            });
+
+            document.getElementById('aantal').textContent = data.length;
+
+            const bronBadge = { moneybird: 'badge-blue', csv: 'badge-green', handmatig: 'badge-purple' };
+            const bronIcon = { moneybird: '🔄', csv: '📤', handmatig: '📝' };
+
+            document.getElementById('tabel').innerHTML = data.length ? data.map(m => `<tr>
+                <td class="font-medium">${m.naam}</td>
+                <td>${m.categorie ? `<span class="badge badge-blue">${m.categorie}</span>` : '-'}</td>
+                <td class="text-right font-bold text-indigo-600">€${parseFloat(m.prijs || 0).toFixed(2)}</td>
+                <td class="text-gray-500">${m.eenheid || '-'}</td>
+                <td><span class="badge ${bronBadge[m.bron] || 'badge-purple'}">${bronIcon[m.bron] || '📝'} ${m.bron || 'handmatig'}</span></td>
+                <td>
+                    <button onclick="editMat('${m.id}')" class="text-gray-400 hover:text-gray-600 mr-2">✏️</button>
+                    <button onclick="deleteMat('${m.id}')" class="text-gray-400 hover:text-red-500">🗑️</button>
+                </td>
+            </tr>`).join('') : '<tr><td colspan="6" class="text-center text-gray-400 py-8">Geen materialen. Sync met Moneybird of upload CSV.</td></tr>';
+        }
+
+        function sorteer(col) {
+            sort = { col, dir: sort.col === col && sort.dir === 'asc' ? 'desc' : 'asc' };
+            render();
+        }
+
+        async function syncMoneybird() {
+            document.getElementById('syncStatus').classList.remove('hidden');
+            document.getElementById('syncMsg').textContent = 'Producten ophalen...';
+            try {
+                const res = await fetch(`${API}/products`);
+                if (!res.ok) throw new Error('Kan niet verbinden');
+                const producten = await res.json();
+                let nieuw = 0, update = 0;
+                producten.forEach(p => {
+                    const bestaand = materialen.find(m => m.moneybirdId === p.id);
+                    const data = {
+                        id: bestaand?.id || 'mb_' + p.id,
+                        moneybirdId: p.id,
+                        naam: p.title || p.description || 'Onbekend',
+                        prijs: parseFloat(p.price) || 0,
+                        eenheid: 'stuk',
+                        categorie: mapCat(p.title || ''),
+                        bron: 'moneybird',
+                        bijgewerkt: new Date().toISOString()
+                    };
+                    if (bestaand) { Object.assign(bestaand, data); update++; }
+                    else { materialen.push(data); nieuw++; }
+                });
+                save();
+                render();
+                alert(`✅ ${nieuw} nieuw, ${update} bijgewerkt`);
+            } catch (e) { alert('❌ ' + e.message); }
+            document.getElementById('syncStatus').classList.add('hidden');
+        }
+
+        function mapCat(naam) {
+            const l = naam.toLowerCase();
+            if (l.includes('stuc') || l.includes('gips') || l.includes('pleister')) return 'Stuc';
+            if (l.includes('verf') || l.includes('latex') || l.includes('primer')) return 'Verf';
+            if (l.includes('profiel') || l.includes('hoek') || l.includes('gaas')) return 'Hulpmateriaal';
+            return 'Overig';
+        }
+
+        function openUploadModal() {
+            document.getElementById('preview').classList.add('hidden');
+            document.getElementById('csvFile').value = '';
+            csvData = [];
+            document.getElementById('uploadModal').classList.remove('hidden');
+        }
+
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const lines = ev.target.result.split('\n').filter(l => l.trim());
+                if (lines.length < 2) return alert('CSV is leeg');
+                const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+                const nI = header.findIndex(h => h.includes('naam'));
+                const pI = header.findIndex(h => h.includes('prijs'));
+                const eI = header.findIndex(h => h.includes('eenheid'));
+                const cI = header.findIndex(h => h.includes('categorie'));
+                csvData = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const v = lines[i].split(',');
+                    if (v[nI]) csvData.push({ naam: v[nI]?.trim(), prijs: parseFloat(v[pI]?.replace(',', '.')) || 0, eenheid: v[eI]?.trim() || 'stuk', categorie: v[cI]?.trim() || 'Overig' });
+                }
+                document.getElementById('previewTabel').innerHTML = `<table class="data-table"><thead><tr><th>Naam</th><th>Prijs</th><th>Eenheid</th><th>Categorie</th></tr></thead><tbody>${csvData.slice(0, 5).map(m => `<tr><td>${m.naam}</td><td>€${m.prijs.toFixed(2)}</td><td>${m.eenheid}</td><td>${m.categorie}</td></tr>`).join('')}</tbody></table>`;
+                document.getElementById('uploadInfo').textContent = `${csvData.length} materialen gevonden`;
+                document.getElementById('preview').classList.remove('hidden');
+            };
+            reader.readAsText(file);
+        }
+
+        function importCSV() {
+            let nieuw = 0, update = 0;
+            csvData.forEach(item => {
+                const bestaand = materialen.find(m => m.naam.toLowerCase() === item.naam.toLowerCase());
+                if (bestaand) { Object.assign(bestaand, item, { bron: 'csv', bijgewerkt: new Date().toISOString() }); update++; }
+                else { materialen.push({ ...item, id: 'csv_' + Date.now() + '_' + nieuw, bron: 'csv', bijgewerkt: new Date().toISOString() }); nieuw++; }
+            });
+            save();
+            render();
+            sluitModal('uploadModal');
+            alert(`✅ ${nieuw} nieuw, ${update} bijgewerkt`);
+        }
+
+        function openNieuwModal() {
+            document.getElementById('modalTitel').textContent = '📦 Nieuw Materiaal';
+            document.getElementById('matId').value = '';
+            document.getElementById('matNaam').value = '';
+            document.getElementById('matPrijs').value = '';
+            document.getElementById('matCat').value = '';
+            document.getElementById('nieuwModal').classList.remove('hidden');
+        }
+
+        function editMat(id) {
+            const m = materialen.find(x => x.id === id);
+            if (!m) return;
+            document.getElementById('modalTitel').textContent = '✏️ Bewerken';
+            document.getElementById('matId').value = m.id;
+            document.getElementById('matNaam').value = m.naam;
+            document.getElementById('matPrijs').value = m.prijs;
+            document.getElementById('matEenheid').value = m.eenheid || 'stuk';
+            document.getElementById('matCat').value = m.categorie || '';
+            document.getElementById('nieuwModal').classList.remove('hidden');
+        }
+
+        function saveMat() {
+            const naam = document.getElementById('matNaam').value.trim();
+            const prijs = parseFloat(document.getElementById('matPrijs').value);
+            if (!naam || isNaN(prijs)) return alert('Vul naam en prijs in');
+            const id = document.getElementById('matId').value;
+            const data = { naam, prijs, eenheid: document.getElementById('matEenheid').value, categorie: document.getElementById('matCat').value.trim(), bron: 'handmatig', bijgewerkt: new Date().toISOString() };
+            if (id) { const idx = materialen.findIndex(m => m.id === id); if (idx !== -1) materialen[idx] = { ...materialen[idx], ...data }; }
+            else { data.id = 'man_' + Date.now(); materialen.push(data); }
+            save();
+            render();
+            sluitModal('nieuwModal');
+        }
+
+        function deleteMat(id) {
+            if (!confirm('Verwijderen?')) return;
+            materialen = materialen.filter(m => m.id !== id);
+            save();
+            render();
+        }
+
+        function save() { localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); }
+        function sluitModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function exportCSV() {
+            let csv = 'naam,standaardPrijs,eenheid,categorie\n';
+            materialen.forEach(m => csv += `"${m.naam}",${m.prijs},"${m.eenheid}","${m.categorie || ''}"\n`);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+            a.download = 'materialen.csv';
+            a.click();
+        }
+
+        function downloadTemplate() {
+            const csv = `naam,standaardPrijs,eenheid,categorie
+Stucmortel 25kg,12.50,zak,Stuc
+Gipspleister 25kg,8.50,zak,Stuc
+Voorstrijk 10L,35.00,emmer,Verf`;
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+            a.download = 'materialen-template.csv';
+            a.click();
+        }
+
+        // Drag & drop
+        const dz = document.getElementById('dropZone');
+        dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+        dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+        dz.addEventListener('drop', e => {
+            e.preventDefault();
+            dz.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file?.name.endsWith('.csv')) handleFile({ target: { files: [file] } });
+        });
+
+        render();
+    </script>
+</body>
+</html>

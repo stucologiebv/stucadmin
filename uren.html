@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uren - StucAdmin Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f5f7fa; color: #1a1a2e; }
+        .sidebar { background: #ffffff; border-right: 1px solid #e5e7eb; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; transition: all 0.2s; text-decoration: none; margin-bottom: 4px; }
+        .nav-item:hover { background: #f1f5f9; color: #1e293b; }
+        .nav-item.active { background: #6366f1; color: white; }
+        .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent, #6366f1); border-radius: 16px 16px 0 0; }
+        .kpi-card { position: relative; overflow: hidden; }
+        .kpi-value { font-size: 2rem; font-weight: 800; color: var(--accent, #6366f1); }
+        .btn-primary { background: #6366f1; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; width: 100%; }
+        .input-field:focus { outline: none; border-color: #6366f1; }
+        .data-table { width: 100%; }
+        .data-table th { text-align: left; padding: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #94a3b8; border-bottom: 1px solid #e5e7eb; }
+        .data-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+        .data-table tr:hover { background: #f8fafc; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .badge-green { background: #ecfdf5; color: #059669; }
+        .badge-blue { background: #dbeafe; color: #1d4ed8; }
+        .badge-orange { background: #fef3c7; color: #b45309; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
+        .modal-content { background: white; border-radius: 20px; max-width: 500px; width: 100%; }
+    </style>
+</head>
+<body>
+    <div class="flex min-h-screen">
+        <aside class="sidebar w-64 fixed left-0 top-0 bottom-0 flex flex-col">
+            <div class="p-6 border-b border-gray-100">
+                <h1 class="text-xl font-bold text-indigo-600">StucAdmin</h1>
+                <p class="text-xs text-gray-400 mt-1">Professional Suite</p>
+            </div>
+            <nav class="flex-1 p-4">
+                <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+                <a href="omzet.html" class="nav-item">💹 Omzet</a>
+                <a href="crm.html" class="nav-item">👥 Klanten</a>
+                <a href="planning.html" class="nav-item">📅 Planning</a>
+                <a href="uren.html" class="nav-item active">⏱️ Uren</a>
+                <a href="calculator.html" class="nav-item">🧮 Calculator</a>
+                <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
+                <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
+            </nav>
+        </aside>
+
+        <main class="flex-1 ml-64 p-8">
+            <header class="flex items-center justify-between mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold">⏱️ Urenregistratie</h1>
+                    <p class="text-gray-500">Registreer uren per project</p>
+                </div>
+                <button onclick="openModal()" class="btn-primary">+ Uren invoeren</button>
+            </header>
+
+            <div class="grid grid-cols-4 gap-4 mb-8">
+                <div class="card kpi-card p-6" style="--accent:#10b981"><p class="text-gray-500 text-sm">Deze week</p><p class="kpi-value" id="kpiWeek">0</p><p class="text-gray-400 text-sm">uren</p></div>
+                <div class="card kpi-card p-6" style="--accent:#3b82f6"><p class="text-gray-500 text-sm">Deze maand</p><p class="kpi-value" id="kpiMaand">0</p><p class="text-gray-400 text-sm">uren</p></div>
+                <div class="card kpi-card p-6" style="--accent:#8b5cf6"><p class="text-gray-500 text-sm">Waarde</p><p class="kpi-value" id="kpiWaarde">€0</p><p class="text-gray-400 text-sm">deze maand</p></div>
+                <div class="card kpi-card p-6" style="--accent:#f59e0b"><p class="text-gray-500 text-sm">Gemiddeld</p><p class="kpi-value" id="kpiGem">0</p><p class="text-gray-400 text-sm">per dag</p></div>
+            </div>
+
+            <div class="card p-6 mb-6">
+                <h3 class="font-bold mb-4">⚡ Snelle invoer vandaag</h3>
+                <div class="grid grid-cols-5 gap-4">
+                    <select id="snelProject" class="input-field"></select>
+                    <select id="snelMedewerker" class="input-field"></select>
+                    <input type="number" id="snelUren" class="input-field" value="8" min="0.5" max="24" step="0.5">
+                    <select id="snelType" class="input-field"><option value="werk">Werk</option><option value="reistijd">Reistijd</option><option value="overwerk">Overwerk</option></select>
+                    <button onclick="snelOpslaan()" class="btn-primary">✓ Opslaan</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 mb-6">
+                <div class="card p-6">
+                    <h3 class="font-bold mb-4">📊 Uren per project</h3>
+                    <div style="height:220px"><canvas id="projectChart"></canvas></div>
+                </div>
+                <div class="card p-6">
+                    <h3 class="font-bold mb-4">👷 Uren per medewerker</h3>
+                    <div style="height:220px"><canvas id="medewerkerChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold">📋 Registraties</h3>
+                    <div class="flex gap-2">
+                        <input type="date" id="filterVan" class="input-field w-40" onchange="render()">
+                        <input type="date" id="filterTot" class="input-field w-40" onchange="render()">
+                        <button onclick="exportCSV()" class="btn-secondary text-sm">📥 Export</button>
+                    </div>
+                </div>
+                <table class="data-table">
+                    <thead><tr><th>Datum</th><th>Project</th><th>Medewerker</th><th class="text-right">Uren</th><th>Type</th><th></th></tr></thead>
+                    <tbody id="tabel"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal" class="modal-overlay hidden">
+        <div class="modal-content p-8">
+            <div class="flex justify-between mb-6">
+                <h2 class="text-xl font-bold">⏱️ Uren registreren</h2>
+                <button onclick="sluitModal()" class="text-gray-400 text-2xl">×</button>
+            </div>
+            <div class="space-y-4">
+                <div><label class="text-sm text-gray-500">Datum</label><input type="date" id="regDatum" class="input-field"></div>
+                <div><label class="text-sm text-gray-500">Project</label><select id="regProject" class="input-field"></select></div>
+                <div><label class="text-sm text-gray-500">Medewerker</label><select id="regMedewerker" class="input-field"></select></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="text-sm text-gray-500">Uren</label><input type="number" id="regUren" class="input-field" value="8" min="0.5" step="0.5"></div>
+                    <div><label class="text-sm text-gray-500">Type</label><select id="regType" class="input-field"><option value="werk">Werk</option><option value="reistijd">Reistijd</option><option value="overwerk">Overwerk</option><option value="ziekte">Ziekte</option><option value="vrij">Vrij</option></select></div>
+                </div>
+                <div><label class="text-sm text-gray-500">Notitie</label><textarea id="regNotitie" class="input-field" rows="2"></textarea></div>
+                <button onclick="saveRegistratie()" class="btn-primary w-full">💾 Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const UURTARIEF = 45;
+        let registraties = JSON.parse(localStorage.getItem('stuc_uren_registraties') || '[]');
+        let projecten = JSON.parse(localStorage.getItem('stuc_planning_projecten') || '[]');
+        let medewerkers = JSON.parse(localStorage.getItem('stuc_planning_medewerkers') || '[{"id":1,"naam":"Jezelf"}]');
+        let charts = {};
+
+        function formatDate(d) { return d.toISOString().split('T')[0]; }
+        function getWeekStart(d) { const date = new Date(d); const day = date.getDay(); return new Date(date.setDate(date.getDate() - day + (day === 0 ? -6 : 1))); }
+
+        function vulDropdowns() {
+            const pOpts = '<option value="">Kies project...</option>' + projecten.map(p => `<option value="${p.id}">${p.naam}</option>`).join('');
+            const mOpts = '<option value="">Kies medewerker...</option>' + medewerkers.map(m => `<option value="${m.id}">${m.naam}</option>`).join('');
+            ['snelProject', 'regProject'].forEach(id => document.getElementById(id).innerHTML = pOpts);
+            ['snelMedewerker', 'regMedewerker'].forEach(id => document.getElementById(id).innerHTML = mOpts);
+        }
+
+        function berekenKPIs() {
+            const nu = new Date();
+            const weekStart = getWeekStart(nu);
+            const maandStart = new Date(nu.getFullYear(), nu.getMonth(), 1);
+            const werkUren = r => !['ziekte', 'vrij'].includes(r.type);
+
+            const week = registraties.filter(r => new Date(r.datum) >= weekStart && werkUren(r)).reduce((s, r) => s + r.uren, 0);
+            const maand = registraties.filter(r => new Date(r.datum) >= maandStart && werkUren(r)).reduce((s, r) => s + r.uren, 0);
+            const dagen = Math.ceil((nu - maandStart) / 86400000) || 1;
+
+            document.getElementById('kpiWeek').textContent = week.toFixed(1);
+            document.getElementById('kpiMaand').textContent = maand.toFixed(0);
+            document.getElementById('kpiWaarde').textContent = '€' + (maand * UURTARIEF).toLocaleString('nl-NL');
+            document.getElementById('kpiGem').textContent = (maand / dagen).toFixed(1);
+        }
+
+        function render() {
+            berekenKPIs();
+            renderTabel();
+            renderCharts();
+        }
+
+        function renderTabel() {
+            const van = document.getElementById('filterVan').value;
+            const tot = document.getElementById('filterTot').value;
+            let data = [...registraties].sort((a, b) => new Date(b.datum) - new Date(a.datum));
+            if (van) data = data.filter(r => r.datum >= van);
+            if (tot) data = data.filter(r => r.datum <= tot);
+
+            const typeBadge = { werk: 'badge-green', reistijd: 'badge-blue', overwerk: 'badge-orange' };
+            document.getElementById('tabel').innerHTML = data.length ? data.slice(0, 50).map(r => {
+                const proj = projecten.find(p => p.id === r.projectId)?.naam || 'Onbekend';
+                const med = medewerkers.find(m => m.id === r.medewerkerId)?.naam || 'Onbekend';
+                return `<tr>
+                    <td class="text-gray-600">${r.datum}</td>
+                    <td class="font-medium">${proj}</td>
+                    <td>${med}</td>
+                    <td class="text-right font-bold text-green-600">${r.uren}</td>
+                    <td><span class="badge ${typeBadge[r.type] || 'badge-green'}">${r.type}</span></td>
+                    <td><button onclick="deleteReg(${r.id})" class="text-red-400 hover:text-red-600">🗑️</button></td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="6" class="text-center text-gray-400 py-6">Geen registraties</td></tr>';
+        }
+
+        function renderCharts() {
+            const werkUren = r => !['ziekte', 'vrij'].includes(r.type);
+            
+            // Per project
+            const perProject = {};
+            registraties.filter(werkUren).forEach(r => {
+                const naam = projecten.find(p => p.id === r.projectId)?.naam || 'Onbekend';
+                perProject[naam] = (perProject[naam] || 0) + r.uren;
+            });
+            const topProj = Object.entries(perProject).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+            if (charts.project) charts.project.destroy();
+            charts.project = new Chart(document.getElementById('projectChart'), {
+                type: 'bar',
+                data: { labels: topProj.map(p => p[0].substring(0, 12)), datasets: [{ data: topProj.map(p => p[1]), backgroundColor: '#6366f1', borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
+            });
+
+            // Per medewerker
+            const perMed = {};
+            registraties.filter(werkUren).forEach(r => {
+                const naam = medewerkers.find(m => m.id === r.medewerkerId)?.naam || 'Onbekend';
+                perMed[naam] = (perMed[naam] || 0) + r.uren;
+            });
+
+            if (charts.medewerker) charts.medewerker.destroy();
+            charts.medewerker = new Chart(document.getElementById('medewerkerChart'), {
+                type: 'doughnut',
+                data: { labels: Object.keys(perMed), datasets: [{ data: Object.values(perMed), backgroundColor: ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+            });
+        }
+
+        function openModal() {
+            document.getElementById('regDatum').value = formatDate(new Date());
+            document.getElementById('regUren').value = 8;
+            document.getElementById('regNotitie').value = '';
+            document.getElementById('modal').classList.remove('hidden');
+        }
+        function sluitModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        function saveRegistratie() {
+            const projectId = parseInt(document.getElementById('regProject').value);
+            const medewerkerId = parseInt(document.getElementById('regMedewerker').value);
+            const uren = parseFloat(document.getElementById('regUren').value);
+            if (!projectId || !medewerkerId || !uren) return alert('Vul alle velden in');
+            registraties.push({ id: Date.now(), datum: document.getElementById('regDatum').value, projectId, medewerkerId, uren, type: document.getElementById('regType').value, notitie: document.getElementById('regNotitie').value });
+            localStorage.setItem('stuc_uren_registraties', JSON.stringify(registraties));
+            sluitModal();
+            render();
+        }
+
+        function snelOpslaan() {
+            const projectId = parseInt(document.getElementById('snelProject').value);
+            const medewerkerId = parseInt(document.getElementById('snelMedewerker').value);
+            const uren = parseFloat(document.getElementById('snelUren').value);
+            if (!projectId || !medewerkerId || !uren) return alert('Vul alle velden in');
+            registraties.push({ id: Date.now(), datum: formatDate(new Date()), projectId, medewerkerId, uren, type: document.getElementById('snelType').value, notitie: '' });
+            localStorage.setItem('stuc_uren_registraties', JSON.stringify(registraties));
+            document.getElementById('snelProject').value = '';
+            document.getElementById('snelMedewerker').value = '';
+            render();
+            alert('✅ Opgeslagen!');
+        }
+
+        function deleteReg(id) {
+            if (!confirm('Verwijderen?')) return;
+            registraties = registraties.filter(r => r.id !== id);
+            localStorage.setItem('stuc_uren_registraties', JSON.stringify(registraties));
+            render();
+        }
+
+        function exportCSV() {
+            let csv = 'Datum,Project,Medewerker,Uren,Type\n';
+            registraties.forEach(r => {
+                const proj = projecten.find(p => p.id === r.projectId)?.naam || '';
+                const med = medewerkers.find(m => m.id === r.medewerkerId)?.naam || '';
+                csv += `${r.datum},"${proj}","${med}",${r.uren},"${r.type}"\n`;
+            });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+            a.download = 'uren.csv';
+            a.click();
+        }
+
+        window.onload = () => {
+            const nu = new Date();
+            document.getElementById('filterVan').value = `${nu.getFullYear()}-${String(nu.getMonth() + 1).padStart(2, '0')}-01`;
+            document.getElementById('filterTot').value = formatDate(nu);
+            vulDropdowns();
+            render();
+        };
+    </script>
+</body>
+</html>

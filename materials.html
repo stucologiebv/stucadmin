@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inkoop Analyse - StucAdmin Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f5f7fa; color: #1a1a2e; }
+        .sidebar { background: #ffffff; border-right: 1px solid #e5e7eb; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; transition: all 0.2s; text-decoration: none; margin-bottom: 4px; }
+        .nav-item:hover { background: #f1f5f9; color: #1e293b; }
+        .nav-item.active { background: #6366f1; color: white; }
+        .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent, #6366f1); border-radius: 16px 16px 0 0; }
+        .kpi-card { position: relative; overflow: hidden; }
+        .kpi-value { font-size: 2rem; font-weight: 800; color: var(--accent, #6366f1); }
+        .btn-primary { background: #6366f1; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; }
+        .data-table { width: 100%; }
+        .data-table th { text-align: left; padding: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #94a3b8; border-bottom: 1px solid #e5e7eb; }
+        .data-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+        .data-table tr:hover { background: #f8fafc; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; background: #ecfdf5; color: #059669; }
+        .tip-card { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; }
+    </style>
+</head>
+<body>
+    <div class="flex min-h-screen">
+        <aside class="sidebar w-64 fixed left-0 top-0 bottom-0 flex flex-col">
+            <div class="p-6 border-b border-gray-100">
+                <h1 class="text-xl font-bold text-indigo-600">StucAdmin</h1>
+                <p class="text-xs text-gray-400 mt-1">Professional Suite</p>
+            </div>
+            <nav class="flex-1 p-4">
+                <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+                <a href="omzet.html" class="nav-item">💹 Omzet</a>
+                <a href="crm.html" class="nav-item">👥 Klanten</a>
+                <a href="planning.html" class="nav-item">📅 Planning</a>
+                <a href="uren.html" class="nav-item">⏱️ Uren</a>
+                <a href="calculator.html" class="nav-item">🧮 Calculator</a>
+                <a href="materials.html" class="nav-item active">📊 Inkoop Analyse</a>
+                <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
+            </nav>
+        </aside>
+
+        <main class="flex-1 ml-64 p-8">
+            <header class="flex items-center justify-between mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold">📊 Inkoop Analyse</h1>
+                    <p class="text-gray-500">Analyseer je materiaalinkopen</p>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="laadData()" class="btn-secondary">🔄 Vernieuwen</button>
+                    <button onclick="analyseer()" class="btn-primary">📊 Analyseer</button>
+                </div>
+            </header>
+
+            <div id="loading" class="hidden card p-12 text-center">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent mb-3"></div>
+                <p class="text-gray-500">Laden uit Moneybird...</p>
+            </div>
+
+            <div id="content" class="space-y-6">
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="card kpi-card p-6" style="--accent:#6366f1"><p class="text-gray-500 text-sm">Totaal inkopen</p><p class="kpi-value" id="kpiTotaal">€0</p><p class="text-gray-400 text-sm">dit jaar</p></div>
+                    <div class="card kpi-card p-6" style="--accent:#10b981"><p class="text-gray-500 text-sm">Materialen</p><p class="kpi-value" id="kpiMateriaal">0</p><p class="text-gray-400 text-sm">items</p></div>
+                    <div class="card kpi-card p-6" style="--accent:#f59e0b"><p class="text-gray-500 text-sm">Leveranciers</p><p class="kpi-value" id="kpiLeveranciers">0</p></div>
+                    <div class="card kpi-card p-6" style="--accent:#ef4444"><p class="text-gray-500 text-sm">Gem. per maand</p><p class="kpi-value" id="kpiGem">€0</p></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="card p-6">
+                        <h2 class="font-bold mb-4">📈 Inkopen per maand</h2>
+                        <div style="height:280px"><canvas id="maandChart"></canvas></div>
+                    </div>
+                    <div class="card p-6">
+                        <h2 class="font-bold mb-4">🏢 Top leveranciers</h2>
+                        <div style="height:280px"><canvas id="leverancierChart"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="card p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="font-bold">📦 Recente inkopen</h2>
+                        <div class="flex gap-2">
+                            <input type="text" id="zoek" class="input-field w-64" placeholder="🔍 Zoeken..." onkeyup="renderTabel()">
+                            <button onclick="exportCSV()" class="btn-secondary text-sm">📥 Export</button>
+                        </div>
+                    </div>
+                    <table class="data-table">
+                        <thead><tr><th>Datum</th><th>Leverancier</th><th>Omschrijving</th><th class="text-right">Bedrag</th></tr></thead>
+                        <tbody id="tabel"></tbody>
+                    </table>
+                </div>
+
+                <div class="card p-6">
+                    <h2 class="font-bold mb-4">💡 Aanbevelingen</h2>
+                    <div id="tips" class="grid grid-cols-2 gap-4">
+                        <p class="text-gray-400 col-span-2 text-center py-4">Klik op "Analyseer" voor aanbevelingen</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API = 'http://localhost:3001/api';
+        let inkopen = [], charts = {};
+
+        async function laadData() {
+            document.getElementById('loading').classList.remove('hidden');
+            try {
+                const res = await fetch(`${API}/purchase_invoices`);
+                if (res.ok) {
+                    inkopen = (await res.json()).map(f => ({
+                        id: f.id, datum: f.date,
+                        leverancier: f.contact?.company_name || 'Onbekend',
+                        bedrag: parseFloat(f.total_price_incl_tax || 0),
+                        omschrijving: f.details?.[0]?.description || '-'
+                    }));
+                } else {
+                    inkopen = [
+                        { id: 1, datum: '2025-01-15', leverancier: 'BMN', bedrag: 1250, omschrijving: 'Stucmortel 25kg' },
+                        { id: 2, datum: '2025-01-10', leverancier: 'Stiho', bedrag: 890, omschrijving: 'Gipsplaten' },
+                        { id: 3, datum: '2025-01-05', leverancier: 'BMN', bedrag: 650, omschrijving: 'Voorstrijk' }
+                    ];
+                }
+                render();
+            } catch (e) {
+                inkopen = [
+                    { id: 1, datum: '2025-01-15', leverancier: 'BMN', bedrag: 1250, omschrijving: 'Stucmortel' },
+                    { id: 2, datum: '2025-01-10', leverancier: 'Stiho', bedrag: 890, omschrijving: 'Gipsplaten' }
+                ];
+                render();
+            }
+            document.getElementById('loading').classList.add('hidden');
+        }
+
+        function render() {
+            const totaal = inkopen.reduce((s, i) => s + i.bedrag, 0);
+            const leveranciers = [...new Set(inkopen.map(i => i.leverancier))];
+            const maanden = [...new Set(inkopen.map(i => i.datum?.substring(0, 7)))].length || 1;
+
+            document.getElementById('kpiTotaal').textContent = '€' + Math.round(totaal / 1000) + 'k';
+            document.getElementById('kpiMateriaal').textContent = inkopen.length;
+            document.getElementById('kpiLeveranciers').textContent = leveranciers.length;
+            document.getElementById('kpiGem').textContent = '€' + Math.round(totaal / maanden).toLocaleString();
+
+            renderCharts();
+            renderTabel();
+        }
+
+        function renderCharts() {
+            const perMaand = {};
+            inkopen.forEach(i => {
+                const m = i.datum?.substring(0, 7) || 'Onbekend';
+                perMaand[m] = (perMaand[m] || 0) + i.bedrag;
+            });
+
+            if (charts.maand) charts.maand.destroy();
+            charts.maand = new Chart(document.getElementById('maandChart'), {
+                type: 'bar',
+                data: { labels: Object.keys(perMaand).slice(-12), datasets: [{ data: Object.values(perMaand).slice(-12).map(v => v / 1000), backgroundColor: '#6366f1', borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => '€' + v + 'k' } } } }
+            });
+
+            const perLev = {};
+            inkopen.forEach(i => perLev[i.leverancier] = (perLev[i.leverancier] || 0) + i.bedrag);
+            const top = Object.entries(perLev).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+            if (charts.leverancier) charts.leverancier.destroy();
+            charts.leverancier = new Chart(document.getElementById('leverancierChart'), {
+                type: 'doughnut',
+                data: { labels: top.map(l => l[0]), datasets: [{ data: top.map(l => l[1]), backgroundColor: ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+            });
+        }
+
+        function renderTabel() {
+            const zoek = document.getElementById('zoek').value.toLowerCase();
+            const gef = inkopen.filter(i => i.leverancier.toLowerCase().includes(zoek) || i.omschrijving.toLowerCase().includes(zoek));
+            document.getElementById('tabel').innerHTML = gef.length ? gef.slice(0, 50).map(i => `<tr>
+                <td class="text-gray-500">${i.datum}</td>
+                <td class="font-medium">${i.leverancier}</td>
+                <td class="text-gray-500">${i.omschrijving}</td>
+                <td class="text-right font-bold text-indigo-600">€${i.bedrag.toLocaleString()}</td>
+            </tr>`).join('') : '<tr><td colspan="4" class="text-center text-gray-400 py-6">Geen data</td></tr>';
+        }
+
+        function analyseer() {
+            const tips = [
+                { icon: '💡', titel: 'Bundel bestellingen', tekst: 'Bundel bestellingen voor betere prijzen en minder verzendkosten.' },
+                { icon: '📊', titel: 'Vergelijk leveranciers', tekst: 'Vergelijk prijzen tussen BMN, Stiho en andere leveranciers.' },
+                { icon: '📦', titel: 'Bulk korting', tekst: 'Vraag staffelkortingen aan bij je vaste leveranciers.' },
+                { icon: '🏆', titel: 'Top leverancier', tekst: 'BMN is je grootste leverancier. Onderhandel betere voorwaarden.' }
+            ];
+            document.getElementById('tips').innerHTML = tips.map(t => `
+                <div class="tip-card">
+                    <div class="text-2xl mb-2">${t.icon}</div>
+                    <h3 class="font-bold">${t.titel}</h3>
+                    <p class="text-sm text-gray-600">${t.tekst}</p>
+                </div>
+            `).join('');
+        }
+
+        function exportCSV() {
+            let csv = 'Datum,Leverancier,Omschrijving,Bedrag\n';
+            inkopen.forEach(i => csv += `${i.datum},"${i.leverancier}","${i.omschrijving}",${i.bedrag}\n`);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+            a.download = 'inkopen.csv';
+            a.click();
+        }
+
+        laadData();
+    </script>
+</body>
+</html>

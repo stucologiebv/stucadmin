@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator - StucAdmin Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f5f7fa; color: #1a1a2e; }
+        .sidebar { background: #ffffff; border-right: 1px solid #e5e7eb; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; transition: all 0.2s; text-decoration: none; margin-bottom: 4px; }
+        .nav-item:hover { background: #f1f5f9; color: #1e293b; }
+        .nav-item.active { background: #6366f1; color: white; }
+        .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; }
+        .btn-primary { background: #6366f1; color: white; padding: 12px 24px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; width: 100%; }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 12px 24px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; width: 100%; }
+        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; width: 100%; font-size: 1rem; }
+        .input-field:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+        .result-card { background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 16px; padding: 24px; color: white; text-align: center; }
+        .result-value { font-size: 3rem; font-weight: 800; }
+        .work-type { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; }
+        .work-type:hover { border-color: #6366f1; }
+        .breakdown-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+    </style>
+</head>
+<body>
+    <div class="flex min-h-screen">
+        <aside class="sidebar w-64 fixed left-0 top-0 bottom-0 flex flex-col">
+            <div class="p-6 border-b border-gray-100">
+                <h1 class="text-xl font-bold text-indigo-600">StucAdmin</h1>
+                <p class="text-xs text-gray-400 mt-1">Professional Suite</p>
+            </div>
+            <nav class="flex-1 p-4">
+                <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+                <a href="omzet.html" class="nav-item">💹 Omzet</a>
+                <a href="crm.html" class="nav-item">👥 Klanten</a>
+                <a href="planning.html" class="nav-item">📅 Planning</a>
+                <a href="uren.html" class="nav-item">⏱️ Uren</a>
+                <a href="calculator.html" class="nav-item active">🧮 Calculator</a>
+                <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
+                <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
+            </nav>
+        </aside>
+
+        <main class="flex-1 ml-64 p-8">
+            <header class="mb-8">
+                <h1 class="text-2xl font-bold">🧮 Project Calculator</h1>
+                <p class="text-gray-500">Bereken snel je projectkosten</p>
+            </header>
+
+            <div class="grid grid-cols-3 gap-8">
+                <div class="col-span-2 space-y-6">
+                    <div class="card p-6">
+                        <h2 class="font-bold mb-4">📋 Project Info</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-sm text-gray-500">Projectnaam</label><input type="text" id="projectNaam" class="input-field" placeholder="Bijv. Stucwerk Fam. Jansen"></div>
+                            <div><label class="text-sm text-gray-500">Klant</label><input type="text" id="klantNaam" class="input-field" placeholder="Klantnaam"></div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h2 class="font-bold mb-4">🔨 Type werk & oppervlakte</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="work-type">
+                                <div class="flex justify-between mb-2"><span class="font-medium">Stucen wanden</span><span class="text-indigo-600 text-sm">€18/m²</span></div>
+                                <input type="number" class="input-field" id="m2_wanden" value="0" onchange="bereken()" placeholder="m²">
+                            </div>
+                            <div class="work-type">
+                                <div class="flex justify-between mb-2"><span class="font-medium">Stucen plafonds</span><span class="text-indigo-600 text-sm">€22/m²</span></div>
+                                <input type="number" class="input-field" id="m2_plafonds" value="0" onchange="bereken()" placeholder="m²">
+                            </div>
+                            <div class="work-type">
+                                <div class="flex justify-between mb-2"><span class="font-medium">Voorstrijk</span><span class="text-indigo-600 text-sm">€3/m²</span></div>
+                                <input type="number" class="input-field" id="m2_voorstrijk" value="0" onchange="bereken()" placeholder="m²">
+                            </div>
+                            <div class="work-type">
+                                <div class="flex justify-between mb-2"><span class="font-medium">Sauzen</span><span class="text-indigo-600 text-sm">€6/m²</span></div>
+                                <input type="number" class="input-field" id="m2_sauzen" value="0" onchange="bereken()" placeholder="m²">
+                            </div>
+                            <div class="work-type">
+                                <div class="flex justify-between mb-2"><span class="font-medium">Sierpleister</span><span class="text-indigo-600 text-sm">€35/m²</span></div>
+                                <input type="number" class="input-field" id="m2_sierpleister" value="0" onchange="bereken()" placeholder="m²">
+                            </div>
+                            <div class="work-type">
+                                <div class="flex justify-between mb-2"><span class="font-medium">Reparatie/Schuren</span><span class="text-indigo-600 text-sm">€8/m²</span></div>
+                                <input type="number" class="input-field" id="m2_reparatie" value="0" onchange="bereken()" placeholder="m²">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h2 class="font-bold mb-4">➕ Extra kosten</h2>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div><label class="text-sm text-gray-500">Materiaal (€)</label><input type="number" id="materiaal" class="input-field" value="0" onchange="bereken()"></div>
+                            <div><label class="text-sm text-gray-500">Voorrijkosten (€)</label><input type="number" id="voorrijkosten" class="input-field" value="0" onchange="bereken()"></div>
+                            <div><label class="text-sm text-gray-500">Overig (€)</label><input type="number" id="overig" class="input-field" value="0" onchange="bereken()"></div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h2 class="font-bold mb-4">📊 Marges</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-sm text-gray-500">Winstmarge (%)</label><input type="number" id="winstmarge" class="input-field" value="15" onchange="bereken()"></div>
+                            <div><label class="text-sm text-gray-500">BTW (%)</label><input type="number" id="btw" class="input-field" value="21" onchange="bereken()"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="result-card">
+                        <p class="text-white/80 text-sm mb-1">Totaal incl. BTW</p>
+                        <p class="result-value" id="totaalIncl">€0</p>
+                        <p class="text-white/60 text-sm mt-2">Excl. BTW: <span id="totaalExcl">€0</span></p>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="font-bold mb-4">📐 Oppervlakte</h3>
+                        <div class="space-y-2">
+                            <div class="flex justify-between"><span class="text-gray-500">Wanden</span><span id="totWanden">0 m²</span></div>
+                            <div class="flex justify-between"><span class="text-gray-500">Plafonds</span><span id="totPlafonds">0 m²</span></div>
+                            <div class="flex justify-between pt-2 border-t font-bold"><span>Totaal</span><span class="text-indigo-600" id="totM2">0 m²</span></div>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <h3 class="font-bold mb-4">💵 Specificatie</h3>
+                        <div id="breakdown"></div>
+                    </div>
+
+                    <button onclick="exportOfferte()" class="btn-primary">📄 Exporteer Offerte</button>
+                    <button onclick="reset()" class="btn-secondary">🔄 Reset</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const prijzen = { wanden: 18, plafonds: 22, voorstrijk: 3, sauzen: 6, sierpleister: 35, reparatie: 8 };
+
+        function bereken() {
+            let arbeid = 0, breakdown = [], totM2 = 0, wanden = 0, plafonds = 0;
+
+            Object.keys(prijzen).forEach(type => {
+                const m2 = parseFloat(document.getElementById('m2_' + type)?.value) || 0;
+                if (m2 > 0) {
+                    const sub = m2 * prijzen[type];
+                    arbeid += sub;
+                    totM2 += m2;
+                    if (type === 'plafonds') plafonds += m2; else wanden += m2;
+                    breakdown.push({ label: `${type.charAt(0).toUpperCase() + type.slice(1)} (${m2}m² × €${prijzen[type]})`, value: sub });
+                }
+            });
+
+            const materiaal = parseFloat(document.getElementById('materiaal').value) || 0;
+            const voorrijkosten = parseFloat(document.getElementById('voorrijkosten').value) || 0;
+            const overig = parseFloat(document.getElementById('overig').value) || 0;
+
+            if (materiaal) breakdown.push({ label: 'Materiaal', value: materiaal });
+            if (voorrijkosten) breakdown.push({ label: 'Voorrijkosten', value: voorrijkosten });
+            if (overig) breakdown.push({ label: 'Overig', value: overig });
+
+            const subtotaal = arbeid + materiaal + voorrijkosten + overig;
+            const winstPerc = parseFloat(document.getElementById('winstmarge').value) || 0;
+            const winst = subtotaal * (winstPerc / 100);
+            const totaalExcl = subtotaal + winst;
+            const btwPerc = parseFloat(document.getElementById('btw').value) || 21;
+            const btwBedrag = totaalExcl * (btwPerc / 100);
+            const totaalIncl = totaalExcl + btwBedrag;
+
+            if (winst) breakdown.push({ label: `Winstmarge (${winstPerc}%)`, value: winst });
+            breakdown.push({ label: 'Subtotaal excl. BTW', value: totaalExcl, bold: true });
+            breakdown.push({ label: `BTW (${btwPerc}%)`, value: btwBedrag });
+
+            document.getElementById('totaalIncl').textContent = '€' + totaalIncl.toLocaleString('nl-NL', { maximumFractionDigits: 0 });
+            document.getElementById('totaalExcl').textContent = '€' + totaalExcl.toLocaleString('nl-NL', { maximumFractionDigits: 0 });
+            document.getElementById('totWanden').textContent = wanden + ' m²';
+            document.getElementById('totPlafonds').textContent = plafonds + ' m²';
+            document.getElementById('totM2').textContent = totM2 + ' m²';
+
+            document.getElementById('breakdown').innerHTML = breakdown.map(b => `
+                <div class="breakdown-item ${b.bold ? 'font-bold' : ''}">
+                    <span class="${b.bold ? '' : 'text-gray-500'}">${b.label}</span>
+                    <span>${b.bold ? 'text-indigo-600' : ''}>€${b.value.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}</span>
+                </div>
+            `).join('');
+        }
+
+        function reset() {
+            document.getElementById('projectNaam').value = '';
+            document.getElementById('klantNaam').value = '';
+            Object.keys(prijzen).forEach(t => { const el = document.getElementById('m2_' + t); if (el) el.value = 0; });
+            document.getElementById('materiaal').value = 0;
+            document.getElementById('voorrijkosten').value = 0;
+            document.getElementById('overig').value = 0;
+            bereken();
+        }
+
+        function exportOfferte() {
+            const project = document.getElementById('projectNaam').value || 'Project';
+            const klant = document.getElementById('klantNaam').value || 'Klant';
+            alert(`📄 Offerte "${project}" voor ${klant} wordt voorbereid...\n\n(PDF export komt in volgende update)`);
+        }
+
+        bereken();
+    </script>
+</body>
+</html>

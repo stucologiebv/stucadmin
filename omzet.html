@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omzet - StucAdmin Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f5f7fa; color: #1a1a2e; }
+        .sidebar { background: #ffffff; border-right: 1px solid #e5e7eb; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; transition: all 0.2s; text-decoration: none; margin-bottom: 4px; }
+        .nav-item:hover { background: #f1f5f9; color: #1e293b; }
+        .nav-item.active { background: #6366f1; color: white; }
+        .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent, #6366f1); border-radius: 16px 16px 0 0; }
+        .kpi-card { position: relative; overflow: hidden; }
+        .kpi-value { font-size: 2rem; font-weight: 800; color: var(--accent, #6366f1); }
+        .btn-primary { background: #6366f1; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; }
+        .data-table { width: 100%; }
+        .data-table th { text-align: left; padding: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #94a3b8; border-bottom: 1px solid #e5e7eb; }
+        .data-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+        .data-table tr:hover { background: #f8fafc; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .badge-green { background: #ecfdf5; color: #059669; }
+        .badge-yellow { background: #fef3c7; color: #d97706; }
+        .badge-red { background: #fef2f2; color: #dc2626; }
+        .progress-bar { background: #e5e7eb; height: 8px; border-radius: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="flex min-h-screen">
+        <aside class="sidebar w-64 fixed left-0 top-0 bottom-0 flex flex-col">
+            <div class="p-6 border-b border-gray-100">
+                <h1 class="text-xl font-bold text-indigo-600">StucAdmin</h1>
+                <p class="text-xs text-gray-400 mt-1">Professional Suite</p>
+            </div>
+            <nav class="flex-1 p-4">
+                <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+                <a href="omzet.html" class="nav-item active">💹 Omzet</a>
+                <a href="crm.html" class="nav-item">👥 Klanten</a>
+                <a href="planning.html" class="nav-item">📅 Planning</a>
+                <a href="uren.html" class="nav-item">⏱️ Uren</a>
+                <a href="calculator.html" class="nav-item">🧮 Calculator</a>
+                <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
+                <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
+            </nav>
+        </aside>
+
+        <main class="flex-1 ml-64 p-8">
+            <header class="flex items-center justify-between mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold">💹 Omzet Dashboard</h1>
+                    <p class="text-gray-500">Live data uit Moneybird</p>
+                </div>
+                <div class="flex gap-3 items-center">
+                    <select id="jaar" class="input-field" onchange="laadData()">
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                        <option value="2023">2023</option>
+                    </select>
+                    <button onclick="laadData()" class="btn-secondary">🔄 Vernieuwen</button>
+                </div>
+            </header>
+
+            <div id="loading" class="hidden card p-12 text-center">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent mb-3"></div>
+                <p class="text-gray-500">Laden...</p>
+            </div>
+
+            <div id="content" class="hidden space-y-6">
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="card kpi-card p-6" style="--accent:#10b981"><p class="text-gray-500 text-sm">Omzet dit jaar</p><p class="kpi-value" id="kpiJaar">€0</p></div>
+                    <div class="card kpi-card p-6" style="--accent:#3b82f6"><p class="text-gray-500 text-sm">Deze maand</p><p class="kpi-value" id="kpiMaand">€0</p></div>
+                    <div class="card kpi-card p-6" style="--accent:#f59e0b"><p class="text-gray-500 text-sm">Openstaand</p><p class="kpi-value" id="kpiOpen">€0</p></div>
+                    <div class="card kpi-card p-6" style="--accent:#ef4444"><p class="text-gray-500 text-sm">Te laat</p><p class="kpi-value" id="kpiLaat">€0</p></div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="card p-6">
+                        <h2 class="font-bold mb-4">📈 Omzet per maand</h2>
+                        <div style="height:280px"><canvas id="maandChart"></canvas></div>
+                    </div>
+                    <div class="card p-6">
+                        <h2 class="font-bold mb-4">🏆 Top klanten</h2>
+                        <div style="height:280px"><canvas id="klantenChart"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="card p-6">
+                    <h2 class="font-bold mb-4">⏳ Openstaande facturen</h2>
+                    <table class="data-table">
+                        <thead><tr><th>Factuurnr</th><th>Klant</th><th>Datum</th><th>Vervalt</th><th class="text-right">Bedrag</th><th>Status</th></tr></thead>
+                        <tbody id="openTabel"></tbody>
+                    </table>
+                </div>
+
+                <div class="card p-6">
+                    <div class="flex justify-between mb-4">
+                        <h2 class="font-bold">📄 Alle facturen</h2>
+                        <button onclick="exportCSV()" class="btn-secondary text-sm">📥 Export</button>
+                    </div>
+                    <table class="data-table">
+                        <thead><tr><th>Factuurnr</th><th>Klant</th><th>Datum</th><th class="text-right">Bedrag</th><th>Status</th></tr></thead>
+                        <tbody id="alleTabel"></tbody>
+                    </table>
+                    <div id="paginering" class="flex justify-center gap-2 mt-4"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API = 'http://localhost:3001/api';
+        let facturen = [], charts = {}, pagina = 1, perPagina = 15;
+
+        window.onload = () => {
+            document.getElementById('jaar').value = new Date().getFullYear();
+            laadData();
+        };
+
+        async function laadData() {
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('content').classList.add('hidden');
+            try {
+                const res = await fetch(`${API}/invoices`);
+                facturen = (await res.json()).map(f => ({
+                    id: f.id, nummer: f.invoice_id || f.id,
+                    klant: f.contact?.company_name || `${f.contact?.firstname||''} ${f.contact?.lastname||''}`.trim() || 'Onbekend',
+                    klantId: f.contact?.id, datum: f.invoice_date, verval: f.due_date,
+                    bedrag: parseFloat(f.total_price_incl_tax || 0), status: f.state,
+                    teLaat: f.due_date && new Date(f.due_date) < new Date() && f.state !== 'paid'
+                }));
+                render();
+                document.getElementById('content').classList.remove('hidden');
+            } catch (e) { alert('Fout: ' + e.message); }
+            document.getElementById('loading').classList.add('hidden');
+        }
+
+        function render() {
+            const jaar = parseInt(document.getElementById('jaar').value);
+            const gef = facturen.filter(f => f.datum && new Date(f.datum).getFullYear() === jaar);
+            const nu = new Date();
+
+            const totaal = gef.reduce((s, f) => s + f.bedrag, 0);
+            const maand = gef.filter(f => new Date(f.datum).getMonth() === nu.getMonth()).reduce((s, f) => s + f.bedrag, 0);
+            const open = gef.filter(f => ['open', 'pending', 'reminded'].includes(f.status)).reduce((s, f) => s + f.bedrag, 0);
+            const laat = gef.filter(f => f.teLaat).reduce((s, f) => s + f.bedrag, 0);
+
+            document.getElementById('kpiJaar').textContent = '€' + Math.round(totaal / 1000) + 'k';
+            document.getElementById('kpiMaand').textContent = '€' + maand.toLocaleString('nl-NL', { maximumFractionDigits: 0 });
+            document.getElementById('kpiOpen').textContent = '€' + Math.round(open / 1000) + 'k';
+            document.getElementById('kpiLaat').textContent = '€' + Math.round(laat / 1000) + 'k';
+
+            renderCharts(gef);
+            renderOpenTabel(gef);
+            renderAlleTabel(gef);
+        }
+
+        function renderCharts(gef) {
+            const perMaand = Array(12).fill(0);
+            gef.forEach(f => perMaand[new Date(f.datum).getMonth()] += f.bedrag);
+
+            if (charts.maand) charts.maand.destroy();
+            charts.maand = new Chart(document.getElementById('maandChart'), {
+                type: 'bar',
+                data: { labels: ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'], datasets: [{ data: perMaand.map(v => v / 1000), backgroundColor: '#6366f1', borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => '€' + v + 'k' } } } }
+            });
+
+            const perKlant = {};
+            gef.forEach(f => perKlant[f.klant] = (perKlant[f.klant] || 0) + f.bedrag);
+            const top = Object.entries(perKlant).sort((a, b) => b[1] - a[1]).slice(0, 7);
+
+            if (charts.klanten) charts.klanten.destroy();
+            charts.klanten = new Chart(document.getElementById('klantenChart'), {
+                type: 'bar',
+                data: { labels: top.map(t => t[0].substring(0, 12)), datasets: [{ data: top.map(t => t[1] / 1000), backgroundColor: '#8b5cf6', borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks: { callback: v => '€' + v + 'k' } } } }
+            });
+        }
+
+        function renderOpenTabel(gef) {
+            const open = gef.filter(f => ['open', 'pending', 'reminded'].includes(f.status) || f.teLaat).sort((a, b) => new Date(a.verval) - new Date(b.verval)).slice(0, 10);
+            document.getElementById('openTabel').innerHTML = open.length ? open.map(f => {
+                const dagen = f.verval ? Math.floor((new Date() - new Date(f.verval)) / 86400000) : 0;
+                return `<tr>
+                    <td class="font-mono text-gray-600">${f.nummer}</td>
+                    <td class="font-medium">${f.klant}</td>
+                    <td class="text-gray-500">${f.datum}</td>
+                    <td class="${f.teLaat ? 'text-red-500' : 'text-gray-500'}">${f.verval || '-'}</td>
+                    <td class="text-right font-bold text-green-600">€${f.bedrag.toLocaleString('nl-NL')}</td>
+                    <td>${f.teLaat ? `<span class="badge badge-red">🚨 ${dagen}d</span>` : '<span class="badge badge-yellow">⏳ Open</span>'}</td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="6" class="text-center text-green-600 py-6">✓ Geen openstaande facturen!</td></tr>';
+        }
+
+        function renderAlleTabel(gef) {
+            const sorted = [...gef].sort((a, b) => new Date(b.datum) - new Date(a.datum));
+            const pages = Math.ceil(sorted.length / perPagina);
+            const page = sorted.slice((pagina - 1) * perPagina, pagina * perPagina);
+            const statusBadge = { paid: 'badge-green', open: 'badge-yellow', pending: 'badge-yellow', reminded: 'badge-yellow' };
+            const statusLabel = { paid: '✅ Betaald', open: '⏳ Open', pending: '📤 Verstuurd', reminded: '📧 Herinnerd' };
+
+            document.getElementById('alleTabel').innerHTML = page.map(f => `<tr>
+                <td class="font-mono text-gray-600">${f.nummer}</td>
+                <td class="font-medium">${f.klant}</td>
+                <td class="text-gray-500">${f.datum}</td>
+                <td class="text-right font-bold text-green-600">€${f.bedrag.toLocaleString('nl-NL')}</td>
+                <td><span class="badge ${statusBadge[f.status] || 'badge-yellow'}">${statusLabel[f.status] || f.status}</span></td>
+            </tr>`).join('');
+
+            document.getElementById('paginering').innerHTML = pages > 1 ? `
+                <button onclick="gaPagina(${pagina - 1})" class="btn-secondary px-3 py-1 text-sm" ${pagina === 1 ? 'disabled' : ''}>‹</button>
+                <span class="px-3 text-gray-500">${pagina} / ${pages}</span>
+                <button onclick="gaPagina(${pagina + 1})" class="btn-secondary px-3 py-1 text-sm" ${pagina === pages ? 'disabled' : ''}>›</button>
+            ` : '';
+        }
+
+        function gaPagina(p) { pagina = p; render(); }
+
+        function exportCSV() {
+            let csv = 'Factuurnr,Klant,Datum,Bedrag,Status\n';
+            facturen.forEach(f => csv += `"${f.nummer}","${f.klant}","${f.datum}",${f.bedrag},"${f.status}"\n`);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+            a.download = 'facturen.csv';
+            a.click();
+        }
+    </script>
+</body>
+</html>
