@@ -607,7 +607,7 @@
         content.innerHTML = `
             <div class="flex flex-wrap gap-2 mb-4 justify-between items-center">
                 <div class="text-sm text-gray-500">
-                    ${filtered.length} materialen ${filtered.length !== materialen.length ? `(gefilterd van ${materialen.length})` : ''}
+                    ${filtered.length} materialen ${filtered.length !== materialen.length ? '(gefilterd van ' + materialen.length + ')' : ''}
                 </div>
                 <div class="flex gap-2">
                     <button onclick="openModal('importModal')" class="btn btn-secondary text-xs">📥 Importeren</button>
@@ -632,7 +632,7 @@
                     <div class="table-row cursor-pointer hover:bg-indigo-50" onclick="editMaterial('${m.id}')">
                         <div>
                             <div class="font-semibold">${m.naam}</div>
-                            ${m.artikelnummer ? `<div class="text-xs text-gray-400">#${m.artikelnummer}</div>` : ''}
+                            ${m.artikelnummer ? '<div class="text-xs text-gray-400">#' + m.artikelnummer + '</div>' : ''}
                         </div>
                         <div><span class="badge badge-info">${m.categorie || 'Geen'}</span></div>
                         <div class="hide-mobile text-gray-600">${m.leverancier || '-'}</div>
@@ -644,8 +644,7 @@
                     </div>
                 `).join('')}
             </div>
-            ${filtered.length > 100 ? `<p class="text-center text-gray-400 mt-4">Toont 100 van ${filtered.length} resultaten</p>` : ''}
-        `;
+            ${filtered.length > 100 ? '<p class="text-center text-gray-400 mt-4">Toont 100 van ' + filtered.length + ' resultaten</p>' : ''}
         `;
     }
 
@@ -1691,29 +1690,21 @@
         // Parse header to find column indexes (use CSV-aware split)
         const headerCols = csvSplit(lines[0], delimiter).map(c => c.toUpperCase());
         
-        // Smart column detection - zoek naar bekende kolomnamen
-        let colMap = {
-            artikelnummer: -1,
-            naam: -1,
-            prijs: -1,
-            categorie: -1,
-            eenheid: -1,
-            leverancier: -1
-        };
+        // Smart column detection
+        let colMap = { artikelnummer: -1, naam: -1, prijs: -1, categorie: -1, eenheid: -1, leverancier: -1 };
         
         headerCols.forEach((col, idx) => {
-            const c = col.replace(/['"]/g, ''); // Remove quotes
-            
+            const c = col.replace(/['"]/g, '');
             // Artikelnummer
-            if (c.includes('ARTIKEL') || c.includes('ARTNR') || c.includes('SKU') || c.includes('CODE') || c === 'NR') {
+            if (c.includes('ARTIKEL') || c.includes('ARTNR') || c.includes('SKU') || c === 'CODE' || c === 'NR') {
                 if (colMap.artikelnummer === -1) colMap.artikelnummer = idx;
             }
-            // Naam/Omschrijving
+            // Naam
             if (c.includes('NAAM') || c.includes('OMSCHRIJVING') || c.includes('DESCRIPTION') || c.includes('PRODUCT') || c.includes('MATERIAAL')) {
                 colMap.naam = idx;
             }
-            // Prijs
-            if (c.includes('PRIJS') || c.includes('PRICE') || c.includes('BEDRAG') || c.includes('NETTO') || c.includes('BRUTO') || c === 'EUR' || c.includes('INKOOP')) {
+            // Prijs - check for various price column names
+            if (c.includes('PRIJS') || c.includes('PRICE') || c.includes('BEDRAG') || c.includes('NETTO') || c.includes('BRUTO') || c.includes('EUR') || c.includes('INKOOP')) {
                 colMap.prijs = idx;
             }
             // Categorie
@@ -1730,7 +1721,7 @@
             }
         });
         
-        // Als we geen naam kolom vonden, probeer eerste tekstkolom
+        // Fallback: als we geen naam kolom vonden, probeer eerste tekstkolom
         if (colMap.naam === -1) {
             if (lines.length > 1) {
                 const firstDataCols = csvSplit(lines[1], delimiter);
@@ -1742,25 +1733,12 @@
                     }
                 }
             }
-            if (colMap.naam === -1) colMap.naam = 1;
+            if (colMap.naam === -1) colMap.naam = 0;
         }
         
-        // Als we geen prijs kolom vonden via header, zoek naar kolom met decimale getallen
+        // Fallback: als we geen prijs kolom vonden via header, zoek naar kolom met decimale getallen
         if (colMap.prijs === -1) {
             if (lines.length > 1) {
-                const firstDataCols = csvSplit(lines[1], delimiter);
-                for (let i = 0; i < firstDataCols.length; i++) {
-                    if (i === colMap.naam || i === colMap.artikelnummer) continue;
-                    const val = firstDataCols[i].replace(',', '.');
-                    const num = parseFloat(val);
-                    if (!isNaN(num) && num > 0 && num < 100000 && (val.includes('.') || firstDataCols[i].includes(','))) {
-                        colMap.prijs = i;
-                        break;
-                    }
-                }
-            }
-            // Als nog steeds niet gevonden, zoek eerste getal kolom
-            if (colMap.prijs === -1 && lines.length > 1) {
                 const firstDataCols = csvSplit(lines[1], delimiter);
                 for (let i = 0; i < firstDataCols.length; i++) {
                     if (i === colMap.naam || i === colMap.artikelnummer) continue;
@@ -1899,9 +1877,9 @@
         localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen));
         
         let message = '✅ Import voltooid: ';
-        if (added > 0) message += `${added} nieuw`;
+        if (added > 0) message += added + ' nieuw';
         if (added > 0 && updated > 0) message += ', ';
-        if (updated > 0) message += `${updated} bijgewerkt`;
+        if (updated > 0) message += updated + ' bijgewerkt';
         
         showToast(message, 'success');
         
@@ -1916,7 +1894,7 @@
     }
     
     function clearAllMaterials() {
-        if (confirm('⚠️ Weet je zeker dat je ALLE materialen wilt verwijderen? Dit kan niet ongedaan worden!')) {
+        if (confirm('Weet je zeker dat je ALLE materialen wilt verwijderen? Dit kan niet ongedaan worden!')) {
             materialen = [];
             localStorage.removeItem('stuc_materialen_db');
             showToast('Alle materialen verwijderd', 'success');
