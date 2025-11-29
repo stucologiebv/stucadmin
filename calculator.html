@@ -482,7 +482,19 @@
 
         function sluitModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-        loadTaxRates(); loadContacts(); renderDiensten(); renderExtraMaterialen();
+        // Parallel loading - alle data tegelijk ophalen
+        async function initPage() {
+            renderDiensten(); 
+            renderExtraMaterialen();
+            
+            // Load tax rates and contacts in parallel
+            await Promise.all([
+                loadTaxRates(),
+                loadContacts()
+            ]);
+        }
+        
+        initPage();
     </script>
 </body>
 </html>

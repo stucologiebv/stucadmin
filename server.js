@@ -146,7 +146,7 @@ app.get('/', (req, res) => {
 
 // ============ AUTH ROUTES ============
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
     
     if (username === AUTH_USERNAME && password === AUTH_PASSWORD) {
@@ -159,10 +159,79 @@ app.post('/api/auth/login', (req, res) => {
         
         res.setHeader('Set-Cookie', `stucadmin_session=${sessionId}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_DURATION / 1000}`);
         res.json({ success: true, user: username });
+        
+        // Preload cache in background (don't wait for it)
+        preloadCache().catch(e => console.log('Preload error:', e.message));
     } else {
         res.status(401).json({ error: 'Ongeldige gebruikersnaam of wachtwoord' });
     }
 });
+
+// Preload all frequently used data into cache
+async function preloadCache() {
+    console.log('🚀 Preloading cache in background...');
+    const startTime = Date.now();
+    
+    try {
+        const fetch = (await import('node-fetch')).default;
+        
+        // Parallel fetch all data
+        const [contactsRes, invoicesRes, taxRatesRes, purchaseRes] = await Promise.all([
+            fetch(`${MONEYBIRD_API_URL}/contacts.json?per_page=100`, {
+                headers: { 'Authorization': `Bearer ${MONEYBIRD_API_TOKEN}`, 'Content-Type': 'application/json' }
+            }),
+            fetch(`${MONEYBIRD_API_URL}/sales_invoices.json?per_page=100`, {
+                headers: { 'Authorization': `Bearer ${MONEYBIRD_API_TOKEN}`, 'Content-Type': 'application/json' }
+            }),
+            fetch(`${MONEYBIRD_API_URL}/tax_rates.json`, {
+                headers: { 'Authorization': `Bearer ${MONEYBIRD_API_TOKEN}`, 'Content-Type': 'application/json' }
+            }),
+            fetch(`${MONEYBIRD_API_URL}/documents/purchase_invoices.json`, {
+                headers: { 'Authorization': `Bearer ${MONEYBIRD_API_TOKEN}`, 'Content-Type': 'application/json' }
+            })
+        ]);
+        
+        // Parse and cache results
+        if (contactsRes.ok) {
+            const contacts = await contactsRes.json();
+            setCache('contacts', contacts);
+        }
+        
+        if (invoicesRes.ok) {
+            const invoices = await invoicesRes.json();
+            setCache('invoices', invoices);
+        }
+        
+        if (taxRatesRes.ok) {
+            const taxRates = await taxRatesRes.json();
+            setCache('taxRates', taxRates);
+        }
+        
+        if (purchaseRes.ok) {
+            const purchases = await purchaseRes.json();
+            // Build suppliers from purchase invoices
+            const supplierMap = new Map();
+            for (const inv of purchases) {
+                if (inv.contact_id && inv.contact) {
+                    const name = inv.contact.company_name || (inv.contact.firstname + ' ' + inv.contact.lastname);
+                    if (name && name.trim()) {
+                        supplierMap.set(inv.contact_id, {
+                            id: inv.contact_id,
+                            name: name.trim(),
+                            invoiceCount: (supplierMap.get(inv.contact_id)?.invoiceCount || 0) + 1
+                        });
+                    }
+                }
+            }
+            const suppliers = Array.from(supplierMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+            setCache('suppliers', { success: true, suppliers, count: suppliers.length });
+        }
+        
+        console.log(`✅ Cache preloaded in ${Date.now() - startTime}ms`);
+    } catch (error) {
+        console.error('❌ Preload failed:', error.message);
+    }
+}
 
 app.get('/api/auth/check', (req, res) => {
     const cookies = parseCookies(req);

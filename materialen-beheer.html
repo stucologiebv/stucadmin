@@ -384,8 +384,12 @@
     // INITIALIZATION
     // ============================================
     document.addEventListener('DOMContentLoaded', async () => {
-        await loadMaterials();
-        await loadSuppliers();
+        // Parallel loading - beide tegelijk
+        await Promise.all([
+            loadMaterials(),
+            loadSuppliers()
+        ]);
+        
         updateStats();
         renderContent();
         setupDragDrop();
