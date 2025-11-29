@@ -42,11 +42,25 @@ async function moneybirdRequest(endpoint, options = {}) {
 
 // API Routes
 
-// Contacts
+// Contacts - with pagination to get ALL contacts
 app.get('/api/contacts', async (req, res) => {
     try {
-        const contacts = await moneybirdRequest('/contacts.json');
-        res.json(contacts);
+        let allContacts = [];
+        let page = 1;
+        let hasMore = true;
+        
+        while (hasMore) {
+            const contacts = await moneybirdRequest(`/contacts.json?page=${page}&per_page=100`);
+            if (contacts.length > 0) {
+                allContacts = allContacts.concat(contacts);
+                page++;
+                if (contacts.length < 100) hasMore = false;
+            } else {
+                hasMore = false;
+            }
+        }
+        
+        res.json(allContacts);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -85,11 +99,25 @@ app.patch('/api/contacts/:id', async (req, res) => {
     }
 });
 
-// Invoices
+// Invoices - with pagination to get ALL invoices
 app.get('/api/invoices', async (req, res) => {
     try {
-        const invoices = await moneybirdRequest('/sales_invoices.json');
-        res.json(invoices);
+        let allInvoices = [];
+        let page = 1;
+        let hasMore = true;
+        
+        while (hasMore) {
+            const invoices = await moneybirdRequest(`/sales_invoices.json?page=${page}&per_page=100`);
+            if (invoices.length > 0) {
+                allInvoices = allInvoices.concat(invoices);
+                page++;
+                if (invoices.length < 100) hasMore = false;
+            } else {
+                hasMore = false;
+            }
+        }
+        
+        res.json(allInvoices);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
