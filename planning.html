@@ -19,14 +19,21 @@
         .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; }
         .btn-primary { background: #6366f1; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; min-height: 44px; }
         .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .btn-google { background: #4285f4; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .btn-google:hover { background: #3367d6; }
         .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; width: 100%; font-size: 16px; min-height: 44px; }
         .input-field:focus { outline: none; border-color: #6366f1; }
-        .project-card { background: #fff; border-left: 4px solid #6366f1; border-radius: 0 12px 12px 0; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .project-card { background: #fff; border-left: 4px solid #6366f1; border-radius: 0 12px 12px 0; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; }
+        .project-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .project-card.google { border-left-color: #4285f4; }
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
         .modal-content { background: white; border-radius: 16px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 20px; }
         .calendar-day { min-height: 80px; border: 1px solid #e5e7eb; padding: 8px; font-size: 12px; }
         .calendar-day.today { background: #eef2ff; }
         .calendar-day.other-month { background: #f8fafc; color: #94a3b8; }
+        .event-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+        .event-dot.local { background: #6366f1; }
+        .event-dot.google { background: #4285f4; }
         main { margin-left: 256px; padding: 24px; min-height: 100vh; }
         @media (max-width: 1024px) {
             .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
@@ -36,6 +43,11 @@
             main { margin-left: 0; padding: 70px 12px 24px 12px; }
             .calendar-day { min-height: 60px; padding: 4px; }
         }
+        .google-badge { background: #4285f4; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; }
+        .local-badge { background: #6366f1; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; }
+        .sync-status { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; font-size: 12px; }
+        .sync-status.connected { background: #dcfce7; color: #166534; }
+        .sync-status.disconnected { background: #fef3c7; color: #92400e; }
     </style>
 </head>
 <body>
@@ -61,7 +73,10 @@
         <main class="flex-1">
             <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div><h1 class="text-lg sm:text-xl font-bold">📅 Planning</h1><p class="text-gray-500 text-sm">Beheer je projecten</p></div>
-                <button onclick="openNieuwProject()" class="btn-primary text-sm">+ Nieuw project</button>
+                <div class="flex gap-2 flex-wrap">
+                    <div id="googleStatus"></div>
+                    <button onclick="openNieuwProject()" class="btn-primary text-sm">+ Nieuw project</button>
+                </div>
             </header>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -76,6 +91,11 @@
                             <div>Ma</div><div>Di</div><div>Wo</div><div>Do</div><div>Vr</div><div>Za</div><div>Zo</div>
                         </div>
                         <div class="grid grid-cols-7 gap-1" id="kalender"></div>
+                    </div>
+                    
+                    <div class="flex gap-4 text-xs text-gray-500">
+                        <div class="flex items-center gap-1"><span class="event-dot local"></span> Lokaal project</div>
+                        <div class="flex items-center gap-1"><span class="event-dot google"></span> Google Agenda</div>
                     </div>
                 </div>
 
@@ -92,14 +112,21 @@
             <div class="flex justify-between mb-4"><h2 class="font-bold">Nieuw project</h2><button onclick="sluitModal()" class="text-gray-400 text-2xl">&times;</button></div>
             <form onsubmit="saveProject(event)" class="space-y-4">
                 <input type="hidden" id="projectId">
+                <input type="hidden" id="projectSource" value="local">
                 <div><label class="text-xs text-gray-500">Projectnaam</label><input type="text" id="projectNaam" class="input-field" required></div>
                 <div><label class="text-xs text-gray-500">Klant</label><input type="text" id="projectKlant" class="input-field"></div>
-                <div><label class="text-xs text-gray-500">Adres</label><input type="text" id="projectAdres" class="input-field"></div>
+                <div><label class="text-xs text-gray-500">Adres/Locatie</label><input type="text" id="projectAdres" class="input-field"></div>
                 <div class="grid grid-cols-2 gap-4">
                     <div><label class="text-xs text-gray-500">Startdatum</label><input type="date" id="projectStart" class="input-field" required></div>
                     <div><label class="text-xs text-gray-500">Einddatum</label><input type="date" id="projectEind" class="input-field"></div>
                 </div>
                 <div><label class="text-xs text-gray-500">Notities</label><textarea id="projectNotities" class="input-field" rows="3"></textarea></div>
+                
+                <div id="syncOption" class="flex items-center gap-2 p-3 bg-blue-50 rounded-lg hidden">
+                    <input type="checkbox" id="syncToGoogle" checked>
+                    <label for="syncToGoogle" class="text-sm text-blue-700">📅 Ook toevoegen aan Google Agenda</label>
+                </div>
+                
                 <div class="flex gap-3">
                     <button type="submit" class="btn-primary flex-1">💾 Opslaan</button>
                     <button type="button" onclick="verwijderProject()" class="btn-secondary text-red-500" id="btnVerwijder" style="display:none">🗑️</button>
@@ -110,10 +137,86 @@
 
     <script>
         let projecten = JSON.parse(localStorage.getItem('stuc_planning') || '[]');
+        let googleEvents = [];
         let huidigeDatum = new Date();
+        let googleConnected = false;
 
         function toggleMenu() { document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open'); }
         async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login.html'; }
+
+        function checkUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('google_connected') === 'true') {
+                showToast('✅ Google Agenda gekoppeld!', 'success');
+                window.history.replaceState({}, '', '/planning.html');
+                loadGoogleEvents();
+            }
+            if (params.get('google_error')) {
+                showToast('❌ Google koppeling mislukt: ' + params.get('google_error'), 'error');
+                window.history.replaceState({}, '', '/planning.html');
+            }
+        }
+
+        async function checkGoogleStatus() {
+            try {
+                const res = await fetch('/api/google/status');
+                const data = await res.json();
+                googleConnected = data.connected;
+                updateGoogleStatusUI();
+                if (googleConnected) loadGoogleEvents();
+            } catch (e) {
+                console.log('Google status check failed');
+            }
+        }
+
+        function updateGoogleStatusUI() {
+            const statusDiv = document.getElementById('googleStatus');
+            const syncOption = document.getElementById('syncOption');
+            
+            if (googleConnected) {
+                statusDiv.innerHTML = '<div class="sync-status connected"><span>✓ Google Agenda</span><button onclick="disconnectGoogle()" class="text-xs underline">Ontkoppelen</button></div>';
+                syncOption.classList.remove('hidden');
+            } else {
+                statusDiv.innerHTML = '<button onclick="connectGoogle()" class="btn-google text-sm"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Koppel Google Agenda</button>';
+                syncOption.classList.add('hidden');
+            }
+        }
+
+        function connectGoogle() { window.location.href = '/api/google/auth'; }
+
+        async function disconnectGoogle() {
+            if (confirm('Google Agenda ontkoppelen?')) {
+                await fetch('/api/google/disconnect', { method: 'POST' });
+                googleConnected = false;
+                googleEvents = [];
+                updateGoogleStatusUI();
+                renderKalender();
+                renderProjecten();
+                showToast('Google Agenda ontkoppeld', 'info');
+            }
+        }
+
+        async function loadGoogleEvents() {
+            try {
+                const res = await fetch('/api/google/events');
+                const data = await res.json();
+                if (data.needsAuth) { googleConnected = false; updateGoogleStatusUI(); return; }
+                googleEvents = data.events || [];
+                renderKalender();
+                renderProjecten();
+            } catch (e) { console.log('Failed to load Google events:', e); }
+        }
+
+        function getAllEvents() {
+            const local = projecten.map(p => ({ ...p, source: 'local', start: p.startDatum, end: p.eindDatum || p.startDatum, title: p.naam }));
+            const google = googleEvents.map(e => ({
+                id: e.id, naam: e.title, klant: '', adres: e.location || '',
+                startDatum: e.start?.split('T')[0] || e.start,
+                eindDatum: e.end?.split('T')[0] || e.end,
+                notities: e.description || '', source: 'google', start: e.start, end: e.end, title: e.title
+            }));
+            return [...local, ...google];
+        }
 
         function renderKalender() {
             const jaar = huidigeDatum.getFullYear();
@@ -127,41 +230,60 @@
             startDag--;
 
             const vandaag = new Date();
+            const allEvents = getAllEvents();
             let html = '';
             
             for (let i = 0; i < startDag; i++) {
                 const d = new Date(jaar, maand, -startDag + i + 1);
-                html += `<div class="calendar-day other-month rounded">${d.getDate()}</div>`;
+                html += '<div class="calendar-day other-month rounded">' + d.getDate() + '</div>';
             }
 
             for (let dag = 1; dag <= laatsteDag.getDate(); dag++) {
                 const datum = new Date(jaar, maand, dag);
+                const datumStr = datum.toISOString().split('T')[0];
                 const isVandaag = datum.toDateString() === vandaag.toDateString();
-                const dagProjecten = projecten.filter(p => {
-                    const start = new Date(p.startDatum);
-                    const eind = p.eindDatum ? new Date(p.eindDatum) : start;
-                    return datum >= start && datum <= eind;
+                
+                const dagEvents = allEvents.filter(e => {
+                    const start = e.startDatum || e.start?.split('T')[0];
+                    const end = e.eindDatum || e.end?.split('T')[0] || start;
+                    return datumStr >= start && datumStr <= end;
                 });
                 
-                html += `<div class="calendar-day ${isVandaag ? 'today' : ''} rounded cursor-pointer hover:bg-indigo-50" onclick="openDag('${datum.toISOString()}')">
-                    <div class="font-semibold ${isVandaag ? 'text-indigo-600' : ''}">${dag}</div>
-                    ${dagProjecten.slice(0, 2).map(p => `<div class="text-xs bg-indigo-100 text-indigo-700 rounded px-1 mt-1 truncate">${p.naam}</div>`).join('')}
-                    ${dagProjecten.length > 2 ? `<div class="text-xs text-gray-400">+${dagProjecten.length - 2}</div>` : ''}
-                </div>`;
+                html += '<div class="calendar-day ' + (isVandaag ? 'today' : '') + ' rounded cursor-pointer hover:bg-indigo-50" onclick="openDag(\'' + datumStr + '\')">';
+                html += '<div class="font-semibold ' + (isVandaag ? 'text-indigo-600' : '') + '">' + dag + '</div>';
+                dagEvents.slice(0, 2).forEach(e => {
+                    const bgClass = e.source === 'google' ? 'bg-blue-100 text-blue-700' : 'bg-indigo-100 text-indigo-700';
+                    html += '<div class="text-xs ' + bgClass + ' rounded px-1 mt-1 truncate" onclick="event.stopPropagation(); openProject(\'' + e.id + '\', \'' + e.source + '\')">' + (e.naam || e.title) + '</div>';
+                });
+                if (dagEvents.length > 2) html += '<div class="text-xs text-gray-400">+' + (dagEvents.length - 2) + '</div>';
+                html += '</div>';
             }
 
             document.getElementById('kalender').innerHTML = html;
         }
 
         function renderProjecten() {
-            const komend = projecten.filter(p => new Date(p.startDatum) >= new Date()).sort((a, b) => new Date(a.startDatum) - new Date(b.startDatum));
-            document.getElementById('projectenLijst').innerHTML = komend.length === 0 
-                ? '<p class="text-gray-400 text-sm text-center py-8">Geen projecten gepland</p>'
-                : komend.map(p => `<div class="project-card" onclick="openProject('${p.id}')">
-                    <h3 class="font-semibold text-sm">${p.naam}</h3>
-                    <p class="text-gray-500 text-xs">${p.klant || ''}</p>
-                    <p class="text-indigo-600 text-xs mt-2">📅 ${new Date(p.startDatum).toLocaleDateString('nl-NL')}</p>
-                </div>`).join('');
+            const allEvents = getAllEvents();
+            const komend = allEvents
+                .filter(e => new Date(e.startDatum || e.start) >= new Date(new Date().setHours(0,0,0,0)))
+                .sort((a, b) => new Date(a.startDatum || a.start) - new Date(b.startDatum || b.start))
+                .slice(0, 10);
+            
+            if (komend.length === 0) {
+                document.getElementById('projectenLijst').innerHTML = '<p class="text-gray-400 text-sm text-center py-8">Geen projecten gepland</p>';
+                return;
+            }
+            
+            let html = '';
+            komend.forEach(e => {
+                const badge = e.source === 'google' ? '<span class="google-badge">Google</span>' : '<span class="local-badge">Lokaal</span>';
+                html += '<div class="project-card ' + (e.source === 'google' ? 'google' : '') + '" onclick="openProject(\'' + e.id + '\', \'' + e.source + '\')">';
+                html += '<div class="flex justify-between items-start"><h3 class="font-semibold text-sm">' + (e.naam || e.title) + '</h3>' + badge + '</div>';
+                html += '<p class="text-gray-500 text-xs">' + (e.klant || e.adres || '') + '</p>';
+                html += '<p class="text-indigo-600 text-xs mt-2">📅 ' + new Date(e.startDatum || e.start).toLocaleDateString('nl-NL') + '</p>';
+                html += '</div>';
+            });
+            document.getElementById('projectenLijst').innerHTML = html;
         }
 
         function vorigeMaand() { huidigeDatum.setMonth(huidigeDatum.getMonth() - 1); renderKalender(); }
@@ -169,6 +291,7 @@
 
         function openNieuwProject() {
             document.getElementById('projectId').value = '';
+            document.getElementById('projectSource').value = 'local';
             document.getElementById('projectNaam').value = '';
             document.getElementById('projectKlant').value = '';
             document.getElementById('projectAdres').value = '';
@@ -176,13 +299,23 @@
             document.getElementById('projectEind').value = '';
             document.getElementById('projectNotities').value = '';
             document.getElementById('btnVerwijder').style.display = 'none';
+            document.getElementById('syncToGoogle').checked = googleConnected;
             document.getElementById('projectModal').classList.remove('hidden');
         }
 
-        function openProject(id) {
-            const p = projecten.find(x => x.id === id);
+        function openProject(id, source) {
+            source = source || 'local';
+            let p;
+            if (source === 'google') {
+                const ge = googleEvents.find(e => e.id === id);
+                if (ge) p = { id: ge.id, naam: ge.title, klant: '', adres: ge.location || '', startDatum: ge.start?.split('T')[0] || ge.start, eindDatum: ge.end?.split('T')[0] || ge.end, notities: ge.description || '' };
+            } else {
+                p = projecten.find(x => x.id === id);
+            }
             if (!p) return;
+            
             document.getElementById('projectId').value = p.id;
+            document.getElementById('projectSource').value = source;
             document.getElementById('projectNaam').value = p.naam;
             document.getElementById('projectKlant').value = p.klant || '';
             document.getElementById('projectAdres').value = p.adres || '';
@@ -190,18 +323,21 @@
             document.getElementById('projectEind').value = p.eindDatum || '';
             document.getElementById('projectNotities').value = p.notities || '';
             document.getElementById('btnVerwijder').style.display = 'block';
+            document.getElementById('syncToGoogle').checked = false;
             document.getElementById('projectModal').classList.remove('hidden');
         }
 
         function openDag(datum) {
-            document.getElementById('projectStart').value = datum.split('T')[0];
             openNieuwProject();
-            document.getElementById('projectStart').value = datum.split('T')[0];
+            document.getElementById('projectStart').value = datum;
         }
 
-        function saveProject(e) {
+        async function saveProject(e) {
             e.preventDefault();
             const id = document.getElementById('projectId').value;
+            const source = document.getElementById('projectSource').value;
+            const syncToGoogle = document.getElementById('syncToGoogle').checked && googleConnected;
+            
             const project = {
                 id: id || Date.now().toString(),
                 naam: document.getElementById('projectNaam').value,
@@ -211,30 +347,76 @@
                 eindDatum: document.getElementById('projectEind').value,
                 notities: document.getElementById('projectNotities').value
             };
-            if (id) {
-                projecten = projecten.map(p => p.id === id ? project : p);
+            
+            if (source === 'google' && id) {
+                try {
+                    await fetch('/api/google/events/' + id, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title: project.naam, description: project.notities, start: project.startDatum, end: project.eindDatum || project.startDatum, location: project.adres, allDay: true })
+                    });
+                    showToast('Google event bijgewerkt', 'success');
+                    await loadGoogleEvents();
+                } catch (err) { showToast('Fout bij bijwerken Google event', 'error'); }
             } else {
-                projecten.push(project);
+                if (id) { projecten = projecten.map(p => p.id === id ? project : p); }
+                else { projecten.push(project); }
+                localStorage.setItem('stuc_planning', JSON.stringify(projecten));
+                
+                if (syncToGoogle && !id) {
+                    try {
+                        await fetch('/api/google/events', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ title: project.naam, description: 'Klant: ' + project.klant + '\n' + project.notities, start: project.startDatum, end: project.eindDatum || project.startDatum, location: project.adres, allDay: true })
+                        });
+                        showToast('Project opgeslagen + Google Agenda', 'success');
+                        await loadGoogleEvents();
+                    } catch (err) { showToast('Project opgeslagen (Google sync mislukt)', 'warning'); }
+                } else { showToast('Project opgeslagen', 'success'); }
             }
-            localStorage.setItem('stuc_planning', JSON.stringify(projecten));
+            
             sluitModal();
             renderKalender();
             renderProjecten();
         }
 
-        function verwijderProject() {
+        async function verwijderProject() {
             const id = document.getElementById('projectId').value;
-            if (confirm('Project verwijderen?')) {
+            const source = document.getElementById('projectSource').value;
+            if (!confirm('Project verwijderen?')) return;
+            
+            if (source === 'google') {
+                try {
+                    await fetch('/api/google/events/' + id, { method: 'DELETE' });
+                    showToast('Google event verwijderd', 'success');
+                    await loadGoogleEvents();
+                } catch (err) { showToast('Fout bij verwijderen', 'error'); }
+            } else {
                 projecten = projecten.filter(p => p.id !== id);
                 localStorage.setItem('stuc_planning', JSON.stringify(projecten));
-                sluitModal();
-                renderKalender();
-                renderProjecten();
+                showToast('Project verwijderd', 'success');
             }
+            
+            sluitModal();
+            renderKalender();
+            renderProjecten();
         }
 
         function sluitModal() { document.getElementById('projectModal').classList.add('hidden'); }
 
+        function showToast(message, type) {
+            type = type || 'info';
+            const colors = { success: 'bg-green-500', error: 'bg-red-500', warning: 'bg-yellow-500', info: 'bg-blue-500' };
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 ' + colors[type] + ' text-white px-4 py-2 rounded-lg shadow-lg z-50';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(function() { toast.remove(); }, 3000);
+        }
+
+        checkUrlParams();
+        checkGoogleStatus();
         renderKalender();
         renderProjecten();
     </script>

@@ -20,6 +20,14 @@ const MONEYBIRD_API_TOKEN = process.env.MONEYBIRD_TOKEN || 'GJvgHpLiwQnDxIodsO28
 const ADMINISTRATION_ID = process.env.MONEYBIRD_ADMIN_ID || '463906598304089814';
 const MONEYBIRD_API_URL = `https://moneybird.com/api/v2/${ADMINISTRATION_ID}`;
 
+// Google Calendar credentials
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1062914520146-0bseg9gsa2999i7euo7tr62507sdjnu9.apps.googleusercontent.com';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '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';
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://stucadmin-production.up.railway.app/api/google/callback';
+
+// Google tokens storage (per user session)
+const googleTokens = new Map();
+
 // ============================================
 // CACHING SYSTEM - Moneybird data cachen
 // ============================================
@@ -1226,6 +1234,316 @@ console.log('✅ Materialen Pro module geladen');
 
 
 // ============================================
+// GOOGLE CALENDAR INTEGRATION
+// ============================================
+
+// Start OAuth flow - redirect to Google
+app.get('/api/google/auth', requireAuth, (req, res) => {
+    const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly');
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
+    res.redirect(authUrl);
+});
+
+// OAuth callback - exchange code for tokens
+app.get('/api/google/callback', async (req, res) => {
+    const { code, error } = req.query;
+    
+    if (error) {
+        return res.redirect('/planning.html?google_error=' + error);
+    }
+    
+    if (!code) {
+        return res.redirect('/planning.html?google_error=no_code');
+    }
+    
+    try {
+        const fetch = (await import('node-fetch')).default;
+        
+        const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                code,
+                client_id: GOOGLE_CLIENT_ID,
+                client_secret: GOOGLE_CLIENT_SECRET,
+                redirect_uri: GOOGLE_REDIRECT_URI,
+                grant_type: 'authorization_code'
+            })
+        });
+        
+        const tokens = await tokenResponse.json();
+        
+        if (tokens.error) {
+            console.error('Google token error:', tokens);
+            return res.redirect('/planning.html?google_error=' + tokens.error);
+        }
+        
+        // Store tokens (in production, store per user in database)
+        googleTokens.set('default', {
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            expires_at: Date.now() + (tokens.expires_in * 1000)
+        });
+        
+        console.log('✅ Google Calendar connected!');
+        res.redirect('/planning.html?google_connected=true');
+        
+    } catch (error) {
+        console.error('Google OAuth error:', error);
+        res.redirect('/planning.html?google_error=server_error');
+    }
+});
+
+// Check if Google is connected
+app.get('/api/google/status', requireAuth, (req, res) => {
+    const tokens = googleTokens.get('default');
+    const connected = tokens && tokens.access_token && Date.now() < tokens.expires_at;
+    res.json({ connected, expires_at: tokens?.expires_at });
+});
+
+// Disconnect Google
+app.post('/api/google/disconnect', requireAuth, (req, res) => {
+    googleTokens.delete('default');
+    res.json({ success: true });
+});
+
+// Refresh Google token if needed
+async function getValidGoogleToken() {
+    const tokens = googleTokens.get('default');
+    if (!tokens) return null;
+    
+    // Token still valid
+    if (Date.now() < tokens.expires_at - 60000) {
+        return tokens.access_token;
+    }
+    
+    // Need to refresh
+    if (!tokens.refresh_token) return null;
+    
+    try {
+        const fetch = (await import('node-fetch')).default;
+        const response = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                client_id: GOOGLE_CLIENT_ID,
+                client_secret: GOOGLE_CLIENT_SECRET,
+                refresh_token: tokens.refresh_token,
+                grant_type: 'refresh_token'
+            })
+        });
+        
+        const newTokens = await response.json();
+        if (newTokens.access_token) {
+            googleTokens.set('default', {
+                access_token: newTokens.access_token,
+                refresh_token: tokens.refresh_token,
+                expires_at: Date.now() + (newTokens.expires_in * 1000)
+            });
+            return newTokens.access_token;
+        }
+    } catch (e) {
+        console.error('Token refresh failed:', e);
+    }
+    return null;
+}
+
+// Get calendar events
+app.get('/api/google/events', requireAuth, async (req, res) => {
+    try {
+        const token = await getValidGoogleToken();
+        if (!token) {
+            return res.status(401).json({ error: 'Google not connected', needsAuth: true });
+        }
+        
+        const fetch = (await import('node-fetch')).default;
+        
+        // Get events for next 3 months
+        const timeMin = new Date().toISOString();
+        const timeMax = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+        
+        const response = await fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=100`,
+            {
+                headers: { 'Authorization': `Bearer ${token}` }
+            }
+        );
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            console.error('Google Calendar error:', data.error);
+            return res.status(400).json({ error: data.error.message });
+        }
+        
+        // Format events
+        const events = (data.items || []).map(event => ({
+            id: event.id,
+            title: event.summary || 'Geen titel',
+            description: event.description || '',
+            start: event.start?.dateTime || event.start?.date,
+            end: event.end?.dateTime || event.end?.date,
+            location: event.location || '',
+            allDay: !event.start?.dateTime,
+            source: 'google'
+        }));
+        
+        res.json({ success: true, events });
+        
+    } catch (error) {
+        console.error('Error fetching Google events:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Create calendar event
+app.post('/api/google/events', requireAuth, async (req, res) => {
+    try {
+        const token = await getValidGoogleToken();
+        if (!token) {
+            return res.status(401).json({ error: 'Google not connected', needsAuth: true });
+        }
+        
+        const { title, description, start, end, location, allDay } = req.body;
+        
+        const fetch = (await import('node-fetch')).default;
+        
+        // Build event object
+        const event = {
+            summary: title,
+            description: description || '',
+            location: location || '',
+        };
+        
+        if (allDay) {
+            event.start = { date: start.split('T')[0] };
+            event.end = { date: end ? end.split('T')[0] : start.split('T')[0] };
+        } else {
+            event.start = { dateTime: start, timeZone: 'Europe/Amsterdam' };
+            event.end = { dateTime: end || start, timeZone: 'Europe/Amsterdam' };
+        }
+        
+        const response = await fetch(
+            'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(event)
+            }
+        );
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            console.error('Google create event error:', data.error);
+            return res.status(400).json({ error: data.error.message });
+        }
+        
+        res.json({
+            success: true,
+            event: {
+                id: data.id,
+                title: data.summary,
+                start: data.start?.dateTime || data.start?.date,
+                end: data.end?.dateTime || data.end?.date
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error creating Google event:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Update calendar event
+app.put('/api/google/events/:id', requireAuth, async (req, res) => {
+    try {
+        const token = await getValidGoogleToken();
+        if (!token) {
+            return res.status(401).json({ error: 'Google not connected', needsAuth: true });
+        }
+        
+        const { title, description, start, end, location, allDay } = req.body;
+        const eventId = req.params.id;
+        
+        const fetch = (await import('node-fetch')).default;
+        
+        const event = {
+            summary: title,
+            description: description || '',
+            location: location || '',
+        };
+        
+        if (allDay) {
+            event.start = { date: start.split('T')[0] };
+            event.end = { date: end ? end.split('T')[0] : start.split('T')[0] };
+        } else {
+            event.start = { dateTime: start, timeZone: 'Europe/Amsterdam' };
+            event.end = { dateTime: end || start, timeZone: 'Europe/Amsterdam' };
+        }
+        
+        const response = await fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+            {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(event)
+            }
+        );
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            return res.status(400).json({ error: data.error.message });
+        }
+        
+        res.json({ success: true, event: data });
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete calendar event
+app.delete('/api/google/events/:id', requireAuth, async (req, res) => {
+    try {
+        const token = await getValidGoogleToken();
+        if (!token) {
+            return res.status(401).json({ error: 'Google not connected', needsAuth: true });
+        }
+        
+        const fetch = (await import('node-fetch')).default;
+        
+        const response = await fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/primary/events/${req.params.id}`,
+            {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            }
+        );
+        
+        if (response.status === 204 || response.ok) {
+            res.json({ success: true });
+        } else {
+            const data = await response.json();
+            res.status(400).json({ error: data.error?.message || 'Delete failed' });
+        }
+        
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+console.log('📅 Google Calendar module geladen');
+
+
+// ============================================
 // START SERVER
 // ============================================
 
@@ -1233,5 +1551,6 @@ app.listen(PORT, () => {
     console.log(`✅ StucAdmin server running on port ${PORT}`);
     console.log(`🔒 Authentication enabled`);
     console.log(`📦 Materialen Pro module actief`);
+    console.log(`📅 Google Calendar integratie actief`);
     console.log(`📊 Login: http://localhost:${PORT}/login.html`);
 });
