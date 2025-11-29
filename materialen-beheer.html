@@ -1646,65 +1646,151 @@
         const lines = content.split('\n').filter(l => l.trim());
         importData = [];
         
-        // Detect format
-        const isBMN = filename.toLowerCase().includes('pricat') || content.includes('ARTIKELNUMMER');
-        const isStiho = filename.toLowerCase().includes('stiho') || content.includes('Stiho');
+        if (lines.length < 2) {
+            showToast('Bestand is leeg of ongeldig', 'error');
+            return;
+        }
         
-        let startRow = 0;
+        // Detect delimiter
+        const firstLine = lines[0];
+        let delimiter = ',';
+        if (firstLine.includes('\t')) delimiter = '\t';
+        else if (firstLine.includes(';')) delimiter = ';';
         
-        // Find header row
-        for (let i = 0; i < Math.min(lines.length, 10); i++) {
-            const line = lines[i].toUpperCase();
-            if (line.includes('NAAM') || line.includes('OMSCHRIJVING') || line.includes('ARTIKEL')) {
-                startRow = i + 1;
-                break;
+        // Parse header to find column indexes
+        const headerCols = lines[0].split(delimiter).map(c => c.trim().toUpperCase());
+        
+        // Smart column detection - zoek naar bekende kolomnamen
+        let colMap = {
+            artikelnummer: -1,
+            naam: -1,
+            prijs: -1,
+            categorie: -1,
+            eenheid: -1,
+            leverancier: -1
+        };
+        
+        headerCols.forEach((col, idx) => {
+            const c = col.replace(/['"]/g, ''); // Remove quotes
+            
+            // Artikelnummer
+            if (c.includes('ARTIKEL') || c.includes('ARTNR') || c.includes('SKU') || c.includes('CODE') || c === 'NR') {
+                if (colMap.artikelnummer === -1) colMap.artikelnummer = idx;
+            }
+            // Naam/Omschrijving
+            if (c.includes('NAAM') || c.includes('OMSCHRIJVING') || c.includes('DESCRIPTION') || c.includes('PRODUCT') || c.includes('MATERIAAL')) {
+                colMap.naam = idx;
+            }
+            // Prijs
+            if (c.includes('PRIJS') || c.includes('PRICE') || c.includes('BEDRAG') || c.includes('NETTO') || c.includes('BRUTO') || c === 'EUR' || c.includes('INKOOP')) {
+                colMap.prijs = idx;
+            }
+            // Categorie
+            if (c.includes('CATEGORIE') || c.includes('CATEGORY') || c.includes('GROEP') || c.includes('GROUP') || c.includes('TYPE')) {
+                colMap.categorie = idx;
+            }
+            // Eenheid
+            if (c.includes('EENHEID') || c.includes('UNIT') || c.includes('VPE') || c.includes('VERPAKKING')) {
+                colMap.eenheid = idx;
+            }
+            // Leverancier
+            if (c.includes('LEVERANCIER') || c.includes('SUPPLIER') || c.includes('VENDOR') || c.includes('MERK') || c.includes('BRAND')) {
+                colMap.leverancier = idx;
+            }
+        });
+        
+        // Als we geen naam kolom vonden, probeer eerste tekstkolom
+        if (colMap.naam === -1) {
+            if (lines.length > 1) {
+                const firstDataCols = lines[1].split(delimiter);
+                for (let i = 0; i < firstDataCols.length; i++) {
+                    const val = firstDataCols[i].trim();
+                    if (val.length > 3 && isNaN(parseFloat(val.replace(',', '.')))) {
+                        colMap.naam = i;
+                        break;
+                    }
+                }
+            }
+            if (colMap.naam === -1) colMap.naam = 1;
+        }
+        
+        // Als we geen prijs kolom vonden via header, zoek naar kolom met decimale getallen
+        if (colMap.prijs === -1) {
+            if (lines.length > 1) {
+                const firstDataCols = lines[1].split(delimiter);
+                for (let i = 0; i < firstDataCols.length; i++) {
+                    if (i === colMap.naam || i === colMap.artikelnummer) continue;
+                    const val = firstDataCols[i].trim().replace(',', '.');
+                    const num = parseFloat(val);
+                    if (!isNaN(num) && num > 0 && num < 100000 && (val.includes('.') || val.includes(','))) {
+                        colMap.prijs = i;
+                        break;
+                    }
+                }
+            }
+            // Als nog steeds niet gevonden, zoek eerste getal kolom
+            if (colMap.prijs === -1 && lines.length > 1) {
+                const firstDataCols = lines[1].split(delimiter);
+                for (let i = 0; i < firstDataCols.length; i++) {
+                    if (i === colMap.naam || i === colMap.artikelnummer) continue;
+                    const val = firstDataCols[i].trim().replace(',', '.');
+                    const num = parseFloat(val);
+                    if (!isNaN(num) && num > 0 && num < 100000) {
+                        colMap.prijs = i;
+                        break;
+                    }
+                }
             }
         }
         
-        if (startRow === 0) startRow = 1; // Default: skip first row as header
+        // Detecteer leverancier uit filename
+        let defaultLeverancier = '';
+        const fnLower = filename.toLowerCase();
+        if (fnLower.includes('bmn') || fnLower.includes('pricat')) defaultLeverancier = 'BMN';
+        else if (fnLower.includes('stiho')) defaultLeverancier = 'Stiho';
+        else if (fnLower.includes('hornbach')) defaultLeverancier = 'Hornbach';
+        else if (fnLower.includes('gamma')) defaultLeverancier = 'Gamma';
+        else if (fnLower.includes('praxis')) defaultLeverancier = 'Praxis';
         
-        for (let i = startRow; i < lines.length; i++) {
-            const cols = lines[i].split(/[,;\t]/);
+        console.log('Import kolom mapping:', colMap);
+        console.log('Default leverancier:', defaultLeverancier);
+        
+        // Parse data rows (skip header)
+        for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^["']|["']$/g, ''));
             
             if (cols.length >= 2) {
-                let mat;
+                const naam = cols[colMap.naam] || '';
                 
-                if (isBMN) {
-                    mat = {
-                        id: Date.now().toString() + i,
-                        artikelnummer: cols[0]?.trim() || '',
-                        naam: cols[1]?.trim() || '',
-                        categorie: cols[3]?.trim() || 'BMN',
-                        standaardPrijs: parseFloat((cols[5] || '0').replace(',', '.')) || 0,
-                        eenheid: cols[4]?.trim() || 'stuk',
-                        leverancier: 'BMN'
-                    };
-                } else if (isStiho) {
-                    mat = {
-                        id: Date.now().toString() + i,
-                        artikelnummer: cols[0]?.trim() || '',
-                        naam: cols[1]?.trim() || '',
-                        categorie: cols[2]?.trim() || 'Stiho',
-                        standaardPrijs: parseFloat((cols[3] || '0').replace(',', '.')) || 0,
-                        eenheid: cols[4]?.trim() || 'stuk',
-                        leverancier: 'Stiho'
-                    };
-                } else {
-                    // Generic CSV: naam, categorie, prijs, eenheid, leverancier
-                    mat = {
-                        id: Date.now().toString() + i,
-                        naam: cols[0]?.trim() || '',
-                        categorie: cols[1]?.trim() || '',
-                        standaardPrijs: parseFloat((cols[2] || '0').replace(',', '.')) || 0,
-                        eenheid: cols[3]?.trim() || 'stuk',
-                        leverancier: cols[4]?.trim() || ''
-                    };
+                // Skip lege rijen of header-achtige rijen
+                if (!naam || naam.length < 2 || naam.toUpperCase() === 'NAAM' || naam.toUpperCase() === 'OMSCHRIJVING') {
+                    continue;
                 }
                 
-                if (mat.naam && mat.naam.length > 1) {
-                    importData.push(mat);
+                // Parse prijs
+                let prijs = 0;
+                if (colMap.prijs >= 0 && cols[colMap.prijs]) {
+                    const prijsStr = cols[colMap.prijs].replace(/[€$\s]/g, '').replace(',', '.');
+                    prijs = parseFloat(prijsStr) || 0;
                 }
+                
+                const mat = {
+                    id: Date.now().toString() + '_' + i,
+                    artikelnummer: colMap.artikelnummer >= 0 ? (cols[colMap.artikelnummer] || '') : '',
+                    naam: naam,
+                    categorie: colMap.categorie >= 0 ? (cols[colMap.categorie] || defaultLeverancier || 'Overig') : (defaultLeverancier || 'Overig'),
+                    standaardPrijs: prijs,
+                    eenheid: colMap.eenheid >= 0 ? (cols[colMap.eenheid] || 'stuk') : 'stuk',
+                    leverancier: colMap.leverancier >= 0 ? (cols[colMap.leverancier] || defaultLeverancier) : defaultLeverancier
+                };
+                
+                importData.push(mat);
             }
+        }
+        
+        if (importData.length === 0) {
+            showToast('Geen geldige materialen gevonden in bestand', 'error');
+            return;
         }
         
         showImportPreview();
