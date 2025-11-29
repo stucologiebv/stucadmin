@@ -2,52 +2,112 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📊 Executive Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Executive Dashboard - StucAdmin Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%); min-height: 100vh; }
+        .glass-card { background: rgba(255,255,255,0.1); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; }
+        .stat-card { background: linear-gradient(135deg, var(--from), var(--to)); border-radius: 20px; padding: 24px; color: white; box-shadow: 0 20px 40px rgba(0,0,0,0.3); transition: transform 0.3s; }
+        .stat-card:hover { transform: translateY(-4px); }
+        .stat-value { font-size: 2.5rem; font-weight: 800; }
+        .btn { padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; }
+        .btn-glass { background: rgba(255,255,255,0.15); color: white; backdrop-filter: blur(8px); }
+        .btn-glass:hover { background: rgba(255,255,255,0.25); }
+        .btn-primary { background: #6366f1; color: white; }
+        .btn-primary:hover { background: #4f46e5; }
+        
+        @media (max-width: 768px) {
+            .stat-value { font-size: 1.75rem; }
+            .stat-card { padding: 16px; }
+        }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-slate-900 to-blue-900 min-h-screen p-8">
+<body class="p-4 sm:p-8">
     <div class="max-w-7xl mx-auto">
-        <div class="flex justify-between items-center mb-8">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
-                <h1 class="text-4xl font-bold text-white">📊 Executive Dashboard</h1>
-                <p class="text-blue-200 mt-2">Management Overzicht</p>
+                <h1 class="text-3xl sm:text-4xl font-bold text-white">📊 Executive Dashboard</h1>
+                <p class="text-indigo-200 mt-2">Management Overzicht - StucAdmin Pro</p>
             </div>
-            <div class="flex gap-3">
-                <a href="materials.html" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition">← Terug</a>
-                <button onclick="refreshDashboard()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition">🔄 Refresh</button>
+            <div class="flex gap-3 flex-wrap">
+                <a href="dashboard.html" class="btn btn-glass">← Terug</a>
+                <button onclick="refreshDashboard()" class="btn btn-primary">🔄 Refresh</button>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-2xl">
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+            <div class="stat-card" style="--from: #10b981; --to: #059669;">
                 <p class="text-sm opacity-90">💰 Besparingspotentieel</p>
-                <p id="totalSavings" class="text-4xl font-bold mt-2">€0</p>
+                <p class="stat-value mt-2" id="totalSavings">€0</p>
+                <p class="text-xs mt-2 opacity-75">op basis van analyse</p>
             </div>
-            <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-2xl">
-                <p class="text-sm opacity-90">📈 Totale Kosten</p>
-                <p id="totalCost" class="text-4xl font-bold mt-2">€0</p>
+            <div class="stat-card" style="--from: #3b82f6; --to: #2563eb;">
+                <p class="text-sm opacity-90">📈 Totale Inkoop</p>
+                <p class="stat-value mt-2" id="totalCost">€0</p>
+                <p class="text-xs mt-2 opacity-75">afgelopen periode</p>
             </div>
-            <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white shadow-2xl">
+            <div class="stat-card" style="--from: #ef4444; --to: #dc2626;">
                 <p class="text-sm opacity-90">⚠️ Prijs Alerts</p>
-                <p id="alertCount" class="text-4xl font-bold mt-2">0</p>
+                <p class="stat-value mt-2" id="alertCount">0</p>
+                <p class="text-xs mt-2 opacity-75">vereisen aandacht</p>
             </div>
-            <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-2xl">
+            <div class="stat-card" style="--from: #8b5cf6; --to: #7c3aed;">
                 <p class="text-sm opacity-90">📄 Facturen</p>
-                <p id="invoiceCount" class="text-4xl font-bold mt-2">0</p>
+                <p class="stat-value mt-2" id="invoiceCount">0</p>
+                <p class="text-xs mt-2 opacity-75">geanalyseerd</p>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6">
-                <h3 class="text-xl font-bold text-white mb-4">📊 Kosten per Categorie</h3>
-                <canvas id="categoryChart"></canvas>
+        <!-- Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="glass-card p-6">
+                <h3 class="text-xl font-bold text-white mb-4">📊 Inkoop per Maand</h3>
+                <div class="h-64"><canvas id="monthlyChart"></canvas></div>
             </div>
-            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6">
-                <h3 class="text-xl font-bold text-white mb-4">🏆 Top Leveranciers</h3>
-                <canvas id="suppliersChart"></canvas>
+            <div class="glass-card p-6">
+                <h3 class="text-xl font-bold text-white mb-4">🏆 Top 5 Leveranciers</h3>
+                <div class="h-64"><canvas id="suppliersChart"></canvas></div>
             </div>
+        </div>
+
+        <!-- Additional Info -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="glass-card p-6 lg:col-span-2">
+                <h3 class="text-xl font-bold text-white mb-4">📈 Kosten Trend</h3>
+                <div class="h-48"><canvas id="trendChart"></canvas></div>
+            </div>
+            <div class="glass-card p-6">
+                <h3 class="text-xl font-bold text-white mb-4">⚡ Quick Stats</h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center text-white">
+                        <span class="opacity-75">Gem. per factuur</span>
+                        <span class="font-bold" id="avgInvoice">€0</span>
+                    </div>
+                    <div class="flex justify-between items-center text-white">
+                        <span class="opacity-75">Hoogste factuur</span>
+                        <span class="font-bold" id="maxInvoice">€0</span>
+                    </div>
+                    <div class="flex justify-between items-center text-white">
+                        <span class="opacity-75">Leveranciers</span>
+                        <span class="font-bold" id="supplierCount">0</span>
+                    </div>
+                    <div class="flex justify-between items-center text-white">
+                        <span class="opacity-75">Deze maand</span>
+                        <span class="font-bold" id="thisMonth">€0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-8 text-indigo-300 text-sm">
+            StucAdmin Pro - Executive Dashboard
         </div>
     </div>
 
@@ -56,67 +116,181 @@
 
         async function refreshDashboard() {
             try {
-                const response = await fetch('http://localhost:3001/api/recommendations');
-                const data = await response.json();
+                // Haal inkoopfacturen op (relatieve URL - werkt op localhost EN productie)
+                const purchaseRes = await fetch('/api/purchase_invoices');
+                const purchases = await purchaseRes.json();
                 
-                document.getElementById('totalSavings').textContent = '€' + (data.summary?.totalPotentialSavings || 0).toLocaleString('nl-NL');
-                document.getElementById('totalCost').textContent = '€' + (data.summary?.totalCost || 0).toLocaleString('nl-NL');
-                document.getElementById('alertCount').textContent = data.summary?.highPriority || 0;
-                document.getElementById('invoiceCount').textContent = data.summary?.totalInvoices || 0;
+                // Bereken statistieken
+                const totalCost = purchases.reduce((sum, p) => sum + parseFloat(p.total_price_incl_tax || 0), 0);
+                const avgInvoice = purchases.length > 0 ? totalCost / purchases.length : 0;
+                const maxInvoice = Math.max(...purchases.map(p => parseFloat(p.total_price_incl_tax || 0)), 0);
                 
-                renderCharts(data);
+                // Tel unieke leveranciers
+                const suppliers = {};
+                purchases.forEach(p => {
+                    const name = p.contact?.company_name || 'Onbekend';
+                    if (!suppliers[name]) suppliers[name] = 0;
+                    suppliers[name] += parseFloat(p.total_price_incl_tax || 0);
+                });
+                
+                // Deze maand
+                const now = new Date();
+                const thisMonthPurchases = purchases.filter(p => {
+                    const d = new Date(p.date);
+                    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                });
+                const thisMonthTotal = thisMonthPurchases.reduce((sum, p) => sum + parseFloat(p.total_price_incl_tax || 0), 0);
+                
+                // Bereken potentiële besparing (schatting: 5% van totaal)
+                const potentialSavings = totalCost * 0.05;
+                
+                // Alerts tellen (facturen boven €500 als voorbeeld)
+                const alerts = purchases.filter(p => parseFloat(p.total_price_incl_tax || 0) > 500).length;
+                
+                // Update KPIs
+                document.getElementById('totalSavings').textContent = '€' + potentialSavings.toLocaleString('nl-NL', {maximumFractionDigits: 0});
+                document.getElementById('totalCost').textContent = '€' + totalCost.toLocaleString('nl-NL', {maximumFractionDigits: 0});
+                document.getElementById('alertCount').textContent = alerts;
+                document.getElementById('invoiceCount').textContent = purchases.length;
+                document.getElementById('avgInvoice').textContent = '€' + avgInvoice.toLocaleString('nl-NL', {maximumFractionDigits: 0});
+                document.getElementById('maxInvoice').textContent = '€' + maxInvoice.toLocaleString('nl-NL', {maximumFractionDigits: 0});
+                document.getElementById('supplierCount').textContent = Object.keys(suppliers).length;
+                document.getElementById('thisMonth').textContent = '€' + thisMonthTotal.toLocaleString('nl-NL', {maximumFractionDigits: 0});
+                
+                // Render charts
+                renderCharts(purchases, suppliers);
+                
             } catch (error) {
                 console.error('Dashboard refresh failed:', error);
             }
         }
 
-        function renderCharts(data) {
-            if (charts.category) charts.category.destroy();
-            if (charts.suppliers) charts.suppliers.destroy();
-
-            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
-            const categories = data.byCategory || [];
+        function renderCharts(purchases, suppliers) {
+            // Destroy existing charts
+            Object.values(charts).forEach(c => c?.destroy());
             
-            charts.category = new Chart(categoryCtx, {
-                type: 'doughnut',
+            const months = ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+            const year = new Date().getFullYear();
+            
+            // Monthly data
+            const monthlyData = months.map((m, i) => {
+                return purchases.filter(p => {
+                    const d = new Date(p.date);
+                    return d.getMonth() === i && d.getFullYear() === year;
+                }).reduce((sum, p) => sum + parseFloat(p.total_price_incl_tax || 0), 0);
+            });
+
+            // Monthly Chart
+            const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+            charts.monthly = new Chart(monthlyCtx, {
+                type: 'bar',
                 data: {
-                    labels: categories.slice(0, 6).map(c => c.category || 'Onbekend'),
+                    labels: months,
                     datasets: [{
-                        data: categories.slice(0, 6).map(c => c.totalCost || 0),
-                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
+                        label: 'Inkoop',
+                        data: monthlyData,
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                        borderRadius: 8
                     }]
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { position: 'bottom', labels: { color: '#fff' } } }
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            ticks: { color: '#fff', callback: v => '€' + v.toLocaleString() },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        },
+                        x: { 
+                            ticks: { color: '#fff' },
+                            grid: { display: false }
+                        }
+                    }
                 }
             });
 
+            // Top suppliers
+            const topSuppliers = Object.entries(suppliers)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
             const suppliersCtx = document.getElementById('suppliersChart').getContext('2d');
-            const suppliers = data.bySupplier || [];
-            
             charts.suppliers = new Chart(suppliersCtx, {
-                type: 'bar',
+                type: 'doughnut',
                 data: {
-                    labels: suppliers.slice(0, 5).map(s => s.supplier?.substring(0, 15) || 'Onbekend'),
+                    labels: topSuppliers.map(s => s[0].substring(0, 15)),
                     datasets: [{
-                        label: 'Uitgegeven',
-                        data: suppliers.slice(0, 5).map(s => s.totalCost || 0),
-                        backgroundColor: '#8B5CF6'
+                        data: topSuppliers.map(s => s[1]),
+                        backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
                     }]
                 },
                 options: {
                     responsive: true,
-                    indexAxis: 'y',
-                    plugins: { legend: { labels: { color: '#fff' } } },
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { color: '#fff', boxWidth: 12, font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+
+            // Trend Chart (last 6 months)
+            const last6Months = [];
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date();
+                d.setMonth(d.getMonth() - i);
+                last6Months.push({
+                    label: months[d.getMonth()],
+                    month: d.getMonth(),
+                    year: d.getFullYear()
+                });
+            }
+
+            const trendData = last6Months.map(m => {
+                return purchases.filter(p => {
+                    const d = new Date(p.date);
+                    return d.getMonth() === m.month && d.getFullYear() === m.year;
+                }).reduce((sum, p) => sum + parseFloat(p.total_price_incl_tax || 0), 0);
+            });
+
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            charts.trend = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: last6Months.map(m => m.label),
+                    datasets: [{
+                        label: 'Kosten',
+                        data: trendData,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
                     scales: {
-                        y: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-                        x: { ticks: { color: '#fff', callback: v => '€' + v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                        y: {
+                            beginAtZero: true,
+                            ticks: { color: '#fff', callback: v => '€' + v.toLocaleString() },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        },
+                        x: {
+                            ticks: { color: '#fff' },
+                            grid: { display: false }
+                        }
                     }
                 }
             });
         }
 
+        // Load on page load
         window.onload = refreshDashboard;
     </script>
 </body>
