@@ -619,6 +619,7 @@
         let photos = [];
         let files = [];
         let opnames = JSON.parse(localStorage.getItem('stuc_opnames') || '[]');
+        let signaturePads = {};
 
         // Init
         document.getElementById('opnameDatum').value = new Date().toISOString().split('T')[0];
@@ -832,7 +833,6 @@
         }
 
         // Signature Pads
-        let signaturePads = {};
 
         function initSignaturePads() {
             ['signatureKlant', 'signatureStucologie'].forEach(id => {
