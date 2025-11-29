@@ -192,18 +192,52 @@
             <div class="card">
                 <h2 class="text-lg font-bold mb-4">🎨 Werkzaamheden</h2>
                 
-                <div class="section-title">Hoofdwerk</div>
+                <div class="section-title">⭐ Afwerking niveau</div>
+                <div class="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl mb-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <label class="flex items-center gap-3 p-3 bg-white rounded-lg border-2 cursor-pointer hover:border-indigo-300 transition-all" id="labelBasic">
+                            <input type="radio" name="afwerking" value="basic" class="w-5 h-5" onchange="updateAfwerkingStyle()">
+                            <div>
+                                <div class="font-semibold">Basic</div>
+                                <div class="text-xs text-gray-500">Standaard stucwerk</div>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-white rounded-lg border-2 cursor-pointer hover:border-indigo-300 transition-all" id="labelPremium">
+                            <input type="radio" name="afwerking" value="premium" class="w-5 h-5" checked onchange="updateAfwerkingStyle()">
+                            <div>
+                                <div class="font-semibold">Premium</div>
+                                <div class="text-xs text-gray-500">Fijnere afwerking</div>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 p-3 bg-white rounded-lg border-2 cursor-pointer hover:border-indigo-300 transition-all" id="labelLuxe">
+                            <input type="radio" name="afwerking" value="luxe" class="w-5 h-5" onchange="updateAfwerkingStyle()">
+                            <div>
+                                <div class="font-semibold">Luxe</div>
+                                <div class="text-xs text-gray-500">Hoogste kwaliteit</div>
+                            </div>
+                        </label>
+                    </div>
+                    <p class="text-xs text-amber-700 mt-3">⚠️ Gekozen niveau bepaalt de prijscategorie en verwachte afwerking</p>
+                </div>
+
+                <div class="section-title">Stucwerk</div>
                 <div class="checkbox-item">
-                    <input type="checkbox" id="werkWanden" checked>
+                    <input type="checkbox" id="werkWanden">
                     <label for="werkWanden">Stucwerk wanden</label>
                 </div>
                 <div class="checkbox-item">
                     <input type="checkbox" id="werkPlafond">
                     <label for="werkPlafond">Stucwerk plafond</label>
                 </div>
+
+                <div class="section-title mt-4">Spuitwerk</div>
                 <div class="checkbox-item">
-                    <input type="checkbox" id="werkSpuitwerk">
-                    <label for="werkSpuitwerk">Spuitwerk</label>
+                    <input type="checkbox" id="werkSpuitwerkWanden">
+                    <label for="werkSpuitwerkWanden">Spuitwerk wanden</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="werkSpuitwerkPlafond">
+                    <label for="werkSpuitwerkPlafond">Spuitwerk plafond (klant doet wanden zelf)</label>
                 </div>
 
                 <div class="mt-4 mb-4">
@@ -591,6 +625,18 @@
         document.getElementById('opnameDatum').value = new Date().toISOString().split('T')[0];
         loadContacts();
         initSignaturePads();
+        updateAfwerkingStyle();
+
+        function updateAfwerkingStyle() {
+            const selected = document.querySelector('input[name="afwerking"]:checked')?.value || 'premium';
+            ['basic', 'premium', 'luxe'].forEach(level => {
+                const label = document.getElementById('label' + level.charAt(0).toUpperCase() + level.slice(1));
+                if (label) {
+                    label.style.borderColor = (level === selected) ? '#6366f1' : '#e5e7eb';
+                    label.style.background = (level === selected) ? '#eef2ff' : 'white';
+                }
+            });
+        }
 
         function toggleMenu() {
             document.querySelector('.sidebar').classList.toggle('open');
@@ -858,10 +904,15 @@
                 if (naam || m2) ruimtes.push({ naam, m2 });
             });
 
+            const afwerking = document.querySelector('input[name="afwerking"]:checked')?.value || 'premium';
+            const afwerkingLabels = { basic: 'Basic', premium: 'Premium', luxe: 'Luxe' };
+            
             const werkItems = [];
+            werkItems.push('⭐ ' + afwerkingLabels[afwerking] + ' afwerking');
             if (document.getElementById('werkWanden').checked) werkItems.push('Stucwerk wanden');
             if (document.getElementById('werkPlafond').checked) werkItems.push('Stucwerk plafond');
-            if (document.getElementById('werkSpuitwerk').checked) werkItems.push('Spuitwerk');
+            if (document.getElementById('werkSpuitwerkWanden').checked) werkItems.push('Spuitwerk wanden');
+            if (document.getElementById('werkSpuitwerkPlafond').checked) werkItems.push('Spuitwerk plafond (klant doet wanden zelf)');
             if (document.getElementById('werkKoofjes').checked) werkItems.push('Koofjes (' + document.getElementById('aantalKoofjes').value + 'x)');
             if (document.getElementById('werkTVOmbouw').checked) werkItems.push('TV ombouw / Schouw');
             if (document.getElementById('werkKeuken').checked) werkItems.push('Keuken ombouw op maat');
@@ -951,9 +1002,11 @@
                     moneybirdId: selectedContact?.id || null
                 },
                 werk: {
+                    afwerking: document.querySelector('input[name="afwerking"]:checked')?.value || 'premium',
                     wanden: document.getElementById('werkWanden').checked,
                     plafond: document.getElementById('werkPlafond').checked,
-                    spuitwerk: document.getElementById('werkSpuitwerk').checked,
+                    spuitwerkWanden: document.getElementById('werkSpuitwerkWanden').checked,
+                    spuitwerkPlafond: document.getElementById('werkSpuitwerkPlafond').checked,
                     kleuren: document.getElementById('aantalKleuren').value,
                     koofjes: document.getElementById('werkKoofjes').checked,
                     aantalKoofjes: document.getElementById('aantalKoofjes').value,
@@ -1054,9 +1107,13 @@
             document.getElementById('klantDetails').classList.remove('hidden');
             
             // Work
+            const afwerking = o.werk?.afwerking || 'premium';
+            document.querySelectorAll('input[name="afwerking"]').forEach(r => r.checked = r.value === afwerking);
+            updateAfwerkingStyle();
             document.getElementById('werkWanden').checked = o.werk?.wanden || false;
             document.getElementById('werkPlafond').checked = o.werk?.plafond || false;
-            document.getElementById('werkSpuitwerk').checked = o.werk?.spuitwerk || false;
+            document.getElementById('werkSpuitwerkWanden').checked = o.werk?.spuitwerkWanden || false;
+            document.getElementById('werkSpuitwerkPlafond').checked = o.werk?.spuitwerkPlafond || false;
             document.getElementById('aantalKleuren').value = o.werk?.kleuren || '1';
             document.getElementById('werkKoofjes').checked = o.werk?.koofjes || false;
             document.getElementById('aantalKoofjes').value = o.werk?.aantalKoofjes || '0';
