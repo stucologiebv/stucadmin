@@ -174,6 +174,22 @@
     <script>
         const API_BASE = '/api';
         
+        let taxRates = [];
+        
+        async function loadTaxRates() {
+            try {
+                const res = await fetch(API_BASE + '/tax_rates');
+                taxRates = await res.json();
+                console.log('Tax rates geladen:', taxRates);
+            } catch (e) { console.log('Kon tax rates niet laden'); }
+        }
+        
+        function getTaxRateId(percentage) {
+            // Zoek de juiste tax rate ID voor het percentage
+            const rate = taxRates.find(t => parseFloat(t.percentage) === percentage);
+            return rate ? rate.id : null;
+        }
+        
         const standaardDiensten = [
             { id: 1, naam: 'Glad Stucwerk', prijs: 28 },
             { id: 2, naam: 'Waterpas Stucwerk', prijs: 32 },
@@ -424,50 +440,73 @@
             if (!selectedContact) return alert('Selecteer eerst een klant');
             if (projectDiensten.length === 0) return alert('Voeg eerst diensten toe');
 
+            const btwPerc = parseFloat(document.getElementById('btw').value) || 21;
+            const taxRateId = getTaxRateId(btwPerc);
+
             const details = [];
             projectDiensten.forEach(pd => {
                 const d = standaardDiensten.find(x => x.id === pd.dienstId);
                 if (pd.m2 > 0) {
-                    details.push({
+                    const detail = {
                         description: d?.naam || 'Stucwerk',
                         price: pd.prijs.toString(),
-                        amount: pd.m2.toString(),
-                        tax_rate_id: document.getElementById('btw').value === '9' ? '1' : '0'
-                    });
+                        amount: pd.m2.toString()
+                    };
+                    if (taxRateId) detail.tax_rate_id = taxRateId;
+                    details.push(detail);
                 }
             });
 
             if (document.getElementById('cbMateriaal').checked) {
                 const matKosten = berekendeMaterialen.reduce((s,m) => s+m.totaal, 0) + extraMaterialen.reduce((s,m) => s+m.aantal*m.prijs, 0);
-                details.push({ description: 'Materiaalkosten', price: matKosten.toString(), amount: '1' });
+                const detail = { description: 'Materiaalkosten', price: matKosten.toString(), amount: '1' };
+                if (taxRateId) detail.tax_rate_id = taxRateId;
+                details.push(detail);
             }
             if (document.getElementById('cbAfval').checked) {
-                details.push({ description: 'Afval wegbrengen', price: '50', amount: '1' });
+                const detail = { description: 'Afval wegbrengen', price: '50', amount: '1' };
+                if (taxRateId) detail.tax_rate_id = taxRateId;
+                details.push(detail);
             }
             if (document.getElementById('cbFlat').checked) {
-                details.push({ description: 'Flat toeslag', price: '150', amount: '1' });
+                const detail = { description: 'Flat toeslag', price: '150', amount: '1' };
+                if (taxRateId) detail.tax_rate_id = taxRateId;
+                details.push(detail);
             }
+
+            const payload = {
+                sales_invoice: {
+                    contact_id: selectedContact.id,
+                    reference: document.getElementById('projectNaam').value || 'Offerte',
+                    details_attributes: details,
+                    prices_are_incl_tax: false
+                }
+            };
+            
+            console.log('Versturen naar Moneybird:', JSON.stringify(payload, null, 2));
 
             try {
                 const res = await fetch(API_BASE + '/invoices', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sales_invoice: {
-                            contact_id: selectedContact.id,
-                            reference: document.getElementById('projectNaam').value || 'Offerte',
-                            details_attributes: details,
-                            prices_are_incl_tax: false
-                        }
-                    })
+                    body: JSON.stringify(payload)
                 });
+                
+                const responseText = await res.text();
+                console.log('Response:', res.status, responseText);
+                
+                let data;
+                try { data = JSON.parse(responseText); } catch(e) { data = { error: responseText }; }
+                
                 if (res.ok) {
-                    alert('✅ Concept factuur aangemaakt in Moneybird!');
+                    alert('✅ Concept factuur aangemaakt in Moneybird!\n\nFactuur ID: ' + (data.id || 'onbekend'));
                 } else {
-                    alert('❌ Fout bij aanmaken factuur');
+                    console.error('Moneybird error:', data);
+                    alert('❌ Moneybird fout:\n\n' + (data.error || JSON.stringify(data, null, 2)));
                 }
             } catch (e) {
-                alert('❌ Kon niet verbinden met Moneybird');
+                console.error('Network error:', e);
+                alert('❌ Netwerk fout: ' + e.message);
             }
         }
 
@@ -504,6 +543,7 @@
         function sluitModal(id) { document.getElementById(id).classList.add('hidden'); }
 
         // Init
+        loadTaxRates();
         loadContacts();
         renderDiensten();
         renderExtraMaterialen();
