@@ -200,8 +200,21 @@
         async function init() {
             try {
                 const [invRes, conRes] = await Promise.all([fetch('/api/invoices'), fetch('/api/contacts')]);
+                
+                // Check if unauthorized - redirect to login
+                if (invRes.status === 401 || conRes.status === 401) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
                 const invoices = await invRes.json();
                 const contacts = await conRes.json();
+                
+                // Ensure we have arrays
+                if (!Array.isArray(invoices) || !Array.isArray(contacts)) {
+                    console.error('Invalid API response');
+                    return;
+                }
                 
                 const now = new Date();
                 const thisMonth = invoices.filter(inv => { 
