@@ -69,6 +69,18 @@
         .afwerking-card:hover { border-color: #a5b4fc; }
         .afwerking-card.selected { border-color: #6366f1; background: #eef2ff; }
         .hidden { display: none !important; }
+        .dienst-categorie { margin-bottom: 24px; }
+        .dienst-tabel { background: #f8fafc; border-radius: 12px; padding: 12px; }
+        .dienst-rij { display: grid; grid-template-columns: 1fr 80px 50px 60px; gap: 12px; align-items: center; padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
+        .dienst-rij:last-child { border-bottom: none; }
+        .dienst-rij:hover { background: #f1f5f9; }
+        .dienst-naam { font-size: 14px; font-weight: 500; }
+        .dienst-input { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; text-align: center; font-size: 14px; width: 100%; }
+        .dienst-input:focus { outline: none; border-color: #6366f1; }
+        .dienst-eenheid { font-size: 12px; color: #64748b; }
+        .dienst-prijs { font-size: 14px; font-weight: 600; color: #059669; text-align: right; }
+        .extra-optie { display: flex; align-items: center; gap: 10px; padding: 12px; margin-top: 8px; background: #fef3c7; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .extra-optie input { width: 18px; height: 18px; accent-color: #f59e0b; }
         @media (max-width: 1024px) {
             .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
             .sidebar { transform: translateX(-100%); }
@@ -78,6 +90,8 @@
             .room-row { grid-template-columns: 1fr 70px 70px 36px; }
             .dienst-row { flex-direction: column; align-items: stretch; }
             .dienst-row .totaal { text-align: left; margin-top: 8px; }
+            .dienst-rij { grid-template-columns: 1fr 70px 40px 50px; gap: 8px; padding: 8px; }
+            .dienst-naam { font-size: 13px; }
         }
     </style>
 </head>
@@ -205,11 +219,11 @@
                 <div class="grid grid-cols-3 gap-3 mb-6">
                     <div class="afwerking-card" onclick="selectAfwerking('basis')" id="afwerkingBasis">
                         <div class="font-bold text-sm">Basis</div>
-                        <div class="text-xs text-gray-500">Standaard afwerking</div>
+                        <div class="text-xs text-gray-500">Standaard</div>
                     </div>
                     <div class="afwerking-card selected" onclick="selectAfwerking('premium')" id="afwerkingPremium">
                         <div class="font-bold text-sm">Premium</div>
-                        <div class="text-xs text-gray-500">Extra vlak resultaat</div>
+                        <div class="text-xs text-gray-500">Extra vlak</div>
                     </div>
                     <div class="afwerking-card" onclick="selectAfwerking('luxe')" id="afwerkingLuxe">
                         <div class="font-bold text-sm">Luxe</div>
@@ -217,60 +231,160 @@
                     </div>
                 </div>
 
-                <!-- Stucwerk -->
-                <div class="section-title">🧱 Stucwerk</div>
-                <select id="stucwerkSelect" class="input-field mb-3" onchange="addDienst('stucwerk')">
-                    <option value="">+ Voeg stucwerk toe...</option>
-                    <option value="glad_stucwerk">Glad Stucwerk</option>
-                    <option value="waterpas_stucwerk">Waterpas Stucwerk</option>
-                    <option value="waterdicht_stucwerk">Waterdicht Stucwerk (badkamer)</option>
-                    <option value="betonlook_stucwerk">Betonlook Stucwerk</option>
-                    <option value="dunpleister">Dunpleister</option>
-                    <option value="spachtelputz">Spachtelputz</option>
-                    <option value="stucwerk_restauratie">Stucwerk Restauratie (per uur)</option>
-                </select>
-                <div class="checkbox-item mb-3">
-                    <input type="checkbox" id="extraSterk" onchange="toggleExtraSterk()">
-                    <label for="extraSterk">Extra Sterk Stucwerk (+20% op stucwerk)</label>
+                <!-- STUCWERK -->
+                <div class="dienst-categorie">
+                    <div class="section-title">🧱 Stucwerk</div>
+                    <div class="dienst-tabel">
+                        <div class="dienst-rij" data-dienst="glad_stucwerk">
+                            <span class="dienst-naam">Glad Stucwerk</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('glad_stucwerk', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_glad_stucwerk">€19</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="waterpas_stucwerk">
+                            <span class="dienst-naam">Waterpas Stucwerk</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('waterpas_stucwerk', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_waterpas_stucwerk">€28</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="waterdicht_stucwerk">
+                            <span class="dienst-naam">Waterdicht (badkamer)</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('waterdicht_stucwerk', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_waterdicht_stucwerk">€28</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="dunpleister">
+                            <span class="dienst-naam">Dunpleister</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('dunpleister', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_dunpleister">€14</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="spachtelputz">
+                            <span class="dienst-naam">Spachtelputz</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('spachtelputz', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_spachtelputz">€24</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="betonlook_stucwerk">
+                            <span class="dienst-naam">Betonlook Stucwerk</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('betonlook_stucwerk', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_betonlook_stucwerk">€100</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="stucwerk_restauratie">
+                            <span class="dienst-naam">Stucwerk Restauratie</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.5" onchange="updateDienstTabel('stucwerk_restauratie', this.value)">
+                            <span class="dienst-eenheid">uur</span>
+                            <span class="dienst-prijs" id="prijs_stucwerk_restauratie">€120</span>
+                        </div>
+                    </div>
+                    <label class="extra-optie">
+                        <input type="checkbox" id="extraSterk" onchange="toggleExtraSterk()">
+                        <span>Extra Sterk Stucwerk (+20%)</span>
+                    </label>
                 </div>
-                <div id="stucwerkDiensten"></div>
 
-                <!-- Gevel -->
-                <div class="section-title mt-6">🏠 Gevel</div>
-                <select id="gevelSelect" class="input-field mb-3" onchange="addDienst('gevel')">
-                    <option value="">+ Voeg geveldienst toe...</option>
-                    <option value="gevelstucwerk_glad">Gevelstucwerk (Glad)</option>
-                    <option value="gevelisolatie">Gevelisolatie</option>
-                </select>
-                <div id="gevelDiensten"></div>
+                <!-- SCHILDEREN / SPUITEN -->
+                <div class="dienst-categorie">
+                    <div class="section-title">🎨 Schilderen / Spuiten</div>
+                    <div class="dienst-tabel">
+                        <div class="dienst-rij" data-dienst="latex_muren">
+                            <span class="dienst-naam">Latex spuiten - Muren</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('latex_muren', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_latex_muren">€13</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="latex_plafonds">
+                            <span class="dienst-naam">Latex spuiten - Plafonds</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('latex_plafonds', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_latex_plafonds">€11</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="spack_muren">
+                            <span class="dienst-naam">Spack spuiten - Muren</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('spack_muren', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_spack_muren">€14</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="spack_plafonds">
+                            <span class="dienst-naam">Spack spuiten - Plafonds</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('spack_plafonds', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_spack_plafonds">€14</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="kozijnen">
+                            <span class="dienst-naam">Kozijnen schilderen</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('kozijnen', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_kozijnen">€35</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="deuren">
+                            <span class="dienst-naam">Deuren schilderen</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="1" onchange="updateDienstTabel('deuren', this.value)">
+                            <span class="dienst-eenheid">stuk</span>
+                            <span class="dienst-prijs" id="prijs_deuren">€95</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="plinten">
+                            <span class="dienst-naam">Plinten schilderen</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('plinten', this.value)">
+                            <span class="dienst-eenheid">m¹</span>
+                            <span class="dienst-prijs" id="prijs_plinten">€6</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="trap">
+                            <span class="dienst-naam">Trap schilderen</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="1" onchange="updateDienstTabel('trap', this.value)">
+                            <span class="dienst-eenheid">deel</span>
+                            <span class="dienst-prijs" id="prijs_trap">€950</span>
+                        </div>
+                    </div>
+                </div>
 
-                <!-- Schilderen/Spuiten -->
-                <div class="section-title mt-6">🎨 Schilderen / Spuiten</div>
-                <select id="schilderSelect" class="input-field mb-3" onchange="addDienst('schilder')">
-                    <option value="">+ Voeg schilderwerk toe...</option>
-                    <option value="latex_muren">Latex spuiten - Muren</option>
-                    <option value="latex_plafonds">Latex spuiten - Plafonds</option>
-                    <option value="spack_muren">Spack spuiten - Muren</option>
-                    <option value="spack_plafonds">Spack spuiten - Plafonds</option>
-                    <option value="kozijnen">Kozijnen schilderen/spuiten</option>
-                    <option value="deuren">Deuren schilderen/spuiten</option>
-                    <option value="plinten">Plinten schilderen/spuiten</option>
-                    <option value="trap">Trap schilderen/spuiten</option>
-                </select>
-                <div id="schilderDiensten"></div>
+                <!-- GEVEL -->
+                <div class="dienst-categorie">
+                    <div class="section-title">🏠 Gevel</div>
+                    <div class="dienst-tabel">
+                        <div class="dienst-rij" data-dienst="gevelstucwerk_glad">
+                            <span class="dienst-naam">Gevelstucwerk (Glad)</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('gevelstucwerk_glad', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_gevelstucwerk_glad">€55</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="gevelisolatie">
+                            <span class="dienst-naam">Gevelisolatie</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('gevelisolatie', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_gevelisolatie">€65</span>
+                        </div>
+                    </div>
+                </div>
 
-                <!-- Overig -->
-                <div class="section-title mt-6">🔧 Overige diensten</div>
-                <select id="overigSelect" class="input-field mb-3" onchange="addDienst('overig')">
-                    <option value="">+ Voeg overige dienst toe...</option>
-                    <option value="kitwerk">Kit Werkzaamheden</option>
-                    <option value="brandwerend">Brandwerende Coating</option>
-                    <option value="2k_coating">2K Coating</option>
-                </select>
-                <div id="overigDiensten"></div>
+                <!-- OVERIG -->
+                <div class="dienst-categorie">
+                    <div class="section-title">🔧 Overig</div>
+                    <div class="dienst-tabel">
+                        <div class="dienst-rij" data-dienst="kitwerk">
+                            <span class="dienst-naam">Kit Werkzaamheden</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('kitwerk', this.value)">
+                            <span class="dienst-eenheid">m¹</span>
+                            <span class="dienst-prijs" id="prijs_kitwerk">€3</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="brandwerend">
+                            <span class="dienst-naam">Brandwerende Coating</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('brandwerend', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_brandwerend">€22</span>
+                        </div>
+                        <div class="dienst-rij" data-dienst="2k_coating">
+                            <span class="dienst-naam">2K Coating</span>
+                            <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1" onchange="updateDienstTabel('2k_coating', this.value)">
+                            <span class="dienst-eenheid">m²</span>
+                            <span class="dienst-prijs" id="prijs_2k_coating">€17</span>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Meetwijze info -->
-                <div class="warning-box mt-6">
+                <div class="warning-box mt-4">
                     <strong>📐 Meetwijze:</strong> Bij m² voor muren/plafonds worden ramen en kozijnen NIET afgetrokken. Dit is inbegrepen omdat omwerken extra tijd kost.
                 </div>
 
@@ -626,6 +740,7 @@
             initSignaturePads();
             addRuimte();
             updateBetalingsTekst();
+            updateAllePrijzen(); // Zet prijzen op basis van standaard afwerking (Premium)
             
             document.addEventListener('click', (e) => {
                 if (!e.target.closest('.dropdown-container')) {
@@ -714,105 +829,93 @@
         // AFWERKING
         // ============================================
         function selectAfwerking(niveau) {
+            console.log('Afwerking gekozen:', niveau);
             selectedAfwerking = niveau;
             document.querySelectorAll('.afwerking-card').forEach(el => el.classList.remove('selected'));
             document.getElementById('afwerking' + niveau.charAt(0).toUpperCase() + niveau.slice(1)).classList.add('selected');
-            if (geselecteerdeDiensten.length > 0) updateAllePrijzen();
+            updateAllePrijzen();
         }
 
         function getAfwerkingIndex() {
-            return { 'basis': 0, 'premium': 1, 'luxe': 2 }[selectedAfwerking] || 1;
+            const idx = { 'basis': 0, 'premium': 1, 'luxe': 2 }[selectedAfwerking];
+            console.log('Afwerking index:', selectedAfwerking, '=', idx);
+            return idx !== undefined ? idx : 1;
         }
 
         // ============================================
-        // DIENSTEN
+        // DIENSTEN TABEL
         // ============================================
-        function addDienst(categorie) {
-            const select = document.getElementById(categorie + 'Select');
-            const dienstId = select.value;
-            if (!dienstId || geselecteerdeDiensten.find(d => d.id === dienstId)) { select.value = ''; return; }
+        function updateDienstTabel(dienstId, waarde) {
+            const hoeveelheid = parseFloat(waarde) || 0;
+            const bestaand = geselecteerdeDiensten.find(d => d.id === dienstId);
             
-            const info = PRIJZEN[dienstId];
-            const idx = getAfwerkingIndex();
-            
-            geselecteerdeDiensten.push({
-                id: dienstId,
-                categorie: categorie,
-                naam: info.naam,
-                hoeveelheid: 0,
-                eenheid: info.eenheid,
-                prijsPerEenheid: info.prijzen[info.heeftNiveaus ? idx : 0],
-                basisPrijs: info.prijzen[info.heeftNiveaus ? idx : 0],
-                heeftNiveaus: info.heeftNiveaus
-            });
-            
-            select.value = '';
-            renderDiensten();
-        }
-
-        function removeDienst(id) {
-            geselecteerdeDiensten = geselecteerdeDiensten.filter(d => d.id !== id);
-            renderDiensten();
-        }
-
-        function updateDienstHoeveelheid(id, waarde) {
-            const d = geselecteerdeDiensten.find(x => x.id === id);
-            if (d) d.hoeveelheid = parseFloat(waarde) || 0;
-        }
-
-        function updateDienstPrijs(id, waarde) {
-            const d = geselecteerdeDiensten.find(x => x.id === id);
-            if (d) d.prijsPerEenheid = parseFloat(waarde) || 0;
-        }
-
-        function adjustPrijs(id, delta) {
-            const d = geselecteerdeDiensten.find(x => x.id === id);
-            if (d) {
-                d.prijsPerEenheid = Math.max(0, d.prijsPerEenheid + delta);
-                renderPrijsRegels();
-                berekenTotaal();
+            if (hoeveelheid > 0) {
+                if (bestaand) {
+                    bestaand.hoeveelheid = hoeveelheid;
+                } else {
+                    const info = PRIJZEN[dienstId];
+                    const idx = getAfwerkingIndex();
+                    const extraSterk = document.getElementById('extraSterk')?.checked || false;
+                    let prijs = info.prijzen[info.heeftNiveaus ? idx : 0];
+                    
+                    // Extra sterk +20% voor stucwerk
+                    if (extraSterk && ['glad_stucwerk', 'waterpas_stucwerk', 'waterdicht_stucwerk', 'dunpleister', 'spachtelputz', 'betonlook_stucwerk'].includes(dienstId)) {
+                        prijs = Math.round(prijs * 1.2);
+                    }
+                    
+                    geselecteerdeDiensten.push({
+                        id: dienstId,
+                        naam: info.naam,
+                        hoeveelheid: hoeveelheid,
+                        eenheid: info.eenheid,
+                        prijsPerEenheid: prijs,
+                        basisPrijs: info.prijzen[info.heeftNiveaus ? idx : 0],
+                        heeftNiveaus: info.heeftNiveaus
+                    });
+                }
+            } else {
+                geselecteerdeDiensten = geselecteerdeDiensten.filter(d => d.id !== dienstId);
             }
         }
 
         function updateAllePrijzen() {
             const idx = getAfwerkingIndex();
-            geselecteerdeDiensten.forEach(d => {
-                const info = PRIJZEN[d.id];
-                if (info && info.heeftNiveaus) {
-                    d.basisPrijs = info.prijzen[idx];
-                    d.prijsPerEenheid = info.prijzen[idx];
+            const extraSterk = document.getElementById('extraSterk')?.checked || false;
+            
+            console.log('updateAllePrijzen - idx:', idx, 'extraSterk:', extraSterk);
+            
+            // Update prijzen in tabel
+            Object.keys(PRIJZEN).forEach(dienstId => {
+                const info = PRIJZEN[dienstId];
+                let prijs = info.prijzen[info.heeftNiveaus ? idx : 0];
+                
+                // Extra sterk +20% voor stucwerk
+                if (extraSterk && ['glad_stucwerk', 'waterpas_stucwerk', 'waterdicht_stucwerk', 'dunpleister', 'spachtelputz', 'betonlook_stucwerk'].includes(dienstId)) {
+                    prijs = Math.round(prijs * 1.2);
                 }
-            });
-            renderDiensten();
-        }
-
-        function renderDiensten() {
-            ['stucwerk', 'gevel', 'schilder', 'overig'].forEach(cat => {
-                const container = document.getElementById(cat + 'Diensten');
-                const diensten = geselecteerdeDiensten.filter(d => d.categorie === cat);
-                container.innerHTML = diensten.map(d => `
-                    <div class="dienst-row">
-                        <span class="dienst-naam">${d.naam}</span>
-                        <input type="number" value="${d.hoeveelheid}" min="0" step="0.1" 
-                               onchange="updateDienstHoeveelheid('${d.id}', this.value)" 
-                               placeholder="0" class="input-field">
-                        <span class="text-sm text-gray-500">${d.eenheid}</span>
-                        <span class="text-sm text-gray-400">× €${d.prijsPerEenheid}</span>
-                        <button class="remove-btn" onclick="removeDienst('${d.id}')">✕</button>
-                    </div>
-                `).join('');
+                
+                const prijsEl = document.getElementById('prijs_' + dienstId);
+                if (prijsEl) {
+                    prijsEl.textContent = '€' + prijs;
+                }
+                
+                // Update ook in geselecteerdeDiensten
+                const dienst = geselecteerdeDiensten.find(d => d.id === dienstId);
+                if (dienst) {
+                    dienst.basisPrijs = info.prijzen[info.heeftNiveaus ? idx : 0];
+                    dienst.prijsPerEenheid = prijs;
+                }
             });
         }
 
         function toggleExtraSterk() {
-            const checked = document.getElementById('extraSterk').checked;
-            geselecteerdeDiensten.forEach(d => {
-                if (d.categorie === 'stucwerk' && d.id !== 'stucwerk_restauratie') {
-                    d.prijsPerEenheid = checked ? Math.round(d.basisPrijs * 1.2 * 100) / 100 : d.basisPrijs;
-                }
-            });
-            renderDiensten();
+            updateAllePrijzen();
         }
+
+        // Verwijder oude functies die niet meer nodig zijn
+        function addDienst() {} 
+        function removeDienst() {}
+        function renderDiensten() {}
 
         // ============================================
         // RUIMTES
@@ -857,22 +960,42 @@
 
         function renderPrijsRegels() {
             const container = document.getElementById('prijsRegels');
-            if (geselecteerdeDiensten.length === 0) {
-                container.innerHTML = '<p class="text-gray-400 text-center py-8">Nog geen diensten geselecteerd</p>';
+            const activeDiensten = geselecteerdeDiensten.filter(d => d.hoeveelheid > 0);
+            
+            if (activeDiensten.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-8">Nog geen diensten ingevuld</p>';
                 return;
             }
-            container.innerHTML = geselecteerdeDiensten.map(d => `
+            
+            container.innerHTML = activeDiensten.map(d => `
                 <div class="dienst-row">
                     <span class="dienst-naam">${d.naam}</span>
                     <span class="text-sm">${d.hoeveelheid} ${d.eenheid}</span>
                     <div class="prijs-adjust">
                         <button onclick="adjustPrijs('${d.id}', -1)">−</button>
-                        <input type="number" class="input-field prijs-input text-center" value="${d.prijsPerEenheid}" min="0" step="1" onchange="updateDienstPrijs('${d.id}', this.value); berekenTotaal();">
+                        <input type="number" class="input-field prijs-input text-center" value="${d.prijsPerEenheid}" min="0" step="1" onchange="updatePrijsHandmatig('${d.id}', this.value)">
                         <button onclick="adjustPrijs('${d.id}', 1)">+</button>
                     </div>
                     <span class="totaal">€${(d.hoeveelheid * d.prijsPerEenheid).toFixed(2)}</span>
                 </div>
             `).join('');
+        }
+
+        function adjustPrijs(id, delta) {
+            const d = geselecteerdeDiensten.find(x => x.id === id);
+            if (d) {
+                d.prijsPerEenheid = Math.max(0, d.prijsPerEenheid + delta);
+                renderPrijsRegels();
+                berekenTotaal();
+            }
+        }
+
+        function updatePrijsHandmatig(id, waarde) {
+            const d = geselecteerdeDiensten.find(x => x.id === id);
+            if (d) {
+                d.prijsPerEenheid = parseFloat(waarde) || 0;
+                berekenTotaal();
+            }
         }
 
         function addExtraKosten() {
@@ -903,7 +1026,10 @@
         }
 
         function berekenTotaal() {
-            const subDiensten = geselecteerdeDiensten.reduce((s, d) => s + (d.hoeveelheid * d.prijsPerEenheid), 0);
+            // Subtotaal diensten (alleen met hoeveelheid > 0)
+            const subDiensten = geselecteerdeDiensten
+                .filter(d => d.hoeveelheid > 0)
+                .reduce((s, d) => s + (d.hoeveelheid * d.prijsPerEenheid), 0);
             const subExtra = extraKosten.reduce((s, e) => s + e.bedrag, 0);
             
             const kortingType = document.querySelector('input[name="kortingType"]:checked').value;
@@ -1012,7 +1138,9 @@
             document.getElementById('summaryAfwerking').textContent = selectedAfwerking.charAt(0).toUpperCase() + selectedAfwerking.slice(1);
             document.getElementById('summaryM2').textContent = ruimtes.reduce((s, r) => s + (r.wanden || 0) + (r.plafond || 0), 0).toFixed(1) + ' m²';
             document.getElementById('summaryTotaal').textContent = document.getElementById('totaalIncl').textContent;
-            document.getElementById('summaryDiensten').innerHTML = geselecteerdeDiensten.map(d => 
+            document.getElementById('summaryDiensten').innerHTML = geselecteerdeDiensten
+                .filter(d => d.hoeveelheid > 0)
+                .map(d => 
                 `<div class="flex justify-between"><span>${d.naam} (${d.hoeveelheid} ${d.eenheid})</span><span>€${(d.hoeveelheid * d.prijsPerEenheid).toFixed(2)}</span></div>`
             ).join('') || '<p class="text-gray-400">Geen diensten</p>';
         }
@@ -1027,7 +1155,9 @@
             if (!klantNaam || !klantEmail) { alert('Vul eerst klantgegevens in'); goToStep(1); return; }
             if (geselecteerdeDiensten.length === 0) { alert('Voeg eerst diensten toe'); goToStep(2); return; }
             
-            const details = geselecteerdeDiensten.filter(d => d.hoeveelheid > 0).map(d => ({
+            const details = geselecteerdeDiensten
+                .filter(d => d.hoeveelheid > 0)
+                .map(d => ({
                 description: d.naam + (ruimtes.filter(r => r.naam).length > 0 ? ` - ${ruimtes.map(r => r.naam).filter(n => n).join(', ')}` : ''),
                 amount: d.hoeveelheid.toString(),
                 price: d.prijsPerEenheid.toFixed(2)
