@@ -1687,7 +1687,7 @@ console.log('✅ Materialen Pro module geladen');
 
 // Start OAuth flow - redirect to Google
 app.get('/api/google/auth', requireAuth, (req, res) => {
-    const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly');
+    const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/gmail.readonly');
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
     res.redirect(authUrl);
 });
@@ -2001,6 +2001,160 @@ console.log('📅 Google Calendar module geladen');
 
 
 // ============================================
+// GMAIL API INTEGRATION
+// ============================================
+
+// Get emails for a specific contact (by email address)
+app.get('/api/gmail/messages', requireAuth, async (req, res) => {
+    try {
+        const token = await getValidGoogleToken();
+        if (!token) {
+            return res.status(401).json({ error: 'Google not connected', needsAuth: true });
+        }
+        
+        const { email, maxResults = 20 } = req.query;
+        if (!email) {
+            return res.status(400).json({ error: 'Email parameter required' });
+        }
+        
+        const fetch = (await import('node-fetch')).default;
+        
+        // Search for emails from/to this contact
+        const query = encodeURIComponent(`from:${email} OR to:${email}`);
+        const response = await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=${maxResults}`,
+            {
+                headers: { 'Authorization': `Bearer ${token}` }
+            }
+        );
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            console.error('Gmail API error:', data.error);
+            return res.status(400).json({ error: data.error.message });
+        }
+        
+        if (!data.messages || data.messages.length === 0) {
+            return res.json({ success: true, messages: [] });
+        }
+        
+        // Fetch details for each message
+        const messages = [];
+        for (const msg of data.messages.slice(0, maxResults)) {
+            try {
+                const msgResponse = await fetch(
+                    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`,
+                    {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }
+                );
+                const msgData = await msgResponse.json();
+                
+                if (msgData.payload?.headers) {
+                    const headers = msgData.payload.headers;
+                    const getHeader = (name) => headers.find(h => h.name.toLowerCase() === name.toLowerCase())?.value || '';
+                    
+                    messages.push({
+                        id: msg.id,
+                        threadId: msg.threadId,
+                        from: getHeader('From'),
+                        to: getHeader('To'),
+                        subject: getHeader('Subject'),
+                        date: getHeader('Date'),
+                        snippet: msgData.snippet || '',
+                        labelIds: msgData.labelIds || []
+                    });
+                }
+            } catch (e) {
+                console.error('Error fetching message:', e);
+            }
+        }
+        
+        res.json({ success: true, messages });
+        
+    } catch (error) {
+        console.error('Error fetching Gmail messages:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get single email with full body
+app.get('/api/gmail/message/:id', requireAuth, async (req, res) => {
+    try {
+        const token = await getValidGoogleToken();
+        if (!token) {
+            return res.status(401).json({ error: 'Google not connected', needsAuth: true });
+        }
+        
+        const fetch = (await import('node-fetch')).default;
+        
+        const response = await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${req.params.id}?format=full`,
+            {
+                headers: { 'Authorization': `Bearer ${token}` }
+            }
+        );
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            return res.status(400).json({ error: data.error.message });
+        }
+        
+        // Extract headers
+        const headers = data.payload?.headers || [];
+        const getHeader = (name) => headers.find(h => h.name.toLowerCase() === name.toLowerCase())?.value || '';
+        
+        // Extract body (can be nested in parts)
+        let body = '';
+        const extractBody = (payload) => {
+            if (payload.body?.data) {
+                return Buffer.from(payload.body.data, 'base64').toString('utf-8');
+            }
+            if (payload.parts) {
+                for (const part of payload.parts) {
+                    if (part.mimeType === 'text/plain' && part.body?.data) {
+                        return Buffer.from(part.body.data, 'base64').toString('utf-8');
+                    }
+                    if (part.mimeType === 'text/html' && part.body?.data) {
+                        body = Buffer.from(part.body.data, 'base64').toString('utf-8');
+                    }
+                    if (part.parts) {
+                        const nested = extractBody(part);
+                        if (nested) return nested;
+                    }
+                }
+            }
+            return body;
+        };
+        
+        body = extractBody(data.payload);
+        
+        res.json({
+            success: true,
+            message: {
+                id: data.id,
+                threadId: data.threadId,
+                from: getHeader('From'),
+                to: getHeader('To'),
+                subject: getHeader('Subject'),
+                date: getHeader('Date'),
+                body: body,
+                snippet: data.snippet
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error fetching Gmail message:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+console.log('📧 Gmail API module geladen');
+
+
+// ============================================
 // START SERVER
 // ============================================
 
@@ -2009,5 +2163,6 @@ app.listen(PORT, () => {
     console.log(`🔒 Authentication enabled`);
     console.log(`📦 Materialen Pro module actief`);
     console.log(`📅 Google Calendar integratie actief`);
+    console.log(`📧 Gmail integratie actief`);
     console.log(`📊 Login: http://localhost:${PORT}/login.html`);
 });
