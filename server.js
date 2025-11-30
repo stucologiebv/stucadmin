@@ -2005,3 +2005,4 @@ app.listen(PORT, () => {
     console.log(`📅 Google Calendar integratie actief`);
     console.log(`📊 Login: http://localhost:${PORT}/login.html`);
 });
+ 
