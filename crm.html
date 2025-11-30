@@ -159,6 +159,7 @@
                     <a id="dossierMail" href="#" class="quick-action bg-white/20 text-white">📧 Email</a>
                     <a id="dossierWhatsApp" href="#" target="_blank" class="quick-action bg-green-500 text-white">💬 WhatsApp</a>
                     <button onclick="openNotitieModal()" class="quick-action bg-yellow-400 text-gray-900">📝 Notitie</button>
+                    <button onclick="bewerkenHuidigeKlant()" class="quick-action bg-white/20 text-white">✏️ Bewerken</button>
                 </div>
                 <div class="dossier-tabs">
                     <button class="dossier-tab active" onclick="switchDossierTab('overzicht')">📊 Overzicht</button>
@@ -300,29 +301,58 @@
 
     <script>
         let klanten = [];
+        let invoices = [];
+        let klantData = {}; // Extra data per klant (notities, fotos)
         let huidigeKlant = null;
         let googleConnected = false;
 
         async function init() {
-            await loadData();
-            await checkGoogleStatus();
+            await Promise.all([
+                loadMoneybird(),
+                loadKlantData(),
+                checkGoogleStatus()
+            ]);
             renderKlanten();
             updateKPIs();
         }
 
-        async function loadData() {
+        async function loadMoneybird() {
             try {
-                const res = await fetch('/api/data/klanten').then(r => r.json());
-                if (res.success) klanten = res.data || [];
+                const [conRes, invRes] = await Promise.all([
+                    fetch('/api/contacts'),
+                    fetch('/api/invoices')
+                ]);
+                
+                if (conRes.status === 401 || invRes.status === 401) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                const conData = await conRes.json();
+                const invData = await invRes.json();
+                
+                klanten = Array.isArray(conData) ? conData : [];
+                invoices = Array.isArray(invData) ? invData : [];
             } catch (e) {
-                klanten = JSON.parse(localStorage.getItem('stuc_klanten') || '[]');
+                console.error('Moneybird load error:', e);
+                klanten = [];
+                invoices = [];
             }
         }
 
-        async function saveData() {
-            localStorage.setItem('stuc_klanten', JSON.stringify(klanten));
+        async function loadKlantData() {
             try {
-                await fetch('/api/data/klanten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: klanten }) });
+                const res = await fetch('/api/data/klantdata').then(r => r.json());
+                if (res.success) klantData = res.data || {};
+            } catch (e) {
+                klantData = JSON.parse(localStorage.getItem('stuc_klantdata') || '{}');
+            }
+        }
+
+        async function saveKlantData() {
+            localStorage.setItem('stuc_klantdata', JSON.stringify(klantData));
+            try {
+                await fetch('/api/data/klantdata', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: klantData }) });
             } catch (e) { }
         }
 
@@ -335,50 +365,56 @@
 
         function renderKlanten() {
             const search = document.getElementById('zoekKlant')?.value?.toLowerCase() || '';
-            const filtered = klanten.filter(k => 
-                k.naam?.toLowerCase().includes(search) || 
-                k.email?.toLowerCase().includes(search) ||
-                k.adres?.toLowerCase().includes(search)
-            );
+            const filtered = klanten.filter(k => {
+                const naam = (k.company_name || ((k.firstname || '') + ' ' + (k.lastname || ''))).toLowerCase();
+                const email = (k.email || '').toLowerCase();
+                const city = (k.city || '').toLowerCase();
+                return naam.includes(search) || email.includes(search) || city.includes(search);
+            });
 
             if (filtered.length === 0) {
-                document.getElementById('klantenLijst').innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">Geen klanten gevonden. Klik op "+ Nieuwe klant" om te beginnen.</p>';
+                document.getElementById('klantenLijst').innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">Geen klanten gevonden.</p>';
                 return;
             }
 
-            document.getElementById('klantenLijst').innerHTML = filtered.map(k => {
-                const statusColors = { lead: 'bg-gray-100 text-gray-600', offerte: 'bg-blue-100 text-blue-700', actief: 'bg-green-100 text-green-700', afgerond: 'bg-purple-100 text-purple-700' };
-                const statusLabels = { lead: 'Lead', offerte: 'Offerte', actief: 'Actief', afgerond: 'Afgerond' };
-                const notities = (k.notities || []).length;
-                const fotos = ((k.fotosVoor || []).length + (k.fotosNa || []).length);
+            document.getElementById('klantenLijst').innerHTML = filtered.slice(0, 50).map(k => {
+                const naam = k.company_name || ((k.firstname || '') + ' ' + (k.lastname || '')).trim() || 'Onbekend';
+                const omzet = invoices.filter(i => i.contact_id === k.id).reduce((s, i) => s + parseFloat(i.total_price_incl_tax || 0), 0);
+                const extraData = klantData[k.id] || {};
+                const notities = (extraData.notities || []).length;
+                const fotos = ((extraData.fotosVoor || []).length + (extraData.fotosNa || []).length);
                 
                 return `
                 <div class="klant-card" onclick="openDossier('${k.id}')">
                     <div class="flex justify-between items-start mb-2">
-                        <h3 class="font-bold">${k.naam}</h3>
-                        <span class="text-xs px-2 py-1 rounded-full ${statusColors[k.status] || statusColors.lead}">${statusLabels[k.status] || 'Lead'}</span>
+                        <h3 class="font-bold">${naam}</h3>
+                        <span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">€${omzet.toLocaleString('nl-NL', {maximumFractionDigits: 0})}</span>
                     </div>
-                    <p class="text-sm text-gray-500">${k.adres || 'Geen adres'}</p>
-                    <p class="text-xs text-gray-400 mt-1">${k.email || ''} ${k.telefoon ? '• ' + k.telefoon : ''}</p>
+                    <p class="text-sm text-gray-500">${k.address1 || ''} ${k.city || ''}</p>
+                    <p class="text-xs text-gray-400 mt-1">${k.email || ''} ${k.phone ? '• ' + k.phone : ''}</p>
                     <div class="flex gap-3 mt-3 text-xs text-gray-400">
                         ${notities > 0 ? `<span>📝 ${notities}</span>` : ''}
                         ${fotos > 0 ? `<span>📸 ${fotos}</span>` : ''}
-                        <span>📅 ${k.aangemaakt ? formatDate(k.aangemaakt) : '-'}</span>
                     </div>
                 </div>
             `}).join('');
+            
+            if (filtered.length > 50) {
+                document.getElementById('klantenLijst').innerHTML += `<p class="text-gray-400 col-span-full text-center py-4 text-sm">En nog ${filtered.length - 50} meer... Gebruik zoeken om te filteren.</p>`;
+            }
         }
 
         function updateKPIs() {
             document.getElementById('kpiTotaal').textContent = klanten.length;
-            document.getElementById('kpiActief').textContent = klanten.filter(k => k.status === 'actief').length;
-            const omzet = klanten.reduce((sum, k) => sum + (parseFloat(k.omzet) || 0), 0);
-            document.getElementById('kpiOmzet').textContent = '€' + omzet.toLocaleString('nl-NL');
+            const actief = klanten.filter(c => invoices.some(i => i.contact_id === c.id)).length;
+            document.getElementById('kpiActief').textContent = actief;
+            const omzet = invoices.filter(i => i.state !== 'draft').reduce((s, i) => s + parseFloat(i.total_price_incl_tax || 0), 0);
+            document.getElementById('kpiOmzet').textContent = '€' + omzet.toLocaleString('nl-NL', {maximumFractionDigits: 0});
             document.getElementById('kpiEmails').textContent = googleConnected ? '✓' : '-';
         }
 
         // ============================================
-        // KLANT MODAL
+        // KLANT MODAL (Moneybird sync)
         // ============================================
         function openNieuweKlant() {
             document.getElementById('klantModalTitle').textContent = 'Nieuwe Klant';
@@ -394,40 +430,54 @@
             if (!klant) return;
             document.getElementById('klantModalTitle').textContent = 'Klant Bewerken';
             document.getElementById('klantId').value = klant.id;
-            document.getElementById('klantNaam').value = klant.naam || '';
-            document.getElementById('klantTelefoon').value = klant.telefoon || '';
+            document.getElementById('klantNaam').value = klant.company_name || ((klant.firstname || '') + ' ' + (klant.lastname || '')).trim();
+            document.getElementById('klantTelefoon').value = klant.phone || '';
             document.getElementById('klantEmail').value = klant.email || '';
-            document.getElementById('klantAdres').value = klant.adres || '';
-            document.getElementById('klantType').value = klant.type || 'particulier';
-            document.getElementById('klantStatus').value = klant.status || 'lead';
+            document.getElementById('klantAdres').value = [klant.address1, klant.zipcode, klant.city].filter(Boolean).join(', ');
+            document.getElementById('klantType').value = 'particulier';
+            document.getElementById('klantStatus').value = 'lead';
             document.getElementById('klantModal').classList.remove('hidden');
         }
 
         function closeKlantModal() { document.getElementById('klantModal').classList.add('hidden'); }
+        
+        function bewerkenHuidigeKlant() {
+            if (huidigeKlant) {
+                closeDossier();
+                openBewerkenKlant(huidigeKlant.id);
+            }
+        }
 
         async function saveKlant() {
-            const id = document.getElementById('klantId').value || Date.now().toString();
-            const klant = {
-                id,
-                naam: document.getElementById('klantNaam').value,
-                telefoon: document.getElementById('klantTelefoon').value,
-                email: document.getElementById('klantEmail').value,
-                adres: document.getElementById('klantAdres').value,
-                type: document.getElementById('klantType').value,
-                status: document.getElementById('klantStatus').value,
-                notities: klanten.find(k => k.id === id)?.notities || [],
-                fotosVoor: klanten.find(k => k.id === id)?.fotosVoor || [],
-                fotosNa: klanten.find(k => k.id === id)?.fotosNa || [],
-                aangemaakt: klanten.find(k => k.id === id)?.aangemaakt || new Date().toISOString()
+            const id = document.getElementById('klantId').value;
+            const naamParts = document.getElementById('klantNaam').value.split(' ');
+            const adresParts = document.getElementById('klantAdres').value.split(',').map(s => s.trim());
+            
+            const data = {
+                contact: {
+                    firstname: naamParts[0] || '',
+                    lastname: naamParts.slice(1).join(' ') || '',
+                    email: document.getElementById('klantEmail').value,
+                    phone: document.getElementById('klantTelefoon').value,
+                    address1: adresParts[0] || '',
+                    city: adresParts[adresParts.length - 1] || '',
+                    country: 'NL'
+                }
             };
             
-            const idx = klanten.findIndex(k => k.id === id);
-            if (idx >= 0) klanten[idx] = klant; else klanten.push(klant);
-            
-            await saveData();
-            closeKlantModal();
-            renderKlanten();
-            updateKPIs();
+            try {
+                if (id) {
+                    await fetch('/api/contacts/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                } else {
+                    await fetch('/api/contacts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                }
+                closeKlantModal();
+                await loadMoneybird();
+                renderKlanten();
+                updateKPIs();
+            } catch (e) { 
+                alert('Fout bij opslaan: ' + e.message); 
+            }
         }
 
         // ============================================
@@ -436,12 +486,20 @@
         async function openDossier(id) {
             const klant = klanten.find(k => k.id === id);
             if (!klant) return;
-            huidigeKlant = klant;
-
-            document.getElementById('dossierNaam').textContent = klant.naam;
-            document.getElementById('dossierAdres').textContent = klant.adres || 'Geen adres';
             
-            const tel = klant.telefoon || '';
+            // Combine Moneybird data with local extra data
+            huidigeKlant = {
+                ...klant,
+                naam: klant.company_name || ((klant.firstname || '') + ' ' + (klant.lastname || '')).trim() || 'Onbekend',
+                adres: [klant.address1, klant.zipcode, klant.city].filter(Boolean).join(', '),
+                telefoon: klant.phone || '',
+                ...(klantData[id] || {})
+            };
+
+            document.getElementById('dossierNaam').textContent = huidigeKlant.naam;
+            document.getElementById('dossierAdres').textContent = huidigeKlant.adres || 'Geen adres';
+            
+            const tel = huidigeKlant.telefoon || '';
             document.getElementById('dossierTel').href = tel ? `tel:${tel}` : '#';
             document.getElementById('dossierMail').href = klant.email ? `mailto:${klant.email}` : '#';
             
@@ -624,10 +682,13 @@
                 datum: new Date().toISOString()
             };
             
-            if (!huidigeKlant.notities) huidigeKlant.notities = [];
-            huidigeKlant.notities.unshift(notitie);
+            // Save to klantData (local storage per Moneybird contact ID)
+            if (!klantData[huidigeKlant.id]) klantData[huidigeKlant.id] = {};
+            if (!klantData[huidigeKlant.id].notities) klantData[huidigeKlant.id].notities = [];
+            klantData[huidigeKlant.id].notities.unshift(notitie);
+            huidigeKlant.notities = klantData[huidigeKlant.id].notities;
             
-            await saveData();
+            await saveKlantData();
             closeNotitieModal();
             renderNotities();
             renderTijdlijn();
@@ -677,14 +738,21 @@
                 const reader = new FileReader();
                 reader.onload = async (e) => {
                     const foto = { id: Date.now().toString(), data: e.target.result, datum: new Date().toISOString() };
+                    
+                    // Save to klantData (local storage per Moneybird contact ID)
+                    if (!klantData[huidigeKlant.id]) klantData[huidigeKlant.id] = {};
+                    
                     if (type === 'voor') {
-                        if (!huidigeKlant.fotosVoor) huidigeKlant.fotosVoor = [];
-                        huidigeKlant.fotosVoor.push(foto);
+                        if (!klantData[huidigeKlant.id].fotosVoor) klantData[huidigeKlant.id].fotosVoor = [];
+                        klantData[huidigeKlant.id].fotosVoor.push(foto);
+                        huidigeKlant.fotosVoor = klantData[huidigeKlant.id].fotosVoor;
                     } else {
-                        if (!huidigeKlant.fotosNa) huidigeKlant.fotosNa = [];
-                        huidigeKlant.fotosNa.push(foto);
+                        if (!klantData[huidigeKlant.id].fotosNa) klantData[huidigeKlant.id].fotosNa = [];
+                        klantData[huidigeKlant.id].fotosNa.push(foto);
+                        huidigeKlant.fotosNa = klantData[huidigeKlant.id].fotosNa;
                     }
-                    await saveData();
+                    
+                    await saveKlantData();
                     renderFotos();
                     renderTijdlijn();
                 };
@@ -696,17 +764,36 @@
         // DOCUMENTEN (placeholder - link to Moneybird/Opname)
         // ============================================
         function renderDocumenten() {
-            // This could be extended to fetch from Moneybird API
-            const docs = [
-                { type: 'info', icon: '💡', text: 'Documenten worden automatisch getoond wanneer gekoppeld aan Moneybird.' }
-            ];
+            if (!huidigeKlant) return;
             
-            document.getElementById('documentenLijst').innerHTML = `
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <p class="text-blue-700 text-sm">📄 Offertes en facturen worden hier getoond zodra je Moneybird koppelt.</p>
-                    <p class="text-blue-600 text-xs mt-2">Opname contracten vind je in de Opname module.</p>
+            // Get invoices for this contact from Moneybird
+            const klantInvoices = invoices.filter(i => i.contact_id === huidigeKlant.id);
+            
+            if (klantInvoices.length === 0) {
+                document.getElementById('documentenLijst').innerHTML = `
+                    <p class="text-gray-400 text-sm">Geen facturen gevonden voor deze klant.</p>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                        <p class="text-blue-700 text-sm">💡 Facturen worden automatisch getoond vanuit Moneybird.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            document.getElementById('documentenLijst').innerHTML = klantInvoices.map(inv => {
+                const statusColors = { draft: 'bg-gray-100 text-gray-600', open: 'bg-blue-100 text-blue-700', paid: 'bg-green-100 text-green-700', late: 'bg-red-100 text-red-700' };
+                const statusLabels = { draft: 'Concept', open: 'Open', paid: 'Betaald', late: 'Te laat' };
+                const status = inv.state || 'draft';
+                
+                return `
+                <div class="doc-item">
+                    <div class="doc-icon factuur">📄</div>
+                    <div class="flex-1">
+                        <p class="font-medium text-sm">Factuur ${inv.invoice_id || inv.id}</p>
+                        <p class="text-xs text-gray-500">${inv.invoice_date || '-'} • €${parseFloat(inv.total_price_incl_tax || 0).toLocaleString('nl-NL')}</p>
+                    </div>
+                    <span class="text-xs px-2 py-1 rounded-full ${statusColors[status] || statusColors.draft}">${statusLabels[status] || status}</span>
                 </div>
-            `;
+            `}).join('');
         }
 
         // ============================================
