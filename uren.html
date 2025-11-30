@@ -101,11 +101,21 @@
     </div>
 
     <script>
+        // Auth check
+        fetch('/api/auth/check').then(r => r.json()).then(d => { if (!d.authenticated) window.location.href = '/login.html'; }).catch(() => window.location.href = '/login.html');
+        
         let uren = JSON.parse(localStorage.getItem('stuc_uren') || '[]');
         let projecten = JSON.parse(localStorage.getItem('stuc_planning') || '[]');
 
         function toggleMenu() { document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open'); }
-        async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login.html'; }
+        async function logout() { 
+            try { 
+                await fetch('/api/auth/logout', { method: 'POST' }); 
+            } catch (e) { 
+                console.error('Logout error:', e); 
+            } 
+            window.location.href = '/login.html'; 
+        }
 
         function render() {
             updateKPIs();

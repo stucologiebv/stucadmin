@@ -154,12 +154,12 @@
                     if (result.data && Array.isArray(result.data) && result.data.length > 0) {
                         projecten = result.data;
                         localStorage.setItem('stuc_planning', JSON.stringify(projecten)); syncProjecten();
-                        console.log('📥 Projecten loaded from server');
+                        // Loaded from server
                         return;
                     }
                 }
             } catch (e) {
-                console.log('Server load failed');
+                // Server load failed
             }
             projecten = JSON.parse(localStorage.getItem('stuc_planning') || '[]');
         }
@@ -172,9 +172,9 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ data: projecten })
                 });
-                console.log('✅ Projecten synced to server');
+                // Synced
             } catch (e) {
-                console.log('⚠️ Sync failed');
+                // Sync failed
             }
         }
 
@@ -202,7 +202,7 @@
                 updateGoogleStatusUI();
                 if (googleConnected) loadGoogleEvents();
             } catch (e) {
-                console.log('Google status check failed');
+                // Google status failed
             }
         }
 
@@ -241,7 +241,7 @@
                 googleEvents = data.events || [];
                 renderKalender();
                 renderProjecten();
-            } catch (e) { console.log('Failed to load Google events:', e); }
+            } catch (e) { // Failed to load Google events }
         }
 
         function getAllEvents() {

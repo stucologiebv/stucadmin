@@ -7,6 +7,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Auth check
+        fetch('/api/auth/check').then(r => r.json()).then(d => { if (!d.authenticated) window.location.href = '/login.html'; }).catch(() => window.location.href = '/login.html');
+    </script>
     <style>
         * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%); min-height: 100vh; }

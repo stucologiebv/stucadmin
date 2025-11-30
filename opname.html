@@ -517,6 +517,15 @@
                     </div>
                 </div>
 
+                <!-- Winstmarge -->
+                <div class="border-t pt-4 mt-4">
+                    <div class="section-title">📈 Winstmarge</div>
+                    <div class="flex gap-4 items-center">
+                        <input type="number" id="winstmarge" class="input-field" value="5" min="0" max="50" style="width: 80px;" oninput="berekenTotaal()">
+                        <span class="text-sm text-gray-500">% marge op totaal</span>
+                    </div>
+                </div>
+
                 <!-- BTW Percentage -->
                 <div class="border-t pt-4 mt-4">
                     <div class="section-title">📊 BTW Percentage</div>
@@ -545,6 +554,10 @@
                     <div class="totaal-row" id="kortingRow" style="display: none;">
                         <span>Korting:</span>
                         <span id="kortingBedrag" class="text-red-600">-€0</span>
+                    </div>
+                    <div class="totaal-row" id="margeRow">
+                        <span>Winstmarge (5%):</span>
+                        <span id="margeBedrag" class="text-green-600">+€0</span>
                     </div>
                     <div class="totaal-row subtotal">
                         <span>Totaal excl. BTW:</span>
@@ -1144,20 +1157,28 @@
                 korting = kortingType === 'percentage' ? (subDiensten + subExtra) * (kortingWaarde / 100) : kortingWaarde;
             }
             
+            // Winstmarge ophalen
+            const margePercentage = parseFloat(document.getElementById('winstmarge').value) || 0;
+            const subtotaalVoorMarge = subDiensten + subExtra - korting;
+            const marge = subtotaalVoorMarge * (margePercentage / 100);
+            
             // BTW percentage ophalen
             const btwPercentage = parseInt(document.querySelector('input[name="btwPercentage"]:checked')?.value || '21');
             
-            const totExcl = subDiensten + subExtra - korting;
+            const totExcl = subtotaalVoorMarge + marge;
             const btw = totExcl * (btwPercentage / 100);
             const totIncl = totExcl + btw;
             
-            // Update BTW label
+            // Update BTW label en marge label
             document.getElementById('btwLabel').textContent = `BTW ${btwPercentage}%:`;
+            document.getElementById('margeRow').querySelector('span').textContent = `Winstmarge (${margePercentage}%):`;
+            document.getElementById('margeRow').style.display = margePercentage > 0 ? 'flex' : 'none';
             
             document.getElementById('subtotaalDiensten').textContent = '€' + subDiensten.toFixed(2);
             document.getElementById('subtotaalExtra').textContent = '€' + subExtra.toFixed(2);
             document.getElementById('kortingBedrag').textContent = '-€' + korting.toFixed(2);
             document.getElementById('kortingRow').style.display = korting > 0 ? 'flex' : 'none';
+            document.getElementById('margeBedrag').textContent = '+€' + marge.toFixed(2);
             document.getElementById('totaalExcl').textContent = '€' + totExcl.toFixed(2);
             document.getElementById('btwBedrag').textContent = '€' + btw.toFixed(2);
             document.getElementById('totaalIncl').textContent = '€' + totIncl.toFixed(2);

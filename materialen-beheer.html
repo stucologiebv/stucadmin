@@ -404,9 +404,9 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ data: { materialen, kits, prijsHistorie } })
             });
-            console.log('✅ Synced to server');
+            // Synced to server
         } catch (e) {
-            console.log('⚠️ Server sync failed, data saved locally');
+            // Server sync failed
         }
     }
 
@@ -424,12 +424,12 @@
                     localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
                     localStorage.setItem('stuc_materiaal_kits', JSON.stringify(kits)); syncToServer();
                     localStorage.setItem('stuc_prijs_historie', JSON.stringify(prijsHistorie));
-                    console.log('📥 Loaded from server');
+                    // Loaded from server
                     return;
                 }
             }
         } catch (e) {
-            console.log('Server load failed, using localStorage');
+            // Server load failed
         }
         
         // Fallback to localStorage
@@ -452,7 +452,7 @@
                 leveranciers = [...new Set([...leveranciers, ...mbSuppliers])].sort();
             }
         } catch (e) {
-            console.log('Could not load suppliers from Moneybird');
+            // Could not load suppliers
         }
         
         updateFilterOptions();
@@ -1075,7 +1075,7 @@
             }
             
         } catch (e) {
-            console.log('Could not load purchase history');
+            // Could not load purchase history
         }
     }
 
@@ -1832,8 +1832,8 @@
         else if (fnLower.includes('gamma')) defaultLeverancier = 'Gamma';
         else if (fnLower.includes('praxis')) defaultLeverancier = 'Praxis';
         
-        console.log('Import kolom mapping:', colMap);
-        console.log('Default leverancier:', defaultLeverancier);
+        // Import kolom mapping
+        // Default leverancier set
         
         // Parse data rows (skip header)
         for (let i = 1; i < lines.length; i++) {
