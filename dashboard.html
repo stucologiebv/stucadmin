@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dashboard - StucAdmin Pro</title>
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#f97316">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Stucologie">
+    <link rel="apple-touch-icon" href="/logo-stucologie.jpg">
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -28,6 +37,10 @@
         
         .btn-primary { background: #6366f1; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
         .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        
+        /* Google Reviews Widget */
+        .reviews-widget { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #f59e0b; }
+        .star { color: #f59e0b; }
         
         .status-online { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #ecfdf5; color: #059669; border-radius: 20px; font-size: 0.875rem; font-weight: 500; }
         .status-online::before { content: ''; width: 8px; height: 8px; background: #10b981; border-radius: 50%; }
@@ -142,6 +155,30 @@
                     <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Project</th><th>Locatie</th><th>Datum</th></tr></thead><tbody id="projecten"></tbody></table></div>
                 </div>
             </div>
+
+            <!-- Google Reviews Widget -->
+            <div class="card reviews-widget p-4 mt-4 sm:mt-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="text-4xl">⭐</div>
+                        <div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-3xl font-bold text-amber-700" id="reviewScore">5.0</span>
+                                <div class="flex text-xl star">★★★★★</div>
+                            </div>
+                            <p class="text-amber-700 text-sm">Google Reviews</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <a href="https://www.google.com/maps/place/Stucologie+B.V/@52.4891775,5.496488,17z/data=!4m8!3m7!1s0x47c626e6ab0d4f65:0x92f563860c099fa2!8m2!3d52.4891775!4d5.496488!9m1!1b1!16s%2Fg%2F11g01wtmbk" target="_blank" class="bg-white text-amber-700 px-4 py-2 rounded-lg font-medium text-sm text-center hover:bg-amber-50 border border-amber-300">
+                            📖 Bekijk reviews
+                        </a>
+                        <a href="https://search.google.com/local/writereview?placeid=ChIJZU8Nq-YmxkcRovkJDIZjlfI" target="_blank" class="bg-amber-600 text-white px-4 py-2 rounded-lg font-medium text-sm text-center hover:bg-amber-700">
+                            ✍️ Vraag review aan klant
+                        </a>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -215,6 +252,13 @@
             } catch (e) { console.error(e); }
         }
         init();
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('✅ Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed:', err));
+        }
     </script>
 </body>
 </html>
