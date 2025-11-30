@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ZZP Inhuur - StucAdmin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        fetch('/api/auth/check').then(r => r.json()).then(d => { if (!d.authenticated) window.location.href = '/login.html'; }).catch(() => window.location.href = '/login.html');
+    </script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; }
+        .sidebar { background: #fff; border-right: 1px solid #e5e7eb; position: fixed; left: 0; top: 0; bottom: 0; width: 256px; display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s ease; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; text-decoration: none; margin-bottom: 4px; transition: all 0.2s; }
+        .nav-item:hover { background: #f1f5f9; color: #1e293b; }
+        .nav-item.active { background: #6366f1; color: white; }
+        .logout-btn { color: #ef4444; }
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        main { margin-left: 256px; padding: 24px; min-height: 100vh; }
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+        .btn { padding: 12px 24px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+        .btn-primary { background: #6366f1; color: white; }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-secondary { background: #f1f5f9; color: #475569; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-orange { background: #f97316; color: white; }
+        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; width: 100%; font-size: 16px; min-height: 44px; }
+        .input-field:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+        .section-title { font-weight: 700; font-size: 14px; color: #374151; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .hidden { display: none !important; }
+        .zzp-card { background: #fff; border: 1px solid #e5e7eb; border-left: 4px solid #6366f1; border-radius: 0 12px 12px 0; padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; }
+        .zzp-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .zzp-card.risico-hoog { border-left-color: #ef4444; }
+        .zzp-card.risico-matig { border-left-color: #f59e0b; }
+        .zzp-card.risico-laag { border-left-color: #10b981; }
+        .risico-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .risico-laag { background: #d1fae5; color: #065f46; }
+        .risico-matig { background: #fef3c7; color: #92400e; }
+        .risico-hoog { background: #fee2e2; color: #991b1b; }
+        .check-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: #f8fafc; border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+        .check-item:hover { background: #f1f5f9; }
+        .check-item label { flex: 1; font-size: 14px; cursor: pointer; }
+        .check-item input[type="checkbox"] { width: 22px; height: 22px; accent-color: #10b981; cursor: pointer; }
+        .check-item.passed { background: #d1fae5; border: 1px solid #10b981; }
+        .check-item.failed { background: #fee2e2; border: 1px solid #ef4444; }
+        .check-item .hint { font-size: 12px; color: #64748b; margin-top: 4px; }
+        .score-meter { height: 16px; background: #e5e7eb; border-radius: 8px; overflow: hidden; margin: 16px 0; }
+        .score-fill { height: 100%; transition: width 0.5s ease, background 0.5s ease; border-radius: 8px; }
+        .score-fill.laag { background: linear-gradient(90deg, #10b981, #34d399); }
+        .score-fill.matig { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        .score-fill.hoog { background: linear-gradient(90deg, #ef4444, #f87171); }
+        .tab-bar { display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 12px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 10px 16px; border: none; background: transparent; font-weight: 600; color: #64748b; cursor: pointer; border-radius: 8px; font-size: 13px; transition: all 0.2s; }
+        .tab-btn.active { background: white; color: #6366f1; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .modal { background: white; border-radius: 16px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: white; z-index: 10; }
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end; position: sticky; bottom: 0; background: white; }
+        .warning-box { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #92400e; margin-bottom: 16px; }
+        .success-box { background: #d1fae5; border: 1px solid #10b981; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #065f46; margin-bottom: 16px; }
+        .danger-box { background: #fee2e2; border: 1px solid #ef4444; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #991b1b; margin-bottom: 16px; }
+        .info-box { background: #dbeafe; border: 1px solid #3b82f6; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #1e40af; margin-bottom: 16px; }
+        .opdracht-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+        .opdracht-card .status { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
+        .opdracht-card .status.actief { background: #dbeafe; color: #1e40af; }
+        .opdracht-card .status.afgerond { background: #d1fae5; color: #065f46; }
+        .opdracht-card .status.gepland { background: #fef3c7; color: #92400e; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+        @media (max-width: 640px) { .form-grid, .form-grid.three { grid-template-columns: 1fr; } }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .kpi-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; text-align: center; }
+        .kpi-card .value { font-size: 28px; font-weight: 700; color: #1e293b; }
+        .kpi-card .label { font-size: 12px; color: #64748b; margin-top: 4px; }
+        @media (max-width: 768px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            main { margin-left: 0; padding: 70px 16px 24px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
+    <aside class="sidebar">
+        <div class="p-4 border-b border-gray-200"><img src="/logo-stucologie.jpg" alt="Stucologie B.V." style="max-width: 180px; height: auto;"></div>
+        <nav class="flex-1 p-4 overflow-y-auto">
+            <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+            <a href="omzet.html" class="nav-item">💹 Omzet</a>
+            <a href="crm.html" class="nav-item">👥 Klanten</a>
+            <a href="planning.html" class="nav-item">📅 Planning</a>
+            <a href="opname.html" class="nav-item">📋 Opname</a>
+            <a href="zzp-inhuur.html" class="nav-item active">🤝 ZZP Inhuur</a>
+            <a href="uren.html" class="nav-item">⏱️ Uren</a>
+            <a href="calculator.html" class="nav-item">🧮 Calculator</a>
+            <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
+            <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
+        </nav>
+        <div class="p-4 border-t border-gray-100">
+            <a href="beveiliging.html" class="nav-item">🔐 Beveiliging</a>
+            <button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button>
+        </div>
+    </aside>
+
+    <main>
+        <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div><h1 class="text-xl font-bold">🤝 ZZP Inhuur</h1><p class="text-gray-500 text-sm">Beheer onderaannemers conform Wet DBA 2025</p></div>
+            <button onclick="openNieuweZZP()" class="btn btn-primary">+ Nieuwe ZZP'er</button>
+        </header>
+
+        <div class="kpi-grid">
+            <div class="kpi-card"><div class="value" id="kpiTotaal">0</div><div class="label">Totaal ZZP'ers</div></div>
+            <div class="kpi-card"><div class="value" id="kpiActief" style="color: #10b981;">0</div><div class="label">Actieve opdrachten</div></div>
+            <div class="kpi-card"><div class="value" id="kpiRisico" style="color: #f59e0b;">0</div><div class="label">Hertoetsing nodig</div></div>
+            <div class="kpi-card"><div class="value" id="kpiHoogRisico" style="color: #ef4444;">0</div><div class="label">Hoog risico</div></div>
+        </div>
+
+        <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchTab('overzicht')">📋 Overzicht</button>
+            <button class="tab-btn" onclick="switchTab('opdrachten')">📅 Opdrachten</button>
+            <button class="tab-btn" onclick="switchTab('checklist')">✅ Wet DBA Info</button>
+        </div>
+
+        <div id="tab-overzicht">
+            <div class="card">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="section-title">ZZP'ers</div>
+                    <input type="text" id="searchZZP" class="input-field" placeholder="🔍 Zoeken..." style="max-width: 250px;" oninput="renderZZPers()">
+                </div>
+                <div id="zzpLijst"></div>
+            </div>
+        </div>
+
+        <div id="tab-opdrachten" class="hidden">
+            <div class="card"><div class="section-title">Alle Opdrachten</div><div id="opdrachtenLijst"></div></div>
+        </div>
+
+        <div id="tab-checklist" class="hidden">
+            <div class="card">
+                <h2 class="text-lg font-bold mb-4">📋 Wet DBA 2025 - Schijnzelfstandigheid Criteria</h2>
+                <div class="info-box"><strong>Let op:</strong> Vanaf 1 januari 2025 handhaaft de Belastingdienst actief op schijnzelfstandigheid. Bij constatering riskeer je naheffingen tot 5 jaar terug.</div>
+                <div class="section-title mt-6">De 9 Deliveroo-criteria</div>
+                <p class="text-sm text-gray-600 mb-4">De Belastingdienst beoordeelt arbeidsrelaties op basis van deze criteria:</p>
+                <div class="space-y-3">
+                    <div class="check-item"><span class="text-2xl">🔧</span><div class="flex-1"><strong>1. Eigen gereedschap & middelen</strong><p class="hint">ZZP'er gebruikt eigen spanen, mixer, steigers</p></div></div>
+                    <div class="check-item"><span class="text-2xl">🚗</span><div class="flex-1"><strong>2. Eigen vervoer</strong><p class="hint">Rijdt niet in bedrijfsbus van Stucologie</p></div></div>
+                    <div class="check-item"><span class="text-2xl">👥</span><div class="flex-1"><strong>3. Meerdere opdrachtgevers</strong><p class="hint">Werkt niet exclusief voor Stucologie</p></div></div>
+                    <div class="check-item"><span class="text-2xl">🎯</span><div class="flex-1"><strong>4. Resultaatgericht werken</strong><p class="hint">Betaling per m² of project, niet per uur</p></div></div>
+                    <div class="check-item"><span class="text-2xl">🔄</span><div class="flex-1"><strong>5. Mag zich laten vervangen</strong><p class="hint">Mag een collega-ZZP'er sturen</p></div></div>
+                    <div class="check-item"><span class="text-2xl">⏰</span><div class="flex-1"><strong>6. Eigen werktijden</strong><p class="hint">Bepaalt zelf wanneer hij werkt</p></div></div>
+                    <div class="check-item"><span class="text-2xl">📢</span><div class="flex-1"><strong>7. Eigen acquisitie</strong><p class="hint">Heeft eigen website, werft zelf klanten</p></div></div>
+                    <div class="check-item"><span class="text-2xl">📋</span><div class="flex-1"><strong>8. Niet recent in loondienst</strong><p class="hint">Was niet recent werknemer bij Stucologie</p></div></div>
+                    <div class="check-item"><span class="text-2xl">💰</span><div class="flex-1"><strong>9. Draagt ondernemersrisico</strong><p class="hint">Verantwoordelijk voor eigen fouten</p></div></div>
+                </div>
+                <div class="warning-box mt-6"><strong>⚠️ Bouw-specifiek:</strong> Let extra op ketenaansprakelijkheid. Controleer altijd KvK, BTW-nummer en eventueel Verklaring Betalingsgedrag.</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal: ZZP'er -->
+    <div id="zzpModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header"><h2 class="text-lg font-bold" id="zzpModalTitle">Nieuwe ZZP'er</h2><button onclick="closeZZPModal()" class="text-gray-400 text-2xl">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="zzpId">
+                <div id="zzpStap1">
+                    <div class="section-title">👤 Bedrijfsgegevens</div>
+                    <div class="form-grid mb-4">
+                        <div><label class="text-xs text-gray-500">Bedrijfsnaam *</label><input type="text" id="zzpBedrijfsnaam" class="input-field" placeholder="Bijv. Stukadoorsbedrijf Jansen"></div>
+                        <div><label class="text-xs text-gray-500">Contactpersoon *</label><input type="text" id="zzpNaam" class="input-field" placeholder="Volledige naam"></div>
+                    </div>
+                    <div class="form-grid mb-4">
+                        <div><label class="text-xs text-gray-500">Email *</label><input type="email" id="zzpEmail" class="input-field" placeholder="email@voorbeeld.nl"></div>
+                        <div><label class="text-xs text-gray-500">Telefoon *</label><input type="tel" id="zzpTelefoon" class="input-field" placeholder="06-12345678"></div>
+                    </div>
+                    <div class="form-grid mb-4">
+                        <div><label class="text-xs text-gray-500">KvK-nummer *</label><input type="text" id="zzpKvk" class="input-field" placeholder="12345678" maxlength="8"></div>
+                        <div><label class="text-xs text-gray-500">BTW-nummer *</label><input type="text" id="zzpBtw" class="input-field" placeholder="NL123456789B01"></div>
+                    </div>
+                    <div class="form-grid mb-4">
+                        <div><label class="text-xs text-gray-500">IBAN</label><input type="text" id="zzpIban" class="input-field" placeholder="NL00 BANK 0000 0000 00"></div>
+                        <div><label class="text-xs text-gray-500">Tarief indicatie (€/m²)</label><input type="number" id="zzpTarief" class="input-field" placeholder="18"></div>
+                    </div>
+                    <div class="mb-4"><label class="text-xs text-gray-500">Adres</label><input type="text" id="zzpAdres" class="input-field" placeholder="Straat 123, 1234 AB Plaats"></div>
+                    <div class="mb-4"><label class="text-xs text-gray-500">Specialisaties</label><input type="text" id="zzpSpecialisaties" class="input-field" placeholder="Bijv. glad stucwerk, spuitwerk, sierpleister"></div>
+                    <button onclick="naarStap2()" class="btn btn-primary w-full mt-4">Volgende: Schijnzelfstandigheid Check →</button>
+                </div>
+                <div id="zzpStap2" class="hidden">
+                    <div class="section-title">✅ Schijnzelfstandigheid Check (Wet DBA 2025)</div>
+                    <p class="text-sm text-gray-600 mb-4">Beantwoord deze vragen eerlijk op basis van de werkelijke situatie:</p>
+                    <div id="checklistContainer"></div>
+                    <div class="mt-6">
+                        <div class="section-title">Risicobeoordeling</div>
+                        <div class="score-meter"><div id="scoreFill" class="score-fill laag" style="width: 100%;"></div></div>
+                        <div class="flex justify-between text-sm"><span id="scoreLabel" class="font-bold text-green-600">Laag risico</span><span id="scoreText">9/9 checks OK</span></div>
+                        <div id="risicoAdvies" class="success-box mt-4">✅ Deze ZZP'er voldoet aan alle criteria voor zelfstandig ondernemerschap.</div>
+                    </div>
+                    <div class="flex gap-3 mt-6">
+                        <button onclick="naarStap1()" class="btn btn-secondary flex-1">← Terug</button>
+                        <button onclick="saveZZP()" class="btn btn-success flex-1">💾 Opslaan</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Opdracht -->
+    <div id="opdrachtModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header"><h2 class="text-lg font-bold">📋 Nieuwe Opdracht Toewijzen</h2><button onclick="closeOpdrachtModal()" class="text-gray-400 text-2xl">&times;</button></div>
+            <div class="modal-body">
+                <input type="hidden" id="opdrachtZzpId">
+                <div class="info-box"><strong>ZZP'er:</strong> <span id="opdrachtZzpNaam"></span></div>
+                <div class="section-title mt-4">📍 Project Details</div>
+                <div class="form-grid mb-4">
+                    <div><label class="text-xs text-gray-500">Projectnaam *</label><input type="text" id="opdrachtProject" class="input-field" placeholder="Bijv. Renovatie Kerkstraat 12"></div>
+                    <div><label class="text-xs text-gray-500">Klant/Locatie</label><input type="text" id="opdrachtLocatie" class="input-field" placeholder="Naam klant of adres"></div>
+                </div>
+                <div class="section-title mt-4">📅 Planning</div>
+                <div class="form-grid mb-4">
+                    <div><label class="text-xs text-gray-500">Startdatum *</label><input type="date" id="opdrachtStart" class="input-field"></div>
+                    <div><label class="text-xs text-gray-500">Einddatum (verwacht)</label><input type="date" id="opdrachtEind" class="input-field"></div>
+                </div>
+                <div class="section-title mt-4">💰 Financieel</div>
+                <div class="form-grid three mb-4">
+                    <div><label class="text-xs text-gray-500">Vergoeding type</label><select id="opdrachtType" class="input-field" onchange="toggleVergoedingVelden()"><option value="m2">Per m²</option><option value="project">Vast bedrag</option><option value="uur">Per uur (risico!)</option></select></div>
+                    <div><label class="text-xs text-gray-500">Bedrag (€)</label><input type="number" id="opdrachtBedrag" class="input-field" placeholder="0.00" step="0.01"></div>
+                    <div id="opdrachtM2Veld"><label class="text-xs text-gray-500">Aantal m²</label><input type="number" id="opdrachtM2" class="input-field" placeholder="0"></div>
+                </div>
+                <div id="uurWarning" class="warning-box hidden">⚠️ Betaling per uur kan wijzen op schijnzelfstandigheid. Overweeg per m² of vast projectbedrag.</div>
+                <div class="section-title mt-4">📝 Omschrijving</div>
+                <textarea id="opdrachtOmschrijving" class="input-field" rows="3" placeholder="Beschrijf de werkzaamheden..."></textarea>
+                <div class="section-title mt-4">📅 Agenda & Uitnodiging</div>
+                <label class="flex items-center gap-3 p-3 bg-blue-50 rounded-lg cursor-pointer"><input type="checkbox" id="opdrachtNaarAgenda" checked class="w-5 h-5"><span class="text-sm text-blue-700">Toevoegen aan Google Agenda</span></label>
+                <label class="flex items-center gap-3 p-3 bg-green-50 rounded-lg cursor-pointer mt-2"><input type="checkbox" id="opdrachtInvite" checked class="w-5 h-5"><span class="text-sm text-green-700">📧 Agenda-uitnodiging sturen naar ZZP'er</span></label>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeOpdrachtModal()" class="btn btn-secondary">Annuleren</button>
+                <button onclick="saveOpdracht()" class="btn btn-success">✅ Opdracht Aanmaken</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Detail -->
+    <div id="detailModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header"><h2 class="text-lg font-bold" id="detailNaam">ZZP'er Details</h2><button onclick="closeDetailModal()" class="text-gray-400 text-2xl">&times;</button></div>
+            <div class="modal-body"><div id="detailContent"></div></div>
+            <div class="modal-footer">
+                <button onclick="closeDetailModal()" class="btn btn-secondary">Sluiten</button>
+                <button onclick="bewerkenVanDetail()" class="btn btn-primary">✏️ Bewerken</button>
+                <button onclick="nieuweOpdrachtVanDetail()" class="btn btn-success">+ Opdracht</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let zzpers = [], opdrachten = [], huidigZzpId = null;
+        
+        const CHECKLIST = [
+            { id: 'eigenGereedschap', vraag: 'Gebruikt eigen gereedschap (spanen, mixer, steigers)', hint: 'Niet het materiaal van Stucologie' },
+            { id: 'eigenVervoer', vraag: 'Heeft eigen vervoer', hint: 'Rijdt niet in bedrijfsbus Stucologie' },
+            { id: 'meerdereOpdrachtgevers', vraag: 'Werkt voor meerdere opdrachtgevers', hint: 'Niet exclusief voor Stucologie' },
+            { id: 'resultaatGericht', vraag: 'Wordt betaald per resultaat (m² of project)', hint: 'Niet standaard per uur' },
+            { id: 'magVervangen', vraag: 'Mag zich laten vervangen door collega', hint: 'Geen persoonlijke arbeidsverplichting' },
+            { id: 'eigenWerktijden', vraag: 'Bepaalt eigen werktijden', hint: 'Geen vaste 8-5 verplichting' },
+            { id: 'eigenAcquisitie', vraag: 'Doet eigen acquisitie (website, advertenties)', hint: 'Werft zelf klanten' },
+            { id: 'nietOudWerknemer', vraag: 'Was niet recent in loondienst bij Stucologie', hint: 'Minimaal 6 maanden geleden' },
+            { id: 'ondernemersrisico', vraag: 'Draagt eigen ondernemersrisico', hint: 'Verantwoordelijk voor fouten' }
+        ];
+
+        async function init() {
+            await loadData();
+            renderChecklistTemplate();
+            renderZZPers();
+            renderOpdrachten();
+            updateKPIs();
+        }
+
+        async function loadData() {
+            try {
+                const [zzpRes, opdRes] = await Promise.all([
+                    fetch('/api/data/zzpers').then(r => r.json()),
+                    fetch('/api/data/zzp-opdrachten').then(r => r.json())
+                ]);
+                if (zzpRes.success) zzpers = zzpRes.data || [];
+                if (opdRes.success) opdrachten = opdRes.data || [];
+            } catch (e) {
+                zzpers = JSON.parse(localStorage.getItem('stuc_zzpers') || '[]');
+                opdrachten = JSON.parse(localStorage.getItem('stuc_zzp_opdrachten') || '[]');
+            }
+        }
+
+        async function saveData() {
+            localStorage.setItem('stuc_zzpers', JSON.stringify(zzpers));
+            localStorage.setItem('stuc_zzp_opdrachten', JSON.stringify(opdrachten));
+            try {
+                await Promise.all([
+                    fetch('/api/data/zzpers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: zzpers }) }),
+                    fetch('/api/data/zzp-opdrachten', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: opdrachten }) })
+                ]);
+            } catch (e) { }
+        }
+
+        function renderChecklistTemplate() {
+            document.getElementById('checklistContainer').innerHTML = CHECKLIST.map(c => `
+                <div class="check-item" id="check-${c.id}" onclick="toggleCheck('${c.id}')">
+                    <input type="checkbox" id="${c.id}" checked onchange="updateRisico()">
+                    <div class="flex-1"><label for="${c.id}">${c.vraag}</label><p class="hint">${c.hint}</p></div>
+                </div>
+            `).join('');
+        }
+
+        function renderZZPers() {
+            const search = document.getElementById('searchZZP')?.value?.toLowerCase() || '';
+            const filtered = zzpers.filter(z => z.bedrijfsnaam?.toLowerCase().includes(search) || z.naam?.toLowerCase().includes(search) || z.specialisaties?.toLowerCase().includes(search));
+            
+            if (filtered.length === 0) {
+                document.getElementById('zzpLijst').innerHTML = '<p class="text-gray-400 text-center py-8">Geen ZZP\'ers gevonden. Klik op "+ Nieuwe ZZP\'er" om te beginnen.</p>';
+                return;
+            }
+            
+            document.getElementById('zzpLijst').innerHTML = filtered.map(z => {
+                const risico = berekenRisico(z.checklist || {});
+                const actieveOpdrachten = opdrachten.filter(o => o.zzpId === z.id && o.status === 'actief').length;
+                return `
+                <div class="zzp-card risico-${risico.niveau}" onclick="openDetail('${z.id}')">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-bold">${z.bedrijfsnaam || z.naam}</h3>
+                            <p class="text-sm text-gray-500">${z.naam}${z.specialisaties ? ' • ' + z.specialisaties : ''}</p>
+                            <p class="text-xs text-gray-400 mt-1">KvK: ${z.kvk || '-'} • ${z.email || '-'}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="risico-badge risico-${risico.niveau}">${risico.label}</span>
+                            ${actieveOpdrachten > 0 ? `<p class="text-xs text-blue-600 mt-2">${actieveOpdrachten} actieve opdracht(en)</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function renderOpdrachten() {
+            const sorted = [...opdrachten].sort((a, b) => new Date(b.startDatum) - new Date(a.startDatum));
+            if (sorted.length === 0) {
+                document.getElementById('opdrachtenLijst').innerHTML = '<p class="text-gray-400 text-center py-8">Nog geen opdrachten toegewezen.</p>';
+                return;
+            }
+            document.getElementById('opdrachtenLijst').innerHTML = sorted.map(o => {
+                const zzp = zzpers.find(z => z.id === o.zzpId);
+                const statusClass = o.status === 'afgerond' ? 'afgerond' : (new Date(o.startDatum) > new Date() ? 'gepland' : 'actief');
+                return `
+                <div class="opdracht-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-bold">${o.project}</h4>
+                            <p class="text-sm text-gray-600">${zzp?.bedrijfsnaam || zzp?.naam || 'Onbekend'}</p>
+                            <p class="text-xs text-gray-400 mt-1">${formatDate(o.startDatum)}${o.eindDatum ? ' - ' + formatDate(o.eindDatum) : ''} • ${o.locatie || '-'}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="status ${statusClass}">${statusClass === 'gepland' ? 'Gepland' : statusClass === 'actief' ? 'Actief' : 'Afgerond'}</span>
+                            <p class="text-sm font-bold mt-2">€${(o.totaalBedrag || 0).toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        ${o.status !== 'afgerond' ? `<button onclick="event.stopPropagation(); markeerAfgerond('${o.id}')" class="btn btn-success text-xs py-2 px-3">✓ Afronden</button>` : ''}
+                        <button onclick="event.stopPropagation(); genereerOvereenkomst('${o.id}')" class="btn btn-secondary text-xs py-2 px-3">📄 Overeenkomst</button>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function updateKPIs() {
+            document.getElementById('kpiTotaal').textContent = zzpers.length;
+            document.getElementById('kpiActief').textContent = opdrachten.filter(o => o.status === 'actief').length;
+            const hertoetsing = zzpers.filter(z => {
+                const laatsteCheck = z.laatsteCheck ? new Date(z.laatsteCheck) : null;
+                if (!laatsteCheck) return true;
+                return (new Date() - laatsteCheck) / (1000 * 60 * 60 * 24 * 30) > 6;
+            }).length;
+            document.getElementById('kpiRisico').textContent = hertoetsing;
+            document.getElementById('kpiHoogRisico').textContent = zzpers.filter(z => berekenRisico(z.checklist || {}).niveau === 'hoog').length;
+        }
+
+        function openNieuweZZP() {
+            document.getElementById('zzpModalTitle').textContent = 'Nieuwe ZZP\'er';
+            document.getElementById('zzpId').value = '';
+            ['zzpBedrijfsnaam','zzpNaam','zzpEmail','zzpTelefoon','zzpKvk','zzpBtw','zzpIban','zzpTarief','zzpAdres','zzpSpecialisaties'].forEach(id => document.getElementById(id).value = '');
+            CHECKLIST.forEach(c => { document.getElementById(c.id).checked = true; document.getElementById('check-' + c.id).className = 'check-item passed'; });
+            updateRisico();
+            naarStap1();
+            document.getElementById('zzpModal').classList.remove('hidden');
+        }
+
+        function openBewerken(id) {
+            const zzp = zzpers.find(z => z.id === id);
+            if (!zzp) return;
+            document.getElementById('zzpModalTitle').textContent = 'ZZP\'er Bewerken';
+            document.getElementById('zzpId').value = zzp.id;
+            document.getElementById('zzpBedrijfsnaam').value = zzp.bedrijfsnaam || '';
+            document.getElementById('zzpNaam').value = zzp.naam || '';
+            document.getElementById('zzpEmail').value = zzp.email || '';
+            document.getElementById('zzpTelefoon').value = zzp.telefoon || '';
+            document.getElementById('zzpKvk').value = zzp.kvk || '';
+            document.getElementById('zzpBtw').value = zzp.btw || '';
+            document.getElementById('zzpIban').value = zzp.iban || '';
+            document.getElementById('zzpTarief').value = zzp.tarief || '';
+            document.getElementById('zzpAdres').value = zzp.adres || '';
+            document.getElementById('zzpSpecialisaties').value = zzp.specialisaties || '';
+            const checklist = zzp.checklist || {};
+            CHECKLIST.forEach(c => {
+                const checked = checklist[c.id] !== false;
+                document.getElementById(c.id).checked = checked;
+                document.getElementById('check-' + c.id).className = 'check-item ' + (checked ? 'passed' : 'failed');
+            });
+            updateRisico();
+            naarStap1();
+            document.getElementById('zzpModal').classList.remove('hidden');
+        }
+
+        function closeZZPModal() { document.getElementById('zzpModal').classList.add('hidden'); }
+        function naarStap1() { document.getElementById('zzpStap1').classList.remove('hidden'); document.getElementById('zzpStap2').classList.add('hidden'); }
+        function naarStap2() {
+            if (!document.getElementById('zzpNaam').value || !document.getElementById('zzpEmail').value) { alert('Vul minimaal naam en email in'); return; }
+            document.getElementById('zzpStap1').classList.add('hidden');
+            document.getElementById('zzpStap2').classList.remove('hidden');
+        }
+
+        function toggleCheck(id) { const cb = document.getElementById(id); cb.checked = !cb.checked; updateRisico(); }
+
+        function updateRisico() {
+            let score = 0;
+            CHECKLIST.forEach(c => {
+                const checked = document.getElementById(c.id).checked;
+                document.getElementById('check-' + c.id).className = 'check-item ' + (checked ? 'passed' : 'failed');
+                if (checked) score++;
+            });
+            const pct = (score / CHECKLIST.length) * 100;
+            const fill = document.getElementById('scoreFill');
+            const label = document.getElementById('scoreLabel');
+            const text = document.getElementById('scoreText');
+            const advies = document.getElementById('risicoAdvies');
+            fill.style.width = pct + '%';
+            text.textContent = `${score}/${CHECKLIST.length} checks OK`;
+            if (score >= 7) {
+                fill.className = 'score-fill laag'; label.textContent = 'Laag risico'; label.className = 'font-bold text-green-600';
+                advies.className = 'success-box mt-4'; advies.innerHTML = '✅ Laag risico op schijnzelfstandigheid.';
+            } else if (score >= 5) {
+                fill.className = 'score-fill matig'; label.textContent = 'Matig risico'; label.className = 'font-bold text-yellow-600';
+                advies.className = 'warning-box mt-4'; advies.innerHTML = '⚠️ Let op: enkele criteria niet voldaan. Bespreek en leg afspraken schriftelijk vast.';
+            } else {
+                fill.className = 'score-fill hoog'; label.textContent = 'Hoog risico'; label.className = 'font-bold text-red-600';
+                advies.className = 'danger-box mt-4'; advies.innerHTML = '🚨 Hoog risico! Overweeg alternatieve constructie of pas werkrelatie aan.';
+            }
+        }
+
+        async function saveZZP() {
+            const id = document.getElementById('zzpId').value || Date.now().toString();
+            const checklist = {};
+            CHECKLIST.forEach(c => { checklist[c.id] = document.getElementById(c.id).checked; });
+            const zzp = {
+                id, bedrijfsnaam: document.getElementById('zzpBedrijfsnaam').value, naam: document.getElementById('zzpNaam').value,
+                email: document.getElementById('zzpEmail').value, telefoon: document.getElementById('zzpTelefoon').value,
+                kvk: document.getElementById('zzpKvk').value, btw: document.getElementById('zzpBtw').value,
+                iban: document.getElementById('zzpIban').value, tarief: parseFloat(document.getElementById('zzpTarief').value) || null,
+                adres: document.getElementById('zzpAdres').value, specialisaties: document.getElementById('zzpSpecialisaties').value,
+                checklist, laatsteCheck: new Date().toISOString(), aangemaakt: zzpers.find(z => z.id === id)?.aangemaakt || new Date().toISOString()
+            };
+            const idx = zzpers.findIndex(z => z.id === id);
+            if (idx >= 0) zzpers[idx] = zzp; else zzpers.push(zzp);
+            await saveData(); closeZZPModal(); renderZZPers(); updateKPIs();
+        }
+
+        function openDetail(id) {
+            const zzp = zzpers.find(z => z.id === id);
+            if (!zzp) return;
+            huidigZzpId = id;
+            const risico = berekenRisico(zzp.checklist || {});
+            const zzpOpdrachten = opdrachten.filter(o => o.zzpId === id);
+            document.getElementById('detailNaam').textContent = zzp.bedrijfsnaam || zzp.naam;
+            document.getElementById('detailContent').innerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <div><p class="text-gray-600">${zzp.naam}</p><p class="text-sm text-gray-500">${zzp.specialisaties || '-'}</p></div>
+                    <span class="risico-badge risico-${risico.niveau}">${risico.label}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">Email</p><p class="font-medium">${zzp.email || '-'}</p></div>
+                    <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">Telefoon</p><p class="font-medium">${zzp.telefoon || '-'}</p></div>
+                    <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">KvK</p><p class="font-medium">${zzp.kvk || '-'}</p></div>
+                    <div class="bg-gray-50 p-3 rounded-lg"><p class="text-xs text-gray-500">BTW</p><p class="font-medium">${zzp.btw || '-'}</p></div>
+                </div>
+                <div class="section-title">✅ Schijnzelfstandigheid Check</div>
+                <p class="text-xs text-gray-500 mb-2">Laatste check: ${zzp.laatsteCheck ? formatDate(zzp.laatsteCheck) : 'Nooit'}</p>
+                <div class="grid grid-cols-1 gap-2 mb-6">
+                    ${CHECKLIST.map(c => { const ok = zzp.checklist?.[c.id] !== false; return `<div class="flex items-center gap-2 text-sm ${ok ? 'text-green-600' : 'text-red-600'}"><span>${ok ? '✅' : '❌'}</span><span>${c.vraag}</span></div>`; }).join('')}
+                </div>
+                <div class="section-title">📋 Opdrachten (${zzpOpdrachten.length})</div>
+                ${zzpOpdrachten.length === 0 ? '<p class="text-gray-400 text-sm">Nog geen opdrachten</p>' : zzpOpdrachten.map(o => `<div class="opdracht-card"><div class="flex justify-between"><div><p class="font-medium">${o.project}</p><p class="text-xs text-gray-500">${formatDate(o.startDatum)} • €${(o.totaalBedrag || 0).toFixed(2)}</p></div><span class="status ${o.status}">${o.status === 'actief' ? 'Actief' : 'Afgerond'}</span></div></div>`).join('')}
+            `;
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function closeDetailModal() { document.getElementById('detailModal').classList.add('hidden'); huidigZzpId = null; }
+        function bewerkenVanDetail() { closeDetailModal(); openBewerken(huidigZzpId); }
+        function nieuweOpdrachtVanDetail() { closeDetailModal(); openNieuweOpdracht(huidigZzpId); }
+
+        function openNieuweOpdracht(zzpId) {
+            const zzp = zzpers.find(z => z.id === zzpId);
+            if (!zzp) return;
+            document.getElementById('opdrachtZzpId').value = zzpId;
+            document.getElementById('opdrachtZzpNaam').textContent = zzp.bedrijfsnaam || zzp.naam;
+            document.getElementById('opdrachtProject').value = '';
+            document.getElementById('opdrachtLocatie').value = '';
+            document.getElementById('opdrachtStart').value = new Date().toISOString().split('T')[0];
+            document.getElementById('opdrachtEind').value = '';
+            document.getElementById('opdrachtType').value = 'm2';
+            document.getElementById('opdrachtBedrag').value = zzp.tarief || '';
+            document.getElementById('opdrachtM2').value = '';
+            document.getElementById('opdrachtOmschrijving').value = '';
+            document.getElementById('opdrachtNaarAgenda').checked = true;
+            document.getElementById('opdrachtInvite').checked = true;
+            toggleVergoedingVelden();
+            document.getElementById('opdrachtModal').classList.remove('hidden');
+        }
+
+        function closeOpdrachtModal() { document.getElementById('opdrachtModal').classList.add('hidden'); }
+        function toggleVergoedingVelden() {
+            const type = document.getElementById('opdrachtType').value;
+            document.getElementById('opdrachtM2Veld').style.display = type === 'm2' ? 'block' : 'none';
+            document.getElementById('uurWarning').classList.toggle('hidden', type !== 'uur');
+        }
+
+        async function saveOpdracht() {
+            const zzpId = document.getElementById('opdrachtZzpId').value;
+            const zzp = zzpers.find(z => z.id === zzpId);
+            if (!zzp) return;
+            const type = document.getElementById('opdrachtType').value;
+            const bedrag = parseFloat(document.getElementById('opdrachtBedrag').value) || 0;
+            const m2 = parseFloat(document.getElementById('opdrachtM2').value) || 0;
+            const totaalBedrag = type === 'm2' ? bedrag * m2 : bedrag;
+            const opdracht = {
+                id: Date.now().toString(), zzpId, project: document.getElementById('opdrachtProject').value,
+                locatie: document.getElementById('opdrachtLocatie').value, startDatum: document.getElementById('opdrachtStart').value,
+                eindDatum: document.getElementById('opdrachtEind').value, type, bedragPerEenheid: bedrag, aantalM2: m2, totaalBedrag,
+                omschrijving: document.getElementById('opdrachtOmschrijving').value, status: 'actief', aangemaakt: new Date().toISOString()
+            };
+            opdrachten.push(opdracht);
+            await saveData();
+            if (document.getElementById('opdrachtNaarAgenda').checked) await maakGoogleEvent(opdracht, zzp);
+            closeOpdrachtModal(); renderOpdrachten(); updateKPIs();
+            alert('✅ Opdracht aangemaakt!' + (document.getElementById('opdrachtNaarAgenda').checked ? '\n📅 Toegevoegd aan Google Agenda' : ''));
+        }
+
+        async function maakGoogleEvent(opdracht, zzp) {
+            try {
+                const attendees = [];
+                if (document.getElementById('opdrachtInvite').checked && zzp.email) attendees.push({ email: zzp.email });
+                const res = await fetch('/api/google/events', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: `🤝 ${opdracht.project} - ${zzp.bedrijfsnaam || zzp.naam}`,
+                        description: `ZZP Opdracht\n\nZZP'er: ${zzp.bedrijfsnaam || zzp.naam}\nContact: ${zzp.naam}\nTel: ${zzp.telefoon || '-'}\n\n${opdracht.omschrijving || '-'}\n\nVergoeding: €${opdracht.totaalBedrag?.toFixed(2)}`,
+                        location: opdracht.locatie || '', start: opdracht.startDatum, end: opdracht.eindDatum || opdracht.startDatum, allDay: true, attendees
+                    })
+                });
+                const data = await res.json();
+                if (data.success) { opdracht.googleEventId = data.event.id; await saveData(); }
+            } catch (e) { console.error('Google Calendar error:', e); }
+        }
+
+        function markeerAfgerond(id) {
+            const opdracht = opdrachten.find(o => o.id === id);
+            if (opdracht && confirm('Opdracht markeren als afgerond?')) {
+                opdracht.status = 'afgerond'; opdracht.afgerondDatum = new Date().toISOString();
+                saveData(); renderOpdrachten(); updateKPIs();
+            }
+        }
+
+        function genereerOvereenkomst(id) {
+            const opdracht = opdrachten.find(o => o.id === id);
+            const zzp = zzpers.find(z => z.id === opdracht?.zzpId);
+            if (!opdracht || !zzp) return;
+            const content = `OVEREENKOMST VAN OPDRACHT
+
+Tussen:
+Stucologie B.V. (Opdrachtgever)
+
+En:
+${zzp.bedrijfsnaam || zzp.naam}
+${zzp.adres || ''}
+KvK: ${zzp.kvk || '-'} | BTW: ${zzp.btw || '-'}
+(Opdrachtnemer)
+
+ARTIKEL 1 - OPDRACHT
+${opdracht.omschrijving || opdracht.project}
+Locatie: ${opdracht.locatie || '-'}
+Start: ${formatDate(opdracht.startDatum)}${opdracht.eindDatum ? ' | Eind: ' + formatDate(opdracht.eindDatum) : ''}
+
+ARTIKEL 2 - VERGOEDING
+${opdracht.type === 'm2' ? `€${opdracht.bedragPerEenheid}/m² × ${opdracht.aantalM2} m² = €${opdracht.totaalBedrag?.toFixed(2)}` : opdracht.type === 'project' ? `Vast: €${opdracht.totaalBedrag?.toFixed(2)}` : `€${opdracht.bedragPerEenheid}/uur`}
+
+ARTIKEL 3 - ZELFSTANDIGHEID
+Opdrachtnemer verklaart als zelfstandig ondernemer ingeschreven te staan bij KvK, zelfstandig te bepalen hoe en wanneer werkzaamheden worden uitgevoerd, zich te mogen laten vervangen, en eigen ondernemersrisico te dragen.
+
+ARTIKEL 4 - GEEN ARBEIDSOVEREENKOMST
+Partijen verklaren uitdrukkelijk dat geen sprake is van een arbeidsovereenkomst.
+
+Getekend te _____________ op ${new Date().toLocaleDateString('nl-NL')}
+
+Opdrachtgever:                    Opdrachtnemer:
+Stucologie B.V.                   ${zzp.bedrijfsnaam || zzp.naam}
+
+_____________________             _____________________`;
+            const win = window.open('', '_blank');
+            win.document.write(`<html><head><title>Overeenkomst - ${opdracht.project}</title><style>body{font-family:Arial,sans-serif;padding:40px;max-width:800px;margin:0 auto;line-height:1.6;}pre{white-space:pre-wrap;font-family:Arial;}</style></head><body><pre>${content}</pre><script>window.print();<\/script></body></html>`);
+        }
+
+        function berekenRisico(checklist) {
+            let score = 0;
+            CHECKLIST.forEach(c => { if (checklist[c.id] !== false) score++; });
+            if (score >= 7) return { niveau: 'laag', label: 'Laag risico', score };
+            if (score >= 5) return { niveau: 'matig', label: 'Matig risico', score };
+            return { niveau: 'hoog', label: 'Hoog risico', score };
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+            document.getElementById('tab-overzicht').classList.toggle('hidden', tab !== 'overzicht');
+            document.getElementById('tab-opdrachten').classList.toggle('hidden', tab !== 'opdrachten');
+            document.getElementById('tab-checklist').classList.toggle('hidden', tab !== 'checklist');
+        }
+
+        function toggleMenu() { document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open'); }
+        async function logout() { try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) { } window.location.href = '/login.html'; }
+
+        init();
+    </script>
+</body>
+</html>

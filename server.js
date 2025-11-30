@@ -1855,7 +1855,7 @@ app.post('/api/google/events', requireAuth, async (req, res) => {
             return res.status(401).json({ error: 'Google not connected', needsAuth: true });
         }
         
-        const { title, description, start, end, location, allDay } = req.body;
+        const { title, description, start, end, location, allDay, attendees } = req.body;
         
         const fetch = (await import('node-fetch')).default;
         
@@ -1872,6 +1872,12 @@ app.post('/api/google/events', requireAuth, async (req, res) => {
         } else {
             event.start = { dateTime: start, timeZone: 'Europe/Amsterdam' };
             event.end = { dateTime: end || start, timeZone: 'Europe/Amsterdam' };
+        }
+        
+        // Add attendees if provided (for ZZP invites)
+        if (attendees && attendees.length > 0) {
+            event.attendees = attendees;
+            event.sendUpdates = 'all'; // Send email invites to attendees
         }
         
         const response = await fetch(
