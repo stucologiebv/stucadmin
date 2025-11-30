@@ -511,8 +511,8 @@
         }
 
         function closeDetailModal() { document.getElementById('detailModal').classList.add('hidden'); huidigZzpId = null; }
-        function bewerkenVanDetail() { closeDetailModal(); openBewerken(huidigZzpId); }
-        function nieuweOpdrachtVanDetail() { closeDetailModal(); openNieuweOpdracht(huidigZzpId); }
+        function bewerkenVanDetail() { const id = huidigZzpId; closeDetailModal(); openBewerken(id); }
+        function nieuweOpdrachtVanDetail() { const id = huidigZzpId; closeDetailModal(); openNieuweOpdracht(id); }
 
         function openNieuweOpdracht(zzpId) {
             const zzp = zzpers.find(z => z.id === zzpId);
