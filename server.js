@@ -607,7 +607,9 @@ const DATA_FILES = {
     materialen: path.join(DATA_DIR, 'materialen.json'),
     opnames: path.join(DATA_DIR, 'opnames.json'),
     projecten: path.join(DATA_DIR, 'projecten.json'),
-    settings: path.join(DATA_DIR, 'settings.json')
+    settings: path.join(DATA_DIR, 'settings.json'),
+    klantdata: path.join(DATA_DIR, 'klantdata.json'),
+    diensten: path.join(DATA_DIR, 'diensten.json')
 };
 
 // Ensure data directory exists

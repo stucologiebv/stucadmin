@@ -221,25 +221,50 @@
                     <p class="text-xs text-amber-700 mt-3">⚠️ Gekozen niveau bepaalt de prijscategorie en verwachte afwerking</p>
                 </div>
 
-                <div class="section-title">Stucwerk</div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="werkWanden">
-                    <label for="werkWanden">Stucwerk wanden</label>
+                <div class="section-title">🧱 Stucwerk diensten</div>
+                <div class="mb-3">
+                    <select id="stucwerkDienst" class="input-field" onchange="addDienst('stucwerk')">
+                        <option value="">+ Selecteer stucwerk dienst...</option>
+                        <option value="glad">Glad stucwerk</option>
+                        <option value="waterpas">Waterpas stucwerk</option>
+                        <option value="waterdicht">Waterdicht stucwerk (badkamer)</option>
+                        <option value="betonlook">Betonlook stucwerk</option>
+                        <option value="dunpleister">Dunpleister</option>
+                        <option value="spachtelputz">Spachtelputz</option>
+                        <option value="gevelstuc">Gevelstucwerk</option>
+                        <option value="schuurwerk">Schuurwerk</option>
+                        <option value="reparatie">Reparatie stucwerk</option>
+                    </select>
                 </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="werkPlafond">
-                    <label for="werkPlafond">Stucwerk plafond</label>
-                </div>
+                <div id="geselecteerdeStucwerk" class="space-y-2"></div>
 
-                <div class="section-title mt-4">Spuitwerk</div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="werkSpuitwerkWanden">
-                    <label for="werkSpuitwerkWanden">Spuitwerk wanden</label>
+                <div class="section-title mt-4">🎨 Spuitwerk diensten</div>
+                <div class="mb-3">
+                    <select id="spuitwerkDienst" class="input-field" onchange="addDienst('spuitwerk')">
+                        <option value="">+ Selecteer spuitwerk dienst...</option>
+                        <option value="spuit_wanden">Spuitwerk wanden</option>
+                        <option value="spuit_plafond">Spuitwerk plafond</option>
+                        <option value="latex">Latex spuiten</option>
+                        <option value="primer">Primer spuiten</option>
+                        <option value="schilder_wanden">Schilderwerk wanden</option>
+                        <option value="schilder_kozijnen">Schilderwerk kozijnen</option>
+                        <option value="schilder_deuren">Schilderwerk deuren</option>
+                        <option value="lakwerk">Lakwerk houtwerk</option>
+                    </select>
                 </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="werkSpuitwerkPlafond">
-                    <label for="werkSpuitwerkPlafond">Spuitwerk plafond (klant doet wanden zelf)</label>
+                <div id="geselecteerdeSpuitwerk" class="space-y-2"></div>
+
+                <div class="section-title mt-4">🔧 Voorbereiding</div>
+                <div class="mb-3">
+                    <select id="voorbereidingDienst" class="input-field" onchange="addDienst('voorbereiding')">
+                        <option value="">+ Selecteer voorbereiding...</option>
+                        <option value="voorstrijken">Voorstrijken</option>
+                        <option value="plamuren">Schuren/plamuren</option>
+                        <option value="behang">Behang verwijderen</option>
+                        <option value="verf_verw">Oude verf verwijderen</option>
+                    </select>
                 </div>
+                <div id="geselecteerdeVoorbereiding" class="space-y-2"></div>
 
                 <div class="mt-4 mb-4">
                     <label class="text-sm text-gray-600 mb-1 block">Aantal kleuren</label>
@@ -676,6 +701,71 @@
         initSignaturePads();
         updateAfwerkingStyle();
 
+        // Geselecteerde diensten opslag
+        let geselecteerdeDiensten = {
+            stucwerk: [],
+            spuitwerk: [],
+            voorbereiding: []
+        };
+
+        const dienstLabels = {
+            // Stucwerk
+            glad: 'Glad stucwerk',
+            waterpas: 'Waterpas stucwerk',
+            waterdicht: 'Waterdicht stucwerk (badkamer)',
+            betonlook: 'Betonlook stucwerk',
+            dunpleister: 'Dunpleister',
+            spachtelputz: 'Spachtelputz',
+            gevelstuc: 'Gevelstucwerk',
+            schuurwerk: 'Schuurwerk',
+            reparatie: 'Reparatie stucwerk',
+            // Spuitwerk
+            spuit_wanden: 'Spuitwerk wanden',
+            spuit_plafond: 'Spuitwerk plafond',
+            latex: 'Latex spuiten',
+            primer: 'Primer spuiten',
+            schilder_wanden: 'Schilderwerk wanden',
+            schilder_kozijnen: 'Schilderwerk kozijnen',
+            schilder_deuren: 'Schilderwerk deuren',
+            lakwerk: 'Lakwerk houtwerk',
+            // Voorbereiding
+            voorstrijken: 'Voorstrijken',
+            plamuren: 'Schuren/plamuren',
+            behang: 'Behang verwijderen',
+            verf_verw: 'Oude verf verwijderen'
+        };
+
+        function addDienst(categorie) {
+            const select = document.getElementById(categorie + (categorie === 'stucwerk' ? 'Dienst' : categorie === 'spuitwerk' ? 'Dienst' : 'Dienst'));
+            const selectEl = document.getElementById(
+                categorie === 'stucwerk' ? 'stucwerkDienst' : 
+                categorie === 'spuitwerk' ? 'spuitwerkDienst' : 'voorbereidingDienst'
+            );
+            const value = selectEl.value;
+            if (!value || geselecteerdeDiensten[categorie].includes(value)) {
+                selectEl.value = '';
+                return;
+            }
+            geselecteerdeDiensten[categorie].push(value);
+            selectEl.value = '';
+            renderGeselecteerdeDiensten(categorie);
+        }
+
+        function removeDienst(categorie, value) {
+            geselecteerdeDiensten[categorie] = geselecteerdeDiensten[categorie].filter(d => d !== value);
+            renderGeselecteerdeDiensten(categorie);
+        }
+
+        function renderGeselecteerdeDiensten(categorie) {
+            const container = document.getElementById('geselecteerde' + categorie.charAt(0).toUpperCase() + categorie.slice(1));
+            container.innerHTML = geselecteerdeDiensten[categorie].map(d => `
+                <div class="flex items-center justify-between bg-indigo-50 p-2 rounded-lg">
+                    <span class="text-sm">✓ ${dienstLabels[d] || d}</span>
+                    <button type="button" onclick="removeDienst('${categorie}', '${d}')" class="text-red-500 text-sm">✕</button>
+                </div>
+            `).join('');
+        }
+
         function updateAfwerkingStyle() {
             const selected = document.querySelector('input[name="afwerking"]:checked')?.value || 'premium';
             ['basic', 'premium', 'luxe'].forEach(level => {
@@ -967,10 +1057,12 @@
             
             const werkItems = [];
             werkItems.push('⭐ ' + afwerkingLabels[afwerking] + ' afwerking');
-            if (document.getElementById('werkWanden').checked) werkItems.push('Stucwerk wanden');
-            if (document.getElementById('werkPlafond').checked) werkItems.push('Stucwerk plafond');
-            if (document.getElementById('werkSpuitwerkWanden').checked) werkItems.push('Spuitwerk wanden');
-            if (document.getElementById('werkSpuitwerkPlafond').checked) werkItems.push('Spuitwerk plafond (klant doet wanden zelf)');
+            
+            // Voeg geselecteerde diensten toe
+            geselecteerdeDiensten.stucwerk.forEach(d => werkItems.push(dienstLabels[d] || d));
+            geselecteerdeDiensten.spuitwerk.forEach(d => werkItems.push(dienstLabels[d] || d));
+            geselecteerdeDiensten.voorbereiding.forEach(d => werkItems.push(dienstLabels[d] || d));
+            
             if (document.getElementById('werkKoofjes').checked) werkItems.push('Koofjes (' + document.getElementById('aantalKoofjes').value + 'x)');
             if (document.getElementById('werkTVOmbouw').checked) werkItems.push('TV ombouw / Schouw');
             if (document.getElementById('werkKeuken').checked) werkItems.push('Keuken ombouw op maat');
@@ -1061,10 +1153,7 @@
                 },
                 werk: {
                     afwerking: document.querySelector('input[name="afwerking"]:checked')?.value || 'premium',
-                    wanden: document.getElementById('werkWanden').checked,
-                    plafond: document.getElementById('werkPlafond').checked,
-                    spuitwerkWanden: document.getElementById('werkSpuitwerkWanden').checked,
-                    spuitwerkPlafond: document.getElementById('werkSpuitwerkPlafond').checked,
+                    diensten: geselecteerdeDiensten,
                     kleuren: document.getElementById('aantalKleuren').value,
                     koofjes: document.getElementById('werkKoofjes').checked,
                     aantalKoofjes: document.getElementById('aantalKoofjes').value,
@@ -1168,10 +1257,22 @@
             const afwerking = o.werk?.afwerking || 'premium';
             document.querySelectorAll('input[name="afwerking"]').forEach(r => r.checked = r.value === afwerking);
             updateAfwerkingStyle();
-            document.getElementById('werkWanden').checked = o.werk?.wanden || false;
-            document.getElementById('werkPlafond').checked = o.werk?.plafond || false;
-            document.getElementById('werkSpuitwerkWanden').checked = o.werk?.spuitwerkWanden || false;
-            document.getElementById('werkSpuitwerkPlafond').checked = o.werk?.spuitwerkPlafond || false;
+            
+            // Load diensten
+            if (o.werk?.diensten) {
+                geselecteerdeDiensten = o.werk.diensten;
+            } else {
+                // Backwards compatibility with old format
+                geselecteerdeDiensten = { stucwerk: [], spuitwerk: [], voorbereiding: [] };
+                if (o.werk?.wanden) geselecteerdeDiensten.stucwerk.push('glad');
+                if (o.werk?.plafond) geselecteerdeDiensten.stucwerk.push('glad');
+                if (o.werk?.spuitwerkWanden) geselecteerdeDiensten.spuitwerk.push('spuit_wanden');
+                if (o.werk?.spuitwerkPlafond) geselecteerdeDiensten.spuitwerk.push('spuit_plafond');
+            }
+            renderGeselecteerdeDiensten('stucwerk');
+            renderGeselecteerdeDiensten('spuitwerk');
+            renderGeselecteerdeDiensten('voorbereiding');
+            
             document.getElementById('aantalKleuren').value = o.werk?.kleuren || '1';
             document.getElementById('werkKoofjes').checked = o.werk?.koofjes || false;
             document.getElementById('aantalKoofjes').value = o.werk?.aantalKoofjes || '0';

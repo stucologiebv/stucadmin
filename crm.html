@@ -84,7 +84,7 @@
     </div>
 
     <div id="klantModal" class="modal-overlay hidden">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 600px;">
             <div class="flex justify-between mb-4"><h2 class="font-bold text-lg" id="modalTitle">Klant</h2><button onclick="sluitModal()" class="text-gray-400 text-2xl">&times;</button></div>
             <form onsubmit="saveKlant(event)" class="space-y-4">
                 <input type="hidden" id="klantId">
@@ -97,7 +97,32 @@
                     <div><label class="text-xs text-gray-500">Postcode</label><input type="text" id="postcode" class="input-field"></div>
                     <div><label class="text-xs text-gray-500">Plaats</label><input type="text" id="plaats" class="input-field"></div>
                 </div>
-                <div><label class="text-xs text-gray-500">Notities</label><textarea id="notities" class="input-field" rows="3"></textarea></div>
+                
+                <div><label class="text-xs text-gray-500">📝 Notities</label><textarea id="notities" class="input-field" rows="3" placeholder="Bijzonderheden, afspraken, opmerkingen..."></textarea></div>
+                
+                <!-- Voor/Na Foto's -->
+                <div class="border-t pt-4">
+                    <label class="text-xs text-gray-500 block mb-2">📸 Voor/Na Foto's</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs font-medium text-gray-600 mb-1">VOOR</p>
+                            <div id="voorFotos" class="grid grid-cols-2 gap-2 mb-2"></div>
+                            <label class="btn-secondary text-xs cursor-pointer block text-center">
+                                + Foto toevoegen
+                                <input type="file" accept="image/*" multiple class="hidden" onchange="addFotos('voor', this.files)">
+                            </label>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-600 mb-1">NA</p>
+                            <div id="naFotos" class="grid grid-cols-2 gap-2 mb-2"></div>
+                            <label class="btn-secondary text-xs cursor-pointer block text-center">
+                                + Foto toevoegen
+                                <input type="file" accept="image/*" multiple class="hidden" onchange="addFotos('na', this.files)">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="flex gap-3"><button type="submit" class="btn-primary flex-1">💾 Opslaan</button><button type="button" onclick="sluitModal()" class="btn-secondary">Annuleren</button></div>
             </form>
         </div>
@@ -110,16 +135,34 @@
 
         async function init() {
             try {
-                [contacts, invoices] = await Promise.all([fetch('/api/contacts').then(r => r.json()), fetch('/api/invoices').then(r => r.json())]);
-                renderKlanten(); updateKPIs();
-            } catch (e) { console.error(e); }
+                const [conRes, invRes] = await Promise.all([fetch('/api/contacts'), fetch('/api/invoices')]);
+                
+                // Check if unauthorized - redirect to login
+                if (conRes.status === 401 || invRes.status === 401) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                const conData = await conRes.json();
+                const invData = await invRes.json();
+                
+                // Ensure arrays
+                contacts = Array.isArray(conData) ? conData : [];
+                invoices = Array.isArray(invData) ? invData : [];
+                
+                await loadKlantData();
+                renderKlanten(); 
+                updateKPIs();
+            } catch (e) { 
+                console.error('Init error:', e); 
+            }
         }
 
         function updateKPIs() {
             document.getElementById('kpiTotaal').textContent = contacts.length;
             const actief = contacts.filter(c => invoices.some(i => i.contact_id === c.id)).length;
             document.getElementById('kpiActief').textContent = actief;
-            const omzet = invoices.reduce((s, i) => s + parseFloat(i.total_price_incl_tax || 0), 0);
+            const omzet = invoices.filter(i => i.state !== 'draft').reduce((s, i) => s + parseFloat(i.total_price_incl_tax || 0), 0);
             document.getElementById('kpiOmzet').textContent = '€' + omzet.toLocaleString('nl-NL', {maximumFractionDigits: 0});
             document.getElementById('kpiGem').textContent = contacts.length ? '€' + Math.round(omzet / contacts.length) : '€0';
         }
@@ -163,6 +206,8 @@
             document.getElementById('postcode').value = '';
             document.getElementById('plaats').value = '';
             document.getElementById('notities').value = '';
+            currentKlantFotos = { voor: [], na: [] };
+            renderFotos();
             document.getElementById('klantModal').classList.remove('hidden');
         }
 
@@ -178,7 +223,13 @@
             document.getElementById('adres').value = c.address1 || '';
             document.getElementById('postcode').value = c.zipcode || '';
             document.getElementById('plaats').value = c.city || '';
-            document.getElementById('notities').value = '';
+            
+            // Load saved notes and photos
+            const saved = klantData[id] || {};
+            document.getElementById('notities').value = saved.notities || '';
+            currentKlantFotos = saved.fotos || { voor: [], na: [] };
+            renderFotos();
+            
             document.getElementById('klantModal').classList.remove('hidden');
         }
 
@@ -205,8 +256,96 @@
                 } else {
                     await fetch('/api/contacts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
                 }
+                
+                // Save local data (notes, photos) to server
+                if (id) {
+                    await saveKlantData(id);
+                }
+                
                 sluitModal(); init();
             } catch (e) { alert('Fout bij opslaan'); }
+        }
+
+        // Local klant data (notities, foto's) - stored on server
+        let klantData = {};
+        let currentKlantFotos = { voor: [], na: [] };
+
+        async function loadKlantData() {
+            try {
+                const res = await fetch('/api/data/klantdata');
+                if (res.ok) {
+                    const result = await res.json();
+                    klantData = result.data || {};
+                }
+            } catch (e) {
+                klantData = JSON.parse(localStorage.getItem('stuc_klantdata') || '{}');
+            }
+        }
+
+        async function saveKlantData(klantId) {
+            if (!klantId) return;
+            
+            klantData[klantId] = {
+                notities: document.getElementById('notities').value,
+                fotos: currentKlantFotos,
+                updated: new Date().toISOString()
+            };
+            
+            // Save to server
+            try {
+                await fetch('/api/data/klantdata', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: klantData })
+                });
+            } catch (e) {
+                localStorage.setItem('stuc_klantdata', JSON.stringify(klantData));
+            }
+        }
+
+        function addFotos(type, files) {
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    currentKlantFotos[type].push({
+                        id: Date.now() + Math.random(),
+                        data: e.target.result,
+                        naam: file.name,
+                        datum: new Date().toISOString()
+                    });
+                    renderFotos();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function removeFoto(type, id) {
+            currentKlantFotos[type] = currentKlantFotos[type].filter(f => f.id !== id);
+            renderFotos();
+        }
+
+        function renderFotos() {
+            ['voor', 'na'].forEach(type => {
+                const container = document.getElementById(type + 'Fotos');
+                container.innerHTML = currentKlantFotos[type].map(f => `
+                    <div class="relative">
+                        <img src="${f.data}" class="w-full h-16 object-cover rounded cursor-pointer" onclick="openFotoModal('${f.data}')">
+                        <button onclick="removeFoto('${type}', ${f.id})" class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs">×</button>
+                    </div>
+                `).join('') || '<p class="text-xs text-gray-400 col-span-2">Geen foto\'s</p>';
+            });
+        }
+
+        function openFotoModal(src) {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.style.zIndex = '200';
+            modal.innerHTML = `<div class="modal-content" style="max-width:90vw;max-height:90vh;padding:10px;">
+                <img src="${src}" style="max-width:100%;max-height:80vh;object-fit:contain;">
+                <button onclick="this.parentElement.parentElement.remove()" class="btn-secondary mt-2 w-full">Sluiten</button>
+            </div>`;
+            modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+            document.body.appendChild(modal);
         }
 
         function sluitModal() { document.getElementById('klantModal').classList.add('hidden'); document.getElementById('meerwerkModal')?.classList.add('hidden'); }
