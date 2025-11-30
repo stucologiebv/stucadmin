@@ -609,7 +609,10 @@ const DATA_FILES = {
     projecten: path.join(DATA_DIR, 'projecten.json'),
     settings: path.join(DATA_DIR, 'settings.json'),
     klantdata: path.join(DATA_DIR, 'klantdata.json'),
-    diensten: path.join(DATA_DIR, 'diensten.json')
+    klanten: path.join(DATA_DIR, 'klanten.json'),
+    diensten: path.join(DATA_DIR, 'diensten.json'),
+    zzpers: path.join(DATA_DIR, 'zzpers.json'),
+    'zzp-opdrachten': path.join(DATA_DIR, 'zzp-opdrachten.json')
 };
 
 // Ensure data directory exists
