@@ -62,12 +62,16 @@
                 <a href="omzet.html" class="nav-item">💹 Omzet</a>
                 <a href="crm.html" class="nav-item">👥 Klanten</a>
                 <a href="planning.html" class="nav-item active">📅 Planning</a>
+                <a href="opname.html" class="nav-item">📋 Opname</a>
                 <a href="uren.html" class="nav-item">⏱️ Uren</a>
                 <a href="calculator.html" class="nav-item">🧮 Calculator</a>
                 <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
                 <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
             </nav>
-            <div class="p-4 border-t border-gray-100"><button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button></div>
+            <div class="border-t border-gray-200 my-4"></div>
+            <a href="beveiliging.html" class="nav-item">🔐 Beveiliging</a>
+        </nav>
+        <div class="p-4 border-t border-gray-100"><button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button></div>
         </aside>
 
         <main class="flex-1">
@@ -136,10 +140,43 @@
     </div>
 
     <script>
-        let projecten = JSON.parse(localStorage.getItem('stuc_planning') || '[]');
+        let projecten = [];
         let googleEvents = [];
         let huidigeDatum = new Date();
         let googleConnected = false;
+
+        // Load projecten from server first, fallback to localStorage
+        async function loadProjecten() {
+            try {
+                const res = await fetch('/api/data/projecten');
+                if (res.ok) {
+                    const result = await res.json();
+                    if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+                        projecten = result.data;
+                        localStorage.setItem('stuc_planning', JSON.stringify(projecten)); syncProjecten();
+                        console.log('📥 Projecten loaded from server');
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.log('Server load failed');
+            }
+            projecten = JSON.parse(localStorage.getItem('stuc_planning') || '[]');
+        }
+
+        // Sync projecten to server
+        async function syncProjecten() {
+            try {
+                await fetch('/api/data/projecten', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: projecten })
+                });
+                console.log('✅ Projecten synced to server');
+            } catch (e) {
+                console.log('⚠️ Sync failed');
+            }
+        }
 
         function toggleMenu() { document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open'); }
         async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login.html'; }
@@ -361,7 +398,7 @@
             } else {
                 if (id) { projecten = projecten.map(p => p.id === id ? project : p); }
                 else { projecten.push(project); }
-                localStorage.setItem('stuc_planning', JSON.stringify(projecten));
+                localStorage.setItem('stuc_planning', JSON.stringify(projecten)); syncProjecten();
                 
                 if (syncToGoogle && !id) {
                     try {
@@ -394,7 +431,7 @@
                 } catch (err) { showToast('Fout bij verwijderen', 'error'); }
             } else {
                 projecten = projecten.filter(p => p.id !== id);
-                localStorage.setItem('stuc_planning', JSON.stringify(projecten));
+                localStorage.setItem('stuc_planning', JSON.stringify(projecten)); syncProjecten();
                 showToast('Project verwijderd', 'success');
             }
             
@@ -415,10 +452,15 @@
             setTimeout(function() { toast.remove(); }, 3000);
         }
 
-        checkUrlParams();
-        checkGoogleStatus();
-        renderKalender();
-        renderProjecten();
+        // Init
+        async function init() {
+            await loadProjecten();
+            checkUrlParams();
+            checkGoogleStatus();
+            renderKalender();
+            renderProjecten();
+        }
+        init();
     </script>
 </body>
 </html>

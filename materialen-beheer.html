@@ -396,29 +396,47 @@
         setupDragDrop();
     });
 
-    async function loadMaterials() {
-        // Load from localStorage
-        materialen = JSON.parse(localStorage.getItem('stuc_materialen_db') || '[]');
-        
-        // Also try to sync with server
+    // Server sync helper
+    async function syncToServer() {
         try {
-            const res = await fetch('/api/materials/database');
+            await fetch('/api/data/materialen', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: { materialen, kits, prijsHistorie } })
+            });
+            console.log('✅ Synced to server');
+        } catch (e) {
+            console.log('⚠️ Server sync failed, data saved locally');
+        }
+    }
+
+    async function loadMaterials() {
+        // First try to load from server
+        try {
+            const res = await fetch('/api/data/materialen');
             if (res.ok) {
-                const data = await res.json();
-                if (data.materials?.length > materialen.length) {
-                    materialen = data.materials;
-                    localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen));
+                const result = await res.json();
+                if (result.data && result.data.materialen) {
+                    materialen = result.data.materialen;
+                    kits = result.data.kits || [];
+                    prijsHistorie = result.data.prijsHistorie || [];
+                    // Also update localStorage as backup
+                    localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
+                    localStorage.setItem('stuc_materiaal_kits', JSON.stringify(kits)); syncToServer();
+                    localStorage.setItem('stuc_prijs_historie', JSON.stringify(prijsHistorie));
+                    console.log('📥 Loaded from server');
+                    return;
                 }
             }
         } catch (e) {
-            console.log('Server sync skipped');
+            console.log('Server load failed, using localStorage');
         }
         
-        // Load kits
+        // Fallback to localStorage
+        materialen = JSON.parse(localStorage.getItem('stuc_materialen_db') || '[]');
         kits = JSON.parse(localStorage.getItem('stuc_materiaal_kits') || '[]');
-        
-        // Load price history
         prijsHistorie = JSON.parse(localStorage.getItem('stuc_prijs_historie') || '[]');
+    }
     }
 
     async function loadSuppliers() {
@@ -571,7 +589,7 @@
             showToast('Sync opgeslagen in browser', 'warning');
         }
         
-        localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen));
+        localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
     }
     // ============================================
     // RENDER FUNCTIONS (voeg toe aan part1 script)
@@ -1162,7 +1180,7 @@
             showToast('✅ Materiaal toegevoegd', 'success');
         }
         
-        localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen));
+        localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
         closeModal('addMaterialModal');
         resetMaterialForm();
         updateFilterOptions();
@@ -1175,7 +1193,7 @@
         
         if (confirm('Materiaal verwijderen?')) {
             materialen = materialen.filter(m => m.id !== id);
-            localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen));
+            localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
             closeModal('addMaterialModal');
             resetMaterialForm();
             showToast('🗑️ Materiaal verwijderd', 'info');
@@ -1453,7 +1471,7 @@
             showToast('✅ Kit aangemaakt', 'success');
         }
         
-        localStorage.setItem('stuc_materiaal_kits', JSON.stringify(kits));
+        localStorage.setItem('stuc_materiaal_kits', JSON.stringify(kits)); syncToServer();
         closeModal('kitModal');
         renderContent();
     }
@@ -1464,7 +1482,7 @@
         
         if (confirm('Kit verwijderen?')) {
             kits = kits.filter(k => k.id !== id);
-            localStorage.setItem('stuc_materiaal_kits', JSON.stringify(kits));
+            localStorage.setItem('stuc_materiaal_kits', JSON.stringify(kits)); syncToServer();
             closeModal('kitModal');
             showToast('🗑️ Kit verwijderd', 'info');
             renderContent();
@@ -1927,7 +1945,7 @@
             }
         }
         
-        localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen));
+        localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
         
         let message = '✅ Import voltooid: ';
         if (added > 0) message += added + ' nieuw';

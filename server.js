@@ -163,8 +163,40 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1062914520146-0bseg9gs
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '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';
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://stucadmin-production.up.railway.app/api/google/callback';
 
-// Google tokens storage (per user session)
-const googleTokens = new Map();
+// Google tokens storage (persistent to file)
+const GOOGLE_TOKENS_FILE = path.join(__dirname, '.data', 'google-tokens.json');
+let googleTokens = new Map();
+
+// Load Google tokens from file on startup
+function loadGoogleTokens() {
+    try {
+        if (fs.existsSync(GOOGLE_TOKENS_FILE)) {
+            const data = JSON.parse(fs.readFileSync(GOOGLE_TOKENS_FILE, 'utf8'));
+            googleTokens = new Map(Object.entries(data));
+            console.log('📅 Google tokens loaded from file');
+        }
+    } catch (e) {
+        console.log('Could not load Google tokens:', e.message);
+    }
+}
+
+// Save Google tokens to file
+function saveGoogleTokens() {
+    try {
+        const dir = path.dirname(GOOGLE_TOKENS_FILE);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        const data = Object.fromEntries(googleTokens);
+        fs.writeFileSync(GOOGLE_TOKENS_FILE, JSON.stringify(data, null, 2));
+        console.log('💾 Google tokens saved to file');
+    } catch (e) {
+        console.error('Could not save Google tokens:', e.message);
+    }
+}
+
+// Load tokens on startup
+loadGoogleTokens();
 
 // ============================================
 // CACHING SYSTEM - Moneybird data cachen
@@ -564,6 +596,121 @@ app.post('/api/auth/logout', (req, res) => {
     
     res.setHeader('Set-Cookie', 'stucadmin_session=; Path=/; HttpOnly; Max-Age=0');
     res.json({ success: true });
+});
+
+// ============================================
+// 💾 PERSISTENT DATA STORAGE
+// ============================================
+
+const DATA_DIR = path.join(__dirname, '.data');
+const DATA_FILES = {
+    materialen: path.join(DATA_DIR, 'materialen.json'),
+    opnames: path.join(DATA_DIR, 'opnames.json'),
+    projecten: path.join(DATA_DIR, 'projecten.json'),
+    settings: path.join(DATA_DIR, 'settings.json')
+};
+
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    console.log('📁 Created data directory');
+}
+
+// Load data from file
+function loadData(key) {
+    try {
+        const filePath = DATA_FILES[key];
+        if (filePath && fs.existsSync(filePath)) {
+            const data = fs.readFileSync(filePath, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (e) {
+        console.error(`Error loading ${key}:`, e.message);
+    }
+    return null;
+}
+
+// Save data to file
+function saveData(key, data) {
+    try {
+        const filePath = DATA_FILES[key];
+        if (filePath) {
+            fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+            console.log(`💾 Saved ${key}`);
+            return true;
+        }
+    } catch (e) {
+        console.error(`Error saving ${key}:`, e.message);
+    }
+    return false;
+}
+
+// GET data endpoint
+app.get('/api/data/:key', requireAuth, (req, res) => {
+    const { key } = req.params;
+    
+    if (!DATA_FILES[key]) {
+        return res.status(400).json({ error: 'Invalid data key' });
+    }
+    
+    const data = loadData(key);
+    res.json({ success: true, data: data || [] });
+});
+
+// POST/PUT data endpoint
+app.post('/api/data/:key', requireAuth, (req, res) => {
+    const { key } = req.params;
+    const { data } = req.body;
+    
+    if (!DATA_FILES[key]) {
+        return res.status(400).json({ error: 'Invalid data key' });
+    }
+    
+    if (data === undefined) {
+        return res.status(400).json({ error: 'No data provided' });
+    }
+    
+    const success = saveData(key, data);
+    
+    if (success) {
+        res.json({ success: true, message: `${key} saved successfully` });
+    } else {
+        res.status(500).json({ error: 'Failed to save data' });
+    }
+});
+
+// Sync endpoint - save multiple data types at once
+app.post('/api/data/sync', requireAuth, (req, res) => {
+    const { materialen, opnames, projecten, settings } = req.body;
+    const results = {};
+    
+    if (materialen !== undefined) {
+        results.materialen = saveData('materialen', materialen);
+    }
+    if (opnames !== undefined) {
+        results.opnames = saveData('opnames', opnames);
+    }
+    if (projecten !== undefined) {
+        results.projecten = saveData('projecten', projecten);
+    }
+    if (settings !== undefined) {
+        results.settings = saveData('settings', settings);
+    }
+    
+    res.json({ success: true, results });
+});
+
+// Get all data at once (for initial load)
+app.get('/api/data/sync/all', requireAuth, (req, res) => {
+    res.json({
+        success: true,
+        data: {
+            materialen: loadData('materialen') || [],
+            opnames: loadData('opnames') || [],
+            projecten: loadData('projecten') || [],
+            settings: loadData('settings') || {}
+        }
+    });
 });
 
 // ============ MONEYBIRD API ============
@@ -1583,6 +1730,7 @@ app.get('/api/google/callback', async (req, res) => {
             refresh_token: tokens.refresh_token,
             expires_at: Date.now() + (tokens.expires_in * 1000)
         });
+        saveGoogleTokens();
         
         console.log('✅ Google Calendar connected!');
         res.redirect('/planning.html?google_connected=true');
@@ -1603,6 +1751,7 @@ app.get('/api/google/status', requireAuth, (req, res) => {
 // Disconnect Google
 app.post('/api/google/disconnect', requireAuth, (req, res) => {
     googleTokens.delete('default');
+    saveGoogleTokens();
     res.json({ success: true });
 });
 
@@ -1639,6 +1788,7 @@ async function getValidGoogleToken() {
                 refresh_token: tokens.refresh_token,
                 expires_at: Date.now() + (newTokens.expires_in * 1000)
             });
+            saveGoogleTokens();
             return newTokens.access_token;
         }
     } catch (e) {

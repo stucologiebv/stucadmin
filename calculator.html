@@ -86,7 +86,10 @@
                 <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
                 <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
             </nav>
-            <div class="p-4 border-t border-gray-100"><button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button></div>
+            <div class="border-t border-gray-200 my-4"></div>
+            <a href="beveiliging.html" class="nav-item">🔐 Beveiliging</a>
+        </nav>
+        <div class="p-4 border-t border-gray-100"><button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button></div>
         </aside>
 
         <main class="flex-1">
@@ -119,6 +122,18 @@
                         <div id="dienstenLijst"></div>
                     </div>
 
+                    <div class="card p-4" id="verfKwaliteitCard" style="display:none;">
+                        <h2 class="font-bold mb-3 text-sm">🎨 Verfkwaliteit (spuitwerk)</h2>
+                        <select id="verfKwaliteitSelect" class="input-field" onchange="bereken()">
+                            <option value="budget">Budget muurverf - €25/10L</option>
+                            <option value="standaard" selected>Standaard muurverf - €45/10L</option>
+                            <option value="klasse3">Klasse 3 - €55/10L</option>
+                            <option value="klasse2">Klasse 2 - €75/10L</option>
+                            <option value="klasse1">Klasse 1 - €95/10L</option>
+                            <option value="premium">Premium (Sigma/Sikkens) - €120/10L</option>
+                        </select>
+                    </div>
+
                     <div class="card p-4">
                         <div class="flex justify-between items-center mb-3">
                             <h2 class="font-bold text-sm">📦 Extra Materialen</h2>
@@ -137,7 +152,7 @@
                     <div class="card p-4">
                         <h2 class="font-bold mb-3 text-sm">📊 Marges & BTW</h2>
                         <div class="grid grid-cols-3 gap-3">
-                            <div><label class="text-xs text-gray-500">Marge %</label><input type="number" id="winstmarge" class="input-field" value="15" onchange="bereken()"></div>
+                            <div><label class="text-xs text-gray-500">Marge %</label><input type="number" id="winstmarge" class="input-field" value="5" onchange="bereken()"></div>
                             <div><label class="text-xs text-gray-500">BTW</label><select id="btw" class="input-field" onchange="bereken()"><option value="21">21%</option><option value="9">9%</option><option value="0">0%</option></select></div>
                             <div><label class="text-xs text-gray-500">Korting %</label><input type="number" id="korting" class="input-field" value="0" onchange="bereken()"></div>
                         </div>
@@ -194,15 +209,42 @@
         let materiaalDB = JSON.parse(localStorage.getItem('stuc_materialen_db') || '[]');
         
         const standaardDiensten = [
-            { id: 1, naam: 'Glad Stucwerk', prijs: 28 },
-            { id: 2, naam: 'Waterpas Stucwerk', prijs: 32 },
-            { id: 3, naam: 'Waterdicht Stucwerk', prijs: 35 },
-            { id: 4, naam: 'Betonlook Stucwerk', prijs: 45 },
-            { id: 5, naam: 'Dunpleister', prijs: 22 },
-            { id: 6, naam: 'Spachtelputz', prijs: 26 },
-            { id: 7, naam: 'Gevelstucwerk', prijs: 38 },
-            { id: 8, naam: 'Spuitwerk', prijs: 12 },
+            // Stucwerk
+            { id: 1, naam: 'Glad Stucwerk', prijs: 28, categorie: 'stucwerk' },
+            { id: 2, naam: 'Waterpas Stucwerk', prijs: 32, categorie: 'stucwerk' },
+            { id: 3, naam: 'Waterdicht Stucwerk', prijs: 35, categorie: 'stucwerk' },
+            { id: 4, naam: 'Betonlook Stucwerk', prijs: 45, categorie: 'stucwerk' },
+            { id: 5, naam: 'Dunpleister', prijs: 22, categorie: 'stucwerk' },
+            { id: 6, naam: 'Spachtelputz', prijs: 26, categorie: 'stucwerk' },
+            { id: 7, naam: 'Gevelstucwerk', prijs: 38, categorie: 'stucwerk' },
+            { id: 9, naam: 'Schuurwerk', prijs: 18, categorie: 'stucwerk' },
+            { id: 10, naam: 'Reparatie stucwerk', prijs: 40, categorie: 'stucwerk' },
+            // Spuitwerk
+            { id: 8, naam: 'Spuitwerk muren', prijs: 12, categorie: 'spuitwerk' },
+            { id: 11, naam: 'Spuitwerk plafond', prijs: 14, categorie: 'spuitwerk' },
+            { id: 12, naam: 'Latex spuiten', prijs: 10, categorie: 'spuitwerk' },
+            { id: 13, naam: 'Primer spuiten', prijs: 8, categorie: 'spuitwerk' },
+            // Schilderwerk
+            { id: 14, naam: 'Schilderwerk muren', prijs: 16, categorie: 'schilderwerk' },
+            { id: 15, naam: 'Schilderwerk kozijnen', prijs: 25, categorie: 'schilderwerk' },
+            { id: 16, naam: 'Schilderwerk deuren', prijs: 35, categorie: 'schilderwerk' },
+            { id: 17, naam: 'Lakwerk houtwerk', prijs: 30, categorie: 'schilderwerk' },
+            // Voorbewerking
+            { id: 18, naam: 'Voorstrijken', prijs: 5, categorie: 'voorbereiding' },
+            { id: 19, naam: 'Schuren/plamuren', prijs: 12, categorie: 'voorbereiding' },
+            { id: 20, naam: 'Behang verwijderen', prijs: 8, categorie: 'voorbereiding' },
+            { id: 21, naam: 'Oude verf verwijderen', prijs: 15, categorie: 'voorbereiding' },
         ];
+
+        // Verfkwaliteit opties
+        const verfKwaliteit = {
+            'budget': { naam: 'Budget muurverf', prijs: 25.00, m2: 12 },
+            'standaard': { naam: 'Muurverf standaard', prijs: 45.00, m2: 12 },
+            'klasse3': { naam: 'Muurverf Klasse 3', prijs: 55.00, m2: 10 },
+            'klasse2': { naam: 'Muurverf Klasse 2', prijs: 75.00, m2: 10 },
+            'klasse1': { naam: 'Muurverf Klasse 1', prijs: 95.00, m2: 8 },
+            'premium': { naam: 'Premium muurverf (Sigma/Sikkens)', prijs: 120.00, m2: 8 }
+        };
 
         const verbruik = {
             1: [{ naam: 'Gipspleister 25kg', m2: 4, prijs: 12.50 }, { naam: 'Knauf Spraykontakt 15kg', m2: 80, prijs: 45.00 }],
@@ -212,7 +254,7 @@
             5: [{ naam: 'Dunpleister 25kg', m2: 8, prijs: 15.00 }, { naam: 'Knauf Spraykontakt 15kg', m2: 80, prijs: 45.00 }],
             6: [{ naam: 'SPS Spachtelputz 15kg', m2: 5, prijs: 32.30 }, { naam: 'Voorkwarts 10L', m2: 50, prijs: 35.00 }],
             7: [{ naam: 'Gevelmortel 25kg', m2: 2.5, prijs: 16.00 }, { naam: 'Knauf Spraykontakt 15kg', m2: 80, prijs: 45.00 }],
-            8: [{ naam: 'Spuitpleister 25kg', m2: 6, prijs: 18.00 }]
+            8: [] // Wordt dynamisch ingevuld op basis van verfkwaliteit
         };
 
         function toggleMenu() {
@@ -296,7 +338,7 @@
 
         function renderDiensten() {
             const c = document.getElementById('dienstenLijst');
-            if (projectDiensten.length === 0) { c.innerHTML = '<p class="text-gray-400 text-center py-4 text-sm">Klik op "+ Toevoegen"</p>'; bereken(); return; }
+            if (projectDiensten.length === 0) { c.innerHTML = '<p class="text-gray-400 text-center py-4 text-sm">Klik op "+ Toevoegen"</p>'; bereken(); updateVerfKwaliteitVisibility(); return; }
             c.innerHTML = projectDiensten.map(pd => {
                 const d = standaardDiensten.find(x => x.id === pd.dienstId);
                 return `<div class="service-row">
@@ -311,21 +353,43 @@
                     </div>
                 </div>`;
             }).join('');
+            updateVerfKwaliteitVisibility();
             bereken();
+        }
+
+        function updateVerfKwaliteitVisibility() {
+            const heeftSpuitwerk = projectDiensten.some(pd => [8, 11, 12, 13].includes(pd.dienstId));
+            document.getElementById('verfKwaliteitCard').style.display = heeftSpuitwerk ? 'block' : 'none';
         }
 
         function updateDienst(id, field, val) { const pd = projectDiensten.find(p => String(p.id) === String(id)); if (pd) pd[field] = parseFloat(val) || 0; renderDiensten(); }
         function verwijderDienst(id) { projectDiensten = projectDiensten.filter(p => String(p.id) !== String(id)); renderDiensten(); }
 
         function openDienstModal() {
-            document.getElementById('beschikbareDiensten').innerHTML = standaardDiensten.map(d => {
+            renderDienstenModal('alle');
+            document.getElementById('dienstModal').classList.remove('hidden');
+        }
+        
+        function renderDienstenModal(categorie) {
+            const filtered = categorie === 'alle' ? standaardDiensten : standaardDiensten.filter(d => d.categorie === categorie);
+            
+            let html = `<div class="flex gap-2 mb-4 flex-wrap">
+                <button onclick="renderDienstenModal('alle')" class="px-3 py-1 rounded-full text-sm ${categorie === 'alle' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}">Alle</button>
+                <button onclick="renderDienstenModal('stucwerk')" class="px-3 py-1 rounded-full text-sm ${categorie === 'stucwerk' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}">🧱 Stucwerk</button>
+                <button onclick="renderDienstenModal('spuitwerk')" class="px-3 py-1 rounded-full text-sm ${categorie === 'spuitwerk' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}">🎨 Spuitwerk</button>
+                <button onclick="renderDienstenModal('schilderwerk')" class="px-3 py-1 rounded-full text-sm ${categorie === 'schilderwerk' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}">🖌️ Schilderwerk</button>
+                <button onclick="renderDienstenModal('voorbereiding')" class="px-3 py-1 rounded-full text-sm ${categorie === 'voorbereiding' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}">🔧 Voorbereiding</button>
+            </div>`;
+            
+            html += filtered.map(d => {
                 const exists = projectDiensten.some(pd => pd.dienstId === d.id);
-                return `<div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg ${exists?'opacity-50':''}">
+                return `<div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg mb-2 ${exists?'opacity-50':''}">
                     <div><span class="font-medium text-sm">${d.naam}</span><span class="text-indigo-600 ml-2 text-sm">€${d.prijs}/m²</span></div>
                     <button onclick="voegDienstToe(${d.id})" class="btn-success" ${exists?'disabled':''}>${exists?'✓':'+'}</button>
                 </div>`;
             }).join('');
-            document.getElementById('dienstModal').classList.remove('hidden');
+            
+            document.getElementById('beschikbareDiensten').innerHTML = html;
         }
 
         function voegDienstToe(dienstId) {
@@ -348,7 +412,7 @@
         function openMateriaalModal() { filterMaterialen(); document.getElementById('materiaalModal').classList.remove('hidden'); }
         function filterMaterialen() {
             const zoek = (document.getElementById('matZoek')?.value || '').toLowerCase();
-            const lijst = materiaalDB.filter(m => m.naam.toLowerCase().includes(zoek)).slice(0, 20);
+            const lijst = materiaalDB.filter(m => m.naam.toLowerCase().includes(zoek)).slice(0, 50);
             document.getElementById('beschikbareMaterialen').innerHTML = lijst.length === 0 ? '<p class="text-gray-400 text-center py-4 text-sm">Geen materialen gevonden</p>' : lijst.map(m => `<div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg"><div><span class="font-medium text-sm">${m.naam}</span><span class="text-indigo-600 ml-2 text-sm">€${(m.standaardPrijs||0).toFixed(2)}</span></div><button onclick="voegMateriaalToe('${m.id}')" class="btn-success">+</button></div>`).join('');
         }
 
@@ -362,9 +426,21 @@
 
         function berekenAutoMaterialen() {
             const matMap = {};
+            const selectedVerfKwaliteit = document.getElementById('verfKwaliteitSelect')?.value || 'standaard';
+            const verf = verfKwaliteit[selectedVerfKwaliteit];
+            
             projectDiensten.forEach(pd => {
                 if (pd.m2 <= 0) return;
-                const v = verbruik[pd.dienstId]; if (!v) return;
+                
+                // Voor spuitwerk (id 8), gebruik de geselecteerde verfkwaliteit
+                let v;
+                if (pd.dienstId === 8) {
+                    v = [{ naam: verf.naam + ' 10L', m2: verf.m2, prijs: verf.prijs }];
+                } else {
+                    v = verbruik[pd.dienstId];
+                }
+                
+                if (!v) return;
                 v.forEach(mat => {
                     const aantal = Math.ceil(pd.m2 / mat.m2);
                     if (!matMap[mat.naam]) matMap[mat.naam] = { naam: mat.naam, aantal: 0, prijs: mat.prijs, totaal: 0 };

@@ -100,6 +100,8 @@
             <a href="calculator.html" class="nav-item">🧮 Calculator</a>
             <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
             <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
+        <div class="border-t border-gray-200 my-4"></div>
+            <a href="beveiliging.html" class="nav-item">🔐 Beveiliging</a>
         </nav>
         <div class="p-4 border-t border-gray-100">
             <button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button>
@@ -542,12 +544,25 @@
                         <strong class="text-sm">💰 Betaling</strong>
                         <ul class="text-sm mt-1 ml-4">
                             <li>• 30% aanbetaling bij akkoord offerte</li>
-                            <li>• Restant binnen 14 dagen na oplevering</li>
+                            <li id="betalingstermijnTekst">• Restant binnen <strong>5 dagen</strong> na oplevering (particulier)</li>
                         </ul>
+                        <div class="mt-2">
+                            <label class="text-sm text-gray-600">Type klant:</label>
+                            <select id="klantType" class="input-field mt-1" onchange="updateBetalingstermijn()">
+                                <option value="particulier">Particulier (5 dagen)</option>
+                                <option value="zakelijk">Zakelijk (30 dagen)</option>
+                            </select>
+                        </div>
                         <div class="mt-2">
                             <label class="text-sm text-gray-600">Afwijkende afspraak:</label>
                             <input type="text" id="afwijkendeBetaling" class="input-field mt-1" placeholder="Indien anders besproken...">
                         </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <strong class="text-sm">🔧 Meerwerk</strong>
+                        <p class="text-sm mt-1 ml-4">• Meerwerk wordt apart geoffreerd en gefactureerd</p>
+                        <p class="text-sm ml-4">• Prijzen voor meerwerk kunnen afwijken van oorspronkelijke offerte</p>
                     </div>
 
                     <div class="mt-4">
@@ -618,10 +633,44 @@
         let selectedContact = null;
         let photos = [];
         let files = [];
-        let opnames = JSON.parse(localStorage.getItem('stuc_opnames') || '[]');
+        let opnames = [];
         let signaturePads = {};
 
+        // Load opnames from server
+        async function loadOpnames() {
+            try {
+                const res = await fetch('/api/data/opnames');
+                if (res.ok) {
+                    const result = await res.json();
+                    if (result.data && Array.isArray(result.data)) {
+                        opnames = result.data;
+                        localStorage.setItem('stuc_opnames', JSON.stringify(opnames)); syncOpnames();
+                        console.log('📥 Opnames loaded from server');
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.log('Server load failed');
+            }
+            opnames = JSON.parse(localStorage.getItem('stuc_opnames') || '[]');
+        }
+
+        // Sync opnames to server
+        async function syncOpnames() {
+            try {
+                await fetch('/api/data/opnames', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: opnames })
+                });
+                console.log('✅ Opnames synced to server');
+            } catch (e) {
+                console.log('⚠️ Sync failed');
+            }
+        }
+
         // Init
+        loadOpnames();
         document.getElementById('opnameDatum').value = new Date().toISOString().split('T')[0];
         loadContacts();
         initSignaturePads();
@@ -636,6 +685,16 @@
                     label.style.background = (level === selected) ? '#eef2ff' : 'white';
                 }
             });
+        }
+
+        function updateBetalingstermijn() {
+            const type = document.getElementById('klantType').value;
+            const tekst = document.getElementById('betalingstermijnTekst');
+            if (type === 'zakelijk') {
+                tekst.innerHTML = '• Restant binnen <strong>30 dagen</strong> na oplevering (zakelijk)';
+            } else {
+                tekst.innerHTML = '• Restant binnen <strong>5 dagen</strong> na oplevering (particulier)';
+            }
         }
 
         function toggleMenu() {
@@ -1053,7 +1112,7 @@
         function saveOpname() {
             const data = collectData();
             opnames.push(data);
-            localStorage.setItem('stuc_opnames', JSON.stringify(opnames));
+            localStorage.setItem('stuc_opnames', JSON.stringify(opnames)); syncOpnames();
             alert('✅ Opname opgeslagen!');
         }
 
