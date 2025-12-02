@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medewerker Login - StucAdmin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .login-card { backdrop-filter: blur(10px); background: rgba(255,255,255,0.95); }
+        .pin-input { font-size: 24px; letter-spacing: 8px; text-align: center; }
+        .medewerker-btn { transition: all 0.2s; }
+        .medewerker-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .medewerker-btn.selected { border-color: #6366f1; background: #eef2ff; }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+    <div class="login-card rounded-2xl shadow-2xl p-8 w-full max-w-md">
+        <div class="text-center mb-8">
+            <div class="text-4xl mb-2">👷</div>
+            <h1 class="text-2xl font-bold text-gray-800">Medewerker Login</h1>
+            <p class="text-gray-500 text-sm mt-1">Selecteer je naam en voer je pincode in</p>
+        </div>
+
+        <!-- Stap 1: Selecteer medewerker -->
+        <div id="step1">
+            <label class="block text-sm font-medium text-gray-700 mb-3">Wie ben je?</label>
+            <div id="medewerkersList" class="space-y-2 max-h-64 overflow-y-auto">
+                <p class="text-gray-400 text-center py-4">Laden...</p>
+            </div>
+        </div>
+
+        <!-- Stap 2: Pincode -->
+        <div id="step2" class="hidden">
+            <button onclick="goToStep1()" class="text-indigo-600 text-sm mb-4 flex items-center gap-1">
+                ← Andere medewerker
+            </button>
+            
+            <div class="text-center mb-6">
+                <div class="text-lg font-semibold text-gray-800" id="selectedName">-</div>
+                <p class="text-gray-500 text-sm">Voer je 4-cijferige pincode in</p>
+            </div>
+
+            <input type="password" 
+                   id="pincodeInput" 
+                   class="pin-input w-full p-4 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"
+                   maxlength="4" 
+                   pattern="\d{4}"
+                   inputmode="numeric"
+                   placeholder="••••"
+                   onkeyup="checkPincode(event)">
+
+            <div id="errorMsg" class="text-red-500 text-sm text-center mt-3 hidden"></div>
+
+            <button onclick="login()" 
+                    id="loginBtn"
+                    class="w-full mt-6 bg-indigo-600 text-white py-4 rounded-xl font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled>
+                Inloggen
+            </button>
+        </div>
+
+        <div class="mt-8 pt-6 border-t text-center">
+            <a href="/login.html" class="text-gray-400 text-sm hover:text-gray-600">
+                Admin login →
+            </a>
+        </div>
+    </div>
+
+    <script>
+        let selectedMedewerkerId = null;
+        let selectedMedewerkerNaam = '';
+
+        // Check if already logged in
+        async function checkStatus() {
+            try {
+                const res = await fetch('/api/medewerker/status');
+                const data = await res.json();
+                if (data.loggedIn) {
+                    window.location.href = '/medewerker-uren.html';
+                }
+            } catch (e) {}
+        }
+
+        // Load medewerkers
+        async function loadMedewerkers() {
+            try {
+                const res = await fetch('/api/medewerker/lijst');
+                const medewerkers = await res.json();
+                
+                const container = document.getElementById('medewerkersList');
+                
+                if (medewerkers.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-8 text-gray-400">
+                            <div class="text-3xl mb-2">🚫</div>
+                            <p>Geen medewerkers gevonden</p>
+                            <p class="text-xs mt-1">Vraag de admin om je toe te voegen</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = medewerkers.map(m => `
+                    <button onclick="selectMedewerker('${m.id}', '${m.naam}')" 
+                            class="medewerker-btn w-full p-4 border-2 border-gray-200 rounded-xl text-left flex items-center gap-3"
+                            id="btn_${m.id}">
+                        <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">
+                            ${m.naam.charAt(0).toUpperCase()}
+                        </div>
+                        <span class="font-medium text-gray-800">${m.naam}</span>
+                    </button>
+                `).join('');
+            } catch (e) {
+                document.getElementById('medewerkersList').innerHTML = `
+                    <p class="text-red-500 text-center py-4">Fout bij laden medewerkers</p>
+                `;
+            }
+        }
+
+        function selectMedewerker(id, naam) {
+            selectedMedewerkerId = id;
+            selectedMedewerkerNaam = naam;
+            
+            document.getElementById('selectedName').textContent = naam;
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.remove('hidden');
+            document.getElementById('pincodeInput').focus();
+        }
+
+        function goToStep1() {
+            selectedMedewerkerId = null;
+            selectedMedewerkerNaam = '';
+            document.getElementById('pincodeInput').value = '';
+            document.getElementById('errorMsg').classList.add('hidden');
+            document.getElementById('loginBtn').disabled = true;
+            document.getElementById('step1').classList.remove('hidden');
+            document.getElementById('step2').classList.add('hidden');
+        }
+
+        function checkPincode(event) {
+            const pin = document.getElementById('pincodeInput').value;
+            document.getElementById('loginBtn').disabled = pin.length !== 4;
+            document.getElementById('errorMsg').classList.add('hidden');
+            
+            if (event.key === 'Enter' && pin.length === 4) {
+                login();
+            }
+        }
+
+        async function login() {
+            const pincode = document.getElementById('pincodeInput').value;
+            const errorMsg = document.getElementById('errorMsg');
+            const loginBtn = document.getElementById('loginBtn');
+
+            if (!selectedMedewerkerId || pincode.length !== 4) return;
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Bezig...';
+
+            try {
+                const res = await fetch('/api/medewerker/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ medewerkerId: selectedMedewerkerId, pincode })
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    window.location.href = '/medewerker-uren.html';
+                } else {
+                    errorMsg.textContent = data.error || 'Onjuiste pincode';
+                    errorMsg.classList.remove('hidden');
+                    document.getElementById('pincodeInput').value = '';
+                    document.getElementById('pincodeInput').focus();
+                }
+            } catch (e) {
+                errorMsg.textContent = 'Verbindingsfout';
+                errorMsg.classList.remove('hidden');
+            }
+
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Inloggen';
+        }
+
+        // Init
+        checkStatus();
+        loadMedewerkers();
+    </script>
+</body>
+</html>

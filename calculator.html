@@ -148,6 +148,18 @@
                         <label class="checkbox-row"><input type="checkbox" id="cbMateriaal" onchange="bereken()"><span class="flex-1 text-sm">Materiaalkosten meenemen</span><span class="text-indigo-600 font-semibold text-sm" id="cbMateriaalBedrag">€0</span></label>
                         <label class="checkbox-row"><input type="checkbox" id="cbAfval" onchange="bereken()"><span class="flex-1 text-sm">Afval wegbrengen</span><span class="text-indigo-600 font-semibold text-sm">€50</span></label>
                         <label class="checkbox-row"><input type="checkbox" id="cbFlat" onchange="bereken()"><span class="flex-1 text-sm">Flat toeslag</span><span class="text-indigo-600 font-semibold text-sm">€150</span></label>
+                        
+                        <!-- Custom toeslagen -->
+                        <div id="customToeslagenLijst" class="mt-2"></div>
+                        
+                        <!-- Nieuwe toeslag toevoegen -->
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <div class="flex gap-2">
+                                <input type="text" id="nieuwToeslagNaam" class="input-field flex-1 text-sm py-2" placeholder="Toeslag naam">
+                                <input type="number" id="nieuwToeslagBedrag" class="input-field text-sm py-2" style="width: 80px;" placeholder="€">
+                                <button onclick="voegToeslagToe()" class="btn-success text-sm px-3">+</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="card p-4">
@@ -192,7 +204,40 @@
     <div id="dienstModal" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="flex justify-between mb-4"><h2 class="font-bold">Dienst toevoegen</h2><button onclick="sluitModal('dienstModal')" class="text-gray-400 text-2xl">&times;</button></div>
-            <div id="beschikbareDiensten" class="space-y-2 max-h-80 overflow-y-auto"></div>
+            
+            <!-- Zoekbalk -->
+            <input type="text" id="dienstZoek" class="input-field mb-3" placeholder="🔍 Zoek dienst..." oninput="filterDienstenModal(this.value)">
+            
+            <!-- Categorie filters -->
+            <div class="flex gap-2 mb-4 flex-wrap" id="categorieButtons">
+                <button onclick="filterDienstenModal('', 'alle')" class="cat-btn px-3 py-1 rounded-full text-sm bg-indigo-600 text-white" data-cat="alle">Alle</button>
+                <button onclick="filterDienstenModal('', 'stucwerk')" class="cat-btn px-3 py-1 rounded-full text-sm bg-gray-100" data-cat="stucwerk">🧱 Stucwerk</button>
+                <button onclick="filterDienstenModal('', 'spuitwerk')" class="cat-btn px-3 py-1 rounded-full text-sm bg-gray-100" data-cat="spuitwerk">🎨 Spuitwerk</button>
+                <button onclick="filterDienstenModal('', 'schilderwerk')" class="cat-btn px-3 py-1 rounded-full text-sm bg-gray-100" data-cat="schilderwerk">🖌️ Schilderwerk</button>
+                <button onclick="filterDienstenModal('', 'voorbereiding')" class="cat-btn px-3 py-1 rounded-full text-sm bg-gray-100" data-cat="voorbereiding">🔧 Voorbereiding</button>
+            </div>
+            
+            <!-- Diensten lijst -->
+            <div id="beschikbareDiensten" class="space-y-2 max-h-64 overflow-y-auto"></div>
+            
+            <!-- Custom dienst toevoegen -->
+            <div id="customDienstForm" class="hidden mt-4 pt-4 border-t border-amber-300 bg-amber-50 rounded-lg p-4">
+                <div class="font-semibold text-amber-800 mb-3">➕ Nieuwe dienst toevoegen</div>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <input type="text" id="customDienstNaam" class="input-field text-sm" placeholder="Naam dienst">
+                    <input type="number" id="customDienstPrijs" class="input-field text-sm" placeholder="€ per m²">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="customDienstCategorie" class="input-field text-sm">
+                        <option value="stucwerk">Stucwerk</option>
+                        <option value="spuitwerk">Spuitwerk</option>
+                        <option value="schilderwerk">Schilderwerk</option>
+                        <option value="voorbereiding">Voorbereiding</option>
+                        <option value="overig">Overig</option>
+                    </select>
+                    <button onclick="voegCustomDienstToe()" class="btn-primary text-sm">Toevoegen</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -207,7 +252,23 @@
     <script>
         const API_BASE = '/api';
         let taxRates = [], contacts = [], selectedContact = null, projectDiensten = [], extraMaterialen = [], berekendeMaterialen = [];
-        let materiaalDB = JSON.parse(localStorage.getItem('stuc_materialen_db') || '[]');
+        let customToeslagen = [];
+        let currentDienstCategorie = 'alle';
+        let materiaalDB = [];
+        try {
+            const stored = localStorage.getItem('stuc_materialen_db');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                // Ondersteun zowel array als object met materialen property
+                if (Array.isArray(parsed)) {
+                    materiaalDB = parsed;
+                } else if (parsed && Array.isArray(parsed.materialen)) {
+                    materiaalDB = parsed.materialen;
+                }
+            }
+        } catch(e) {
+            materiaalDB = [];
+        }
         
         const standaardDiensten = [
             // Stucwerk
@@ -367,30 +428,116 @@
         function verwijderDienst(id) { projectDiensten = projectDiensten.filter(p => String(p.id) !== String(id)); renderDiensten(); }
 
         function openDienstModal() {
-            renderDienstenModal('alle');
+            document.getElementById('dienstZoek').value = '';
+            currentDienstCategorie = 'alle';
+            updateCategorieButtons('alle');
+            filterDienstenModal('', 'alle');
+            document.getElementById('customDienstForm').classList.add('hidden');
             document.getElementById('dienstModal').classList.remove('hidden');
         }
         
+        function updateCategorieButtons(active) {
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                if (btn.dataset.cat === active) {
+                    btn.classList.remove('bg-gray-100');
+                    btn.classList.add('bg-indigo-600', 'text-white');
+                } else {
+                    btn.classList.add('bg-gray-100');
+                    btn.classList.remove('bg-indigo-600', 'text-white');
+                }
+            });
+        }
+        
+        function filterDienstenModal(zoekterm, categorie) {
+            if (categorie) {
+                currentDienstCategorie = categorie;
+                updateCategorieButtons(categorie);
+            }
+            
+            const search = (zoekterm || document.getElementById('dienstZoek').value || '').toLowerCase();
+            
+            let filtered = standaardDiensten;
+            
+            // Filter op categorie
+            if (currentDienstCategorie !== 'alle') {
+                filtered = filtered.filter(d => d.categorie === currentDienstCategorie);
+            }
+            
+            // Filter op zoekterm
+            if (search) {
+                filtered = filtered.filter(d => d.naam.toLowerCase().includes(search));
+            }
+            
+            const container = document.getElementById('beschikbareDiensten');
+            
+            if (filtered.length === 0) {
+                // Geen resultaten - toon optie om toe te voegen
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <p class="text-gray-400 mb-2">Geen diensten gevonden voor "${search}"</p>
+                        <button onclick="toonCustomDienstForm('${search}')" class="btn-primary text-sm">+ "${search}" toevoegen als nieuwe dienst</button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = filtered.map(d => {
+                    const exists = projectDiensten.some(pd => pd.dienstId === d.id);
+                    return `<div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg ${exists?'opacity-50':'hover:bg-indigo-50 cursor-pointer'}" ${exists?'':`onclick="voegDienstToe(${d.id})"`}>
+                        <div><span class="font-medium text-sm">${d.naam}</span><span class="text-indigo-600 ml-2 text-sm">€${d.prijs}/m²</span></div>
+                        <span class="${exists?'text-green-600':'text-indigo-600'} font-bold">${exists?'✓':'+'}</span>
+                    </div>`;
+                }).join('');
+                
+                // Voeg optie toe om nieuwe dienst te maken onderaan
+                if (search && search.length >= 2) {
+                    container.innerHTML += `
+                        <div class="border-t mt-3 pt-3">
+                            <button onclick="toonCustomDienstForm('${search}')" class="text-amber-600 hover:text-amber-800 text-sm font-medium">
+                                + "${search}" toevoegen als nieuwe dienst
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        function toonCustomDienstForm(naam) {
+            document.getElementById('customDienstNaam').value = naam || '';
+            document.getElementById('customDienstPrijs').value = '';
+            document.getElementById('customDienstForm').classList.remove('hidden');
+            document.getElementById('customDienstNaam').focus();
+        }
+        
+        function voegCustomDienstToe() {
+            const naam = document.getElementById('customDienstNaam').value.trim();
+            const prijs = parseFloat(document.getElementById('customDienstPrijs').value) || 0;
+            const categorie = document.getElementById('customDienstCategorie').value;
+            
+            if (!naam) {
+                alert('Vul een naam in');
+                return;
+            }
+            if (prijs <= 0) {
+                alert('Vul een geldige prijs in');
+                return;
+            }
+            
+            // Maak nieuwe dienst ID
+            const newId = Math.max(...standaardDiensten.map(d => d.id), 100) + 1;
+            
+            // Voeg toe aan standaardDiensten
+            const nieuweDienst = { id: newId, naam: naam, prijs: prijs, categorie: categorie };
+            standaardDiensten.push(nieuweDienst);
+            
+            // Direct toevoegen aan project
+            projectDiensten.push({ id: Date.now(), dienstId: newId, m2: 0, prijs: prijs });
+            
+            sluitModal('dienstModal');
+            renderDiensten();
+        }
+        
+        // Oude renderDienstenModal voor backward compatibility
         function renderDienstenModal(categorie) {
-            const filtered = categorie === 'alle' ? standaardDiensten : standaardDiensten.filter(d => d.categorie === categorie);
-            
-            let html = `<div class="flex gap-2 mb-4 flex-wrap">
-                <button onclick="renderDienstenModal('alle')" class="px-3 py-1 rounded-full text-sm ${categorie === 'alle' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}">Alle</button>
-                <button onclick="renderDienstenModal('stucwerk')" class="px-3 py-1 rounded-full text-sm ${categorie === 'stucwerk' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}">🧱 Stucwerk</button>
-                <button onclick="renderDienstenModal('spuitwerk')" class="px-3 py-1 rounded-full text-sm ${categorie === 'spuitwerk' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}">🎨 Spuitwerk</button>
-                <button onclick="renderDienstenModal('schilderwerk')" class="px-3 py-1 rounded-full text-sm ${categorie === 'schilderwerk' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}">🖌️ Schilderwerk</button>
-                <button onclick="renderDienstenModal('voorbereiding')" class="px-3 py-1 rounded-full text-sm ${categorie === 'voorbereiding' ? 'bg-indigo-600 text-white' : 'bg-gray-100'}">🔧 Voorbereiding</button>
-            </div>`;
-            
-            html += filtered.map(d => {
-                const exists = projectDiensten.some(pd => pd.dienstId === d.id);
-                return `<div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg mb-2 ${exists?'opacity-50':''}">
-                    <div><span class="font-medium text-sm">${d.naam}</span><span class="text-indigo-600 ml-2 text-sm">€${d.prijs}/m²</span></div>
-                    <button onclick="voegDienstToe(${d.id})" class="btn-success" ${exists?'disabled':''}>${exists?'✓':'+'}</button>
-                </div>`;
-            }).join('');
-            
-            document.getElementById('beschikbareDiensten').innerHTML = html;
+            filterDienstenModal('', categorie);
         }
 
         function voegDienstToe(dienstId) {
@@ -423,6 +570,68 @@
             const exists = extraMaterialen.find(em => String(em.matId) === String(matId));
             if (exists) { exists.aantal++; } else { extraMaterialen.push({ id: Date.now(), matId: m.id, naam: m.naam, prijs: m.standaardPrijs || 0, aantal: 1 }); }
             sluitModal('materiaalModal'); renderExtraMaterialen();
+        }
+
+        // ============================================
+        // CUSTOM TOESLAGEN
+        // ============================================
+        function voegToeslagToe() {
+            const naam = document.getElementById('nieuwToeslagNaam').value.trim();
+            const bedrag = parseFloat(document.getElementById('nieuwToeslagBedrag').value) || 0;
+            
+            if (!naam) {
+                alert('Vul een naam in');
+                return;
+            }
+            if (bedrag <= 0) {
+                alert('Vul een geldig bedrag in');
+                return;
+            }
+            
+            customToeslagen.push({
+                id: Date.now(),
+                naam: naam,
+                bedrag: bedrag,
+                checked: true
+            });
+            
+            document.getElementById('nieuwToeslagNaam').value = '';
+            document.getElementById('nieuwToeslagBedrag').value = '';
+            
+            renderCustomToeslagen();
+            bereken();
+        }
+        
+        function toggleCustomToeslag(id) {
+            const toeslag = customToeslagen.find(t => t.id === id);
+            if (toeslag) {
+                toeslag.checked = !toeslag.checked;
+                renderCustomToeslagen();
+                bereken();
+            }
+        }
+        
+        function verwijderCustomToeslag(id) {
+            customToeslagen = customToeslagen.filter(t => t.id !== id);
+            renderCustomToeslagen();
+            bereken();
+        }
+        
+        function renderCustomToeslagen() {
+            const container = document.getElementById('customToeslagenLijst');
+            if (customToeslagen.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            container.innerHTML = customToeslagen.map(t => `
+                <label class="checkbox-row">
+                    <input type="checkbox" ${t.checked ? 'checked' : ''} onchange="toggleCustomToeslag(${t.id})">
+                    <span class="flex-1 text-sm">${t.naam}</span>
+                    <span class="text-indigo-600 font-semibold text-sm">€${t.bedrag.toFixed(0)}</span>
+                    <button onclick="event.preventDefault(); verwijderCustomToeslag(${t.id})" class="text-red-400 ml-2">🗑️</button>
+                </label>
+            `).join('');
         }
 
         function berekenAutoMaterialen() {
@@ -471,6 +680,11 @@
             if (document.getElementById('cbMateriaal').checked) toeslagen += totaalMatKosten;
             if (document.getElementById('cbAfval').checked) toeslagen += 50;
             if (document.getElementById('cbFlat').checked) toeslagen += 150;
+            
+            // Custom toeslagen toevoegen
+            customToeslagen.forEach(t => {
+                if (t.checked) toeslagen += t.bedrag;
+            });
 
             let subtotaal = arbeid + toeslagen;
             const korting = parseFloat(document.getElementById('korting').value) || 0;
@@ -490,6 +704,10 @@
             if (document.getElementById('cbMateriaal').checked) spec.push(`<div class="flex justify-between"><span>Materialen</span><span>€${totaalMatKosten.toFixed(0)}</span></div>`);
             if (document.getElementById('cbAfval').checked) spec.push(`<div class="flex justify-between"><span>Afval</span><span>€50</span></div>`);
             if (document.getElementById('cbFlat').checked) spec.push(`<div class="flex justify-between"><span>Flat toeslag</span><span>€150</span></div>`);
+            // Custom toeslagen in specificatie
+            customToeslagen.forEach(t => {
+                if (t.checked) spec.push(`<div class="flex justify-between"><span>${t.naam}</span><span>€${t.bedrag.toFixed(0)}</span></div>`);
+            });
             if (korting > 0) spec.push(`<div class="flex justify-between text-red-500"><span>Korting ${korting}%</span><span>-</span></div>`);
             spec.push(`<div class="flex justify-between font-semibold border-t pt-2 mt-2"><span>Excl. BTW</span><span>€${subtotaal.toFixed(0)}</span></div>`);
             spec.push(`<div class="flex justify-between"><span>BTW ${btwPerc}%</span><span>€${btw.toFixed(0)}</span></div>`);
@@ -527,6 +745,15 @@
             if (document.getElementById('cbAfval').checked) { const detail = { description: 'Afval wegbrengen', price: '50', amount: '1' }; if (taxRateId) detail.tax_rate_id = taxRateId; details.push(detail); }
             if (document.getElementById('cbFlat').checked) { const detail = { description: 'Flat toeslag', price: '150', amount: '1' }; if (taxRateId) detail.tax_rate_id = taxRateId; details.push(detail); }
             
+            // Custom toeslagen toevoegen
+            customToeslagen.forEach(t => {
+                if (t.checked) {
+                    const detail = { description: t.naam, price: t.bedrag.toString(), amount: '1' };
+                    if (taxRateId) detail.tax_rate_id = taxRateId;
+                    details.push(detail);
+                }
+            });
+            
             try {
                 const res = await fetch(API_BASE + '/estimates', {
                     method: 'POST',
@@ -538,7 +765,7 @@
         }
 
         function opslaanProject() {
-            const project = { id: Date.now(), naam: document.getElementById('projectNaam').value || 'Naamloos', klant: selectedContact, diensten: projectDiensten, extraMaterialen, datum: new Date().toISOString() };
+            const project = { id: Date.now(), naam: document.getElementById('projectNaam').value || 'Naamloos', klant: selectedContact, diensten: projectDiensten, extraMaterialen, customToeslagen, datum: new Date().toISOString() };
             let projecten = JSON.parse(localStorage.getItem('stuc_projecten') || '[]');
             projecten.push(project);
             localStorage.setItem('stuc_projecten', JSON.stringify(projecten));
@@ -546,7 +773,7 @@
         }
 
         function resetCalculator() {
-            projectDiensten = []; extraMaterialen = []; selectedContact = null;
+            projectDiensten = []; extraMaterialen = []; customToeslagen = []; selectedContact = null;
             document.getElementById('projectNaam').value = '';
             document.getElementById('klantSelect').value = '';
             document.getElementById('klantSearch').value = '';
@@ -555,7 +782,7 @@
             document.getElementById('cbAfval').checked = false;
             document.getElementById('cbFlat').checked = false;
             document.getElementById('korting').value = 0;
-            renderDiensten(); renderExtraMaterialen();
+            renderDiensten(); renderExtraMaterialen(); renderCustomToeslagen();
         }
 
         function sluitModal(id) { document.getElementById(id).classList.add('hidden'); }
@@ -574,5 +801,6 @@
         
         initPage();
     </script>
+<script src="/data-sync.js"></script>
 </body>
 </html>
