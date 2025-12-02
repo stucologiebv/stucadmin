@@ -161,10 +161,10 @@ const MONEYBIRD_API_URL = `https://moneybird.com/api/v2/${ADMINISTRATION_ID}`;
 // Google Calendar credentials
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1062914520146-0bseg9gsa2999i7euo7tr62507sdjnu9.apps.googleusercontent.com';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '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';
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://stucadmin-production.up.railway.app/api/google/callback';
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://stucadmin.stucologie.nl/api/google/callback';
 
-// Google tokens storage (persistent to file)
-const GOOGLE_TOKENS_FILE = path.join(__dirname, '.data', 'google-tokens.json');
+// Google tokens storage (persistent to file - use absolute path outside project folder)
+const GOOGLE_TOKENS_FILE = process.env.GOOGLE_TOKENS_FILE || '/home/info/stucadmin-data/google-tokens.json';
 let googleTokens = new Map();
 
 // Load Google tokens from file on startup
@@ -173,7 +173,9 @@ function loadGoogleTokens() {
         if (fs.existsSync(GOOGLE_TOKENS_FILE)) {
             const data = JSON.parse(fs.readFileSync(GOOGLE_TOKENS_FILE, 'utf8'));
             googleTokens = new Map(Object.entries(data));
-            console.log('📅 Google tokens loaded from file');
+            console.log('📅 Google tokens loaded from file:', GOOGLE_TOKENS_FILE);
+        } else {
+            console.log('📅 No Google tokens file found at:', GOOGLE_TOKENS_FILE);
         }
     } catch (e) {
         console.log('Could not load Google tokens:', e.message);
@@ -189,7 +191,7 @@ function saveGoogleTokens() {
         }
         const data = Object.fromEntries(googleTokens);
         fs.writeFileSync(GOOGLE_TOKENS_FILE, JSON.stringify(data, null, 2));
-        console.log('💾 Google tokens saved to file');
+        console.log('💾 Google tokens saved to file:', GOOGLE_TOKENS_FILE);
     } catch (e) {
         console.error('Could not save Google tokens:', e.message);
     }
@@ -243,7 +245,8 @@ function clearCache(key) {
 }
 
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Cookie parser
 function parseCookies(req) {
@@ -1690,7 +1693,7 @@ console.log('✅ Materialen Pro module geladen');
 
 // Start OAuth flow - redirect to Google
 app.get('/api/google/auth', requireAuth, (req, res) => {
-    const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/gmail.readonly');
+    const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send');
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
     res.redirect(authUrl);
 });
@@ -1746,11 +1749,53 @@ app.get('/api/google/callback', async (req, res) => {
     }
 });
 
-// Check if Google is connected
-app.get('/api/google/status', requireAuth, (req, res) => {
+// Check if Google is connected (with auto-refresh)
+app.get('/api/google/status', requireAuth, async (req, res) => {
     const tokens = googleTokens.get('default');
-    const connected = tokens && tokens.access_token && Date.now() < tokens.expires_at;
-    res.json({ connected, expires_at: tokens?.expires_at });
+    
+    // Geen tokens
+    if (!tokens || !tokens.access_token) {
+        return res.json({ connected: false });
+    }
+    
+    // Token nog geldig
+    if (Date.now() < tokens.expires_at - 60000) {
+        return res.json({ connected: true, expires_at: tokens.expires_at });
+    }
+    
+    // Token verlopen - probeer te refreshen
+    if (tokens.refresh_token) {
+        try {
+            const fetch = (await import('node-fetch')).default;
+            const response = await fetch('https://oauth2.googleapis.com/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    client_id: GOOGLE_CLIENT_ID,
+                    client_secret: GOOGLE_CLIENT_SECRET,
+                    refresh_token: tokens.refresh_token,
+                    grant_type: 'refresh_token'
+                })
+            });
+            
+            const newTokens = await response.json();
+            if (newTokens.access_token) {
+                googleTokens.set('default', {
+                    access_token: newTokens.access_token,
+                    refresh_token: tokens.refresh_token,
+                    expires_at: Date.now() + (newTokens.expires_in * 1000)
+                });
+                saveGoogleTokens();
+                console.log('🔄 Google token auto-refreshed');
+                return res.json({ connected: true, expires_at: googleTokens.get('default').expires_at });
+            }
+        } catch (e) {
+            console.error('Auto-refresh failed:', e.message);
+        }
+    }
+    
+    // Refresh failed
+    res.json({ connected: false });
 });
 
 // Disconnect Google
@@ -2154,7 +2199,1028 @@ app.get('/api/gmail/message/:id', requireAuth, async (req, res) => {
     }
 });
 
+// Send email with manstaat
+app.post('/api/gmail/send-manstaat', requireAuth, async (req, res) => {
+    const { to, subject, body, manstaatHtml, projectNaam } = req.body;
+    
+    if (!to || !subject) {
+        return res.status(400).json({ error: 'Ontvanger en onderwerp zijn verplicht' });
+    }
+    
+    try {
+        const accessToken = await getValidGoogleToken();
+        if (!accessToken) {
+            return res.status(401).json({ error: 'Google niet verbonden' });
+        }
+        
+        const fetch = (await import('node-fetch')).default;
+        
+        // Create email with HTML content
+        const boundary = 'boundary_' + Date.now();
+        const emailContent = [
+            `To: ${to}`,
+            `Subject: ${subject}`,
+            'MIME-Version: 1.0',
+            `Content-Type: multipart/mixed; boundary="${boundary}"`,
+            '',
+            `--${boundary}`,
+            'Content-Type: text/html; charset=UTF-8',
+            '',
+            body || `<p>Hierbij de manstaat voor ${projectNaam || 'het project'}.</p>`,
+            '',
+            `--${boundary}`,
+            'Content-Type: text/html; charset=UTF-8',
+            'Content-Disposition: attachment; filename="manstaat.html"',
+            '',
+            manstaatHtml || '<p>Geen data</p>',
+            '',
+            `--${boundary}--`
+        ].join('\r\n');
+        
+        // Base64 encode for Gmail API
+        const encodedEmail = Buffer.from(emailContent)
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+        
+        const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ raw: encodedEmail })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            console.error('Gmail send error:', data.error);
+            return res.status(500).json({ error: data.error.message || 'Fout bij verzenden' });
+        }
+        
+        console.log(`📧 Manstaat verzonden naar: ${to}`);
+        res.json({ success: true, messageId: data.id });
+        
+    } catch (error) {
+        console.error('Error sending email:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 console.log('📧 Gmail API module geladen');
+
+
+// ============================================
+// MEDEWERKERS & UREN MODULE
+// ============================================
+
+// Data files
+const MEDEWERKERS_FILE = path.join(__dirname, '.data', 'medewerkers.json');
+const UREN_FILE = path.join(__dirname, '.data', 'uren.json');
+
+// Load/Save medewerkers
+function loadMedewerkers() {
+    try {
+        if (fs.existsSync(MEDEWERKERS_FILE)) {
+            return JSON.parse(fs.readFileSync(MEDEWERKERS_FILE, 'utf8'));
+        }
+    } catch (e) {
+        console.log('Could not load medewerkers:', e.message);
+    }
+    return [];
+}
+
+function saveMedewerkers(data) {
+    try {
+        const dir = path.dirname(MEDEWERKERS_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(MEDEWERKERS_FILE, JSON.stringify(data, null, 2));
+    } catch (e) {
+        console.error('Could not save medewerkers:', e.message);
+    }
+}
+
+// Load/Save uren
+function loadUren() {
+    try {
+        if (fs.existsSync(UREN_FILE)) {
+            return JSON.parse(fs.readFileSync(UREN_FILE, 'utf8'));
+        }
+    } catch (e) {
+        console.log('Could not load uren:', e.message);
+    }
+    return [];
+}
+
+function saveUren(data) {
+    try {
+        const dir = path.dirname(UREN_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(UREN_FILE, JSON.stringify(data, null, 2));
+    } catch (e) {
+        console.error('Could not save uren:', e.message);
+    }
+}
+
+let medewerkers = loadMedewerkers();
+let uren = loadUren();
+
+// Medewerker sessions (apart van admin sessions)
+const medewerkerSessions = new Map();
+
+// Middleware voor medewerker auth
+function requireMedewerkerAuth(req, res, next) {
+    const cookies = parseCookies(req);
+    const sessionId = cookies.medewerker_session;
+    
+    if (!sessionId) {
+        return res.status(401).json({ error: 'Niet ingelogd' });
+    }
+    
+    const session = medewerkerSessions.get(sessionId);
+    if (!session || Date.now() > session.expires) {
+        medewerkerSessions.delete(sessionId);
+        return res.status(401).json({ error: 'Sessie verlopen' });
+    }
+    
+    req.medewerker = session.medewerker;
+    req.medewerkerId = session.medewerkerId;
+    next();
+}
+
+// ============ ADMIN ENDPOINTS ============
+
+// Get all medewerkers (admin)
+app.get('/api/medewerkers', requireAuth, (req, res) => {
+    res.json(medewerkers);
+});
+
+// Add medewerker (admin)
+app.post('/api/medewerkers', requireAuth, (req, res) => {
+    const { naam, telefoon, type, pincode, uurtarief } = req.body;
+    
+    if (!naam || !pincode) {
+        return res.status(400).json({ error: 'Naam en pincode zijn verplicht' });
+    }
+    
+    if (!/^\d{4}$/.test(pincode)) {
+        return res.status(400).json({ error: 'Pincode moet 4 cijfers zijn' });
+    }
+    
+    const newMedewerker = {
+        id: Date.now().toString(),
+        naam,
+        telefoon: telefoon || '',
+        type: type || 'vast', // vast of zzp
+        pincode, // In productie: hash dit!
+        uurtarief: parseFloat(uurtarief) || 0,
+        actief: true,
+        created: new Date().toISOString()
+    };
+    
+    medewerkers.push(newMedewerker);
+    saveMedewerkers(medewerkers);
+    
+    console.log(`👷 Medewerker toegevoegd: ${naam}`);
+    res.json({ success: true, medewerker: newMedewerker });
+});
+
+// Update medewerker (admin)
+app.put('/api/medewerkers/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    const updates = req.body;
+    
+    const index = medewerkers.findIndex(m => m.id === id);
+    if (index === -1) {
+        return res.status(404).json({ error: 'Medewerker niet gevonden' });
+    }
+    
+    // Update velden
+    if (updates.naam) medewerkers[index].naam = updates.naam;
+    if (updates.telefoon !== undefined) medewerkers[index].telefoon = updates.telefoon;
+    if (updates.type) medewerkers[index].type = updates.type;
+    if (updates.pincode && /^\d{4}$/.test(updates.pincode)) {
+        medewerkers[index].pincode = updates.pincode;
+    }
+    if (updates.uurtarief !== undefined) {
+        medewerkers[index].uurtarief = parseFloat(updates.uurtarief) || 0;
+    }
+    if (updates.actief !== undefined) medewerkers[index].actief = updates.actief;
+    
+    saveMedewerkers(medewerkers);
+    res.json({ success: true, medewerker: medewerkers[index] });
+});
+
+// Delete medewerker (admin)
+app.delete('/api/medewerkers/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    const index = medewerkers.findIndex(m => m.id === id);
+    
+    if (index === -1) {
+        return res.status(404).json({ error: 'Medewerker niet gevonden' });
+    }
+    
+    const naam = medewerkers[index].naam;
+    medewerkers.splice(index, 1);
+    saveMedewerkers(medewerkers);
+    
+    console.log(`👷 Medewerker verwijderd: ${naam}`);
+    res.json({ success: true });
+});
+
+// Get all uren (admin)
+app.get('/api/uren', requireAuth, (req, res) => {
+    res.json(uren);
+});
+
+// Add uren (admin)
+app.post('/api/uren', requireAuth, (req, res) => {
+    const { medewerkerId, medewerkerNaam, projectId, projectNaam, datum, begintijd, eindtijd, pauze, totaalUren, notitie } = req.body;
+    
+    if (!medewerkerId || !projectId || !datum || !begintijd || !eindtijd) {
+        return res.status(400).json({ error: 'Verplichte velden ontbreken' });
+    }
+    
+    const newUren = {
+        id: Date.now().toString(),
+        medewerkerId,
+        medewerkerNaam: medewerkerNaam || 'Onbekend',
+        projectId,
+        projectNaam: projectNaam || 'Onbekend project',
+        datum,
+        begintijd,
+        eindtijd,
+        pauze: parseInt(pauze) || 0,
+        totaalUren: parseFloat(totaalUren) || 0,
+        notitie: notitie || '',
+        created: new Date().toISOString(),
+        createdBy: 'admin'
+    };
+    
+    uren.push(newUren);
+    saveUren(uren);
+    
+    console.log(`⏱️ Uren toegevoegd door admin: ${medewerkerNaam} - ${totaalUren}u op ${datum}`);
+    res.json({ success: true, uren: newUren });
+});
+
+// Delete uren entry (admin)
+app.delete('/api/uren/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    const index = uren.findIndex(u => u.id === id);
+    
+    if (index === -1) {
+        return res.status(404).json({ error: 'Uren niet gevonden' });
+    }
+    
+    uren.splice(index, 1);
+    saveUren(uren);
+    res.json({ success: true });
+});
+
+// ============ MEDEWERKER ENDPOINTS ============
+
+// Medewerker login
+app.post('/api/medewerker/login', (req, res) => {
+    const { medewerkerId, pincode } = req.body;
+    
+    const medewerker = medewerkers.find(m => m.id === medewerkerId && m.actief);
+    
+    if (!medewerker) {
+        return res.status(401).json({ error: 'Medewerker niet gevonden' });
+    }
+    
+    if (medewerker.pincode !== pincode) {
+        return res.status(401).json({ error: 'Onjuiste pincode' });
+    }
+    
+    // Create session
+    const sessionId = crypto.randomBytes(32).toString('hex');
+    medewerkerSessions.set(sessionId, {
+        medewerkerId: medewerker.id,
+        medewerker: medewerker.naam,
+        created: Date.now(),
+        expires: Date.now() + (12 * 60 * 60 * 1000) // 12 uur sessie
+    });
+    
+    // Set cookie
+    const cookieOptions = [
+        `medewerker_session=${sessionId}`,
+        'Path=/',
+        'HttpOnly',
+        'SameSite=Strict',
+        'Secure',
+        `Max-Age=${12 * 60 * 60}`
+    ];
+    
+    res.setHeader('Set-Cookie', cookieOptions.join('; '));
+    
+    console.log(`👷 Medewerker login: ${medewerker.naam}`);
+    res.json({ success: true, naam: medewerker.naam });
+});
+
+// Medewerker logout
+app.post('/api/medewerker/logout', (req, res) => {
+    const cookies = parseCookies(req);
+    const sessionId = cookies.medewerker_session;
+    
+    if (sessionId) {
+        medewerkerSessions.delete(sessionId);
+    }
+    
+    res.setHeader('Set-Cookie', 'medewerker_session=; Path=/; Max-Age=0');
+    res.json({ success: true });
+});
+
+// Check medewerker session
+app.get('/api/medewerker/status', (req, res) => {
+    const cookies = parseCookies(req);
+    const sessionId = cookies.medewerker_session;
+    
+    if (!sessionId) {
+        return res.json({ loggedIn: false });
+    }
+    
+    const session = medewerkerSessions.get(sessionId);
+    if (!session || Date.now() > session.expires) {
+        return res.json({ loggedIn: false });
+    }
+    
+    res.json({ loggedIn: true, naam: session.medewerker, medewerkerId: session.medewerkerId });
+});
+
+// Get active medewerkers (for login dropdown - no auth needed)
+app.get('/api/medewerker/lijst', (req, res) => {
+    const actieveMedewerkers = medewerkers
+        .filter(m => m.actief)
+        .map(m => ({ id: m.id, naam: m.naam }));
+    res.json(actieveMedewerkers);
+});
+
+// Get projecten for medewerker (simplified list)
+app.get('/api/medewerker/projecten', requireMedewerkerAuth, (req, res) => {
+    try {
+        const projectenFile = path.join(__dirname, '.data', 'projecten.json');
+        let projecten = [];
+        if (fs.existsSync(projectenFile)) {
+            projecten = JSON.parse(fs.readFileSync(projectenFile, 'utf8'));
+        }
+        // Return only active projects with basic info
+        const activeProjecten = projecten
+            .filter(p => p.status !== 'afgerond')
+            .map(p => ({ 
+                id: p.id, 
+                titel: p.title || p.titel,
+                klant: p.klant || p.customer,
+                adres: p.adres || p.location
+            }));
+        res.json(activeProjecten);
+    } catch (e) {
+        res.json([]);
+    }
+});
+
+// Get mijn uren (medewerker)
+app.get('/api/medewerker/uren', requireMedewerkerAuth, (req, res) => {
+    const mijnUren = uren.filter(u => u.medewerkerId === req.medewerkerId);
+    res.json(mijnUren);
+});
+
+// Add uren (medewerker)
+app.post('/api/medewerker/uren', requireMedewerkerAuth, (req, res) => {
+    const { projectId, projectNaam, datum, begintijd, eindtijd, pauze, notitie } = req.body;
+    
+    if (!projectId || !datum || !begintijd || !eindtijd) {
+        return res.status(400).json({ error: 'Project, datum, begin- en eindtijd zijn verplicht' });
+    }
+    
+    // Calculate total hours
+    const begin = new Date(`${datum}T${begintijd}`);
+    const eind = new Date(`${datum}T${eindtijd}`);
+    const pauzeMin = parseInt(pauze) || 0;
+    const totaalMinuten = (eind - begin) / 60000 - pauzeMin;
+    const totaalUren = Math.round(totaalMinuten / 60 * 100) / 100;
+    
+    if (totaalUren <= 0) {
+        return res.status(400).json({ error: 'Eindtijd moet na begintijd zijn' });
+    }
+    
+    const newUren = {
+        id: Date.now().toString(),
+        medewerkerId: req.medewerkerId,
+        medewerkerNaam: req.medewerker,
+        projectId,
+        projectNaam: projectNaam || 'Onbekend project',
+        datum,
+        begintijd,
+        eindtijd,
+        pauze: pauzeMin,
+        totaalUren,
+        notitie: notitie || '',
+        created: new Date().toISOString()
+    };
+    
+    uren.push(newUren);
+    saveUren(uren);
+    
+    console.log(`⏱️ Uren geregistreerd: ${req.medewerker} - ${totaalUren}u op ${datum}`);
+    res.json({ success: true, uren: newUren });
+});
+
+// Update uren (medewerker - only own entries from today)
+app.put('/api/medewerker/uren/:id', requireMedewerkerAuth, (req, res) => {
+    const { id } = req.params;
+    const index = uren.findIndex(u => u.id === id && u.medewerkerId === req.medewerkerId);
+    
+    if (index === -1) {
+        return res.status(404).json({ error: 'Uren niet gevonden of geen toegang' });
+    }
+    
+    // Check if entry is from today (can only edit today's entries)
+    const today = new Date().toISOString().split('T')[0];
+    if (uren[index].datum !== today) {
+        return res.status(403).json({ error: 'Alleen uren van vandaag kunnen worden aangepast' });
+    }
+    
+    const updates = req.body;
+    
+    if (updates.begintijd) uren[index].begintijd = updates.begintijd;
+    if (updates.eindtijd) uren[index].eindtijd = updates.eindtijd;
+    if (updates.pauze !== undefined) uren[index].pauze = parseInt(updates.pauze) || 0;
+    if (updates.notitie !== undefined) uren[index].notitie = updates.notitie;
+    
+    // Recalculate total
+    const begin = new Date(`${uren[index].datum}T${uren[index].begintijd}`);
+    const eind = new Date(`${uren[index].datum}T${uren[index].eindtijd}`);
+    const totaalMinuten = (eind - begin) / 60000 - uren[index].pauze;
+    uren[index].totaalUren = Math.round(totaalMinuten / 60 * 100) / 100;
+    
+    saveUren(uren);
+    res.json({ success: true, uren: uren[index] });
+});
+
+// Delete uren (medewerker - only own entries from today)
+app.delete('/api/medewerker/uren/:id', requireMedewerkerAuth, (req, res) => {
+    const { id } = req.params;
+    const index = uren.findIndex(u => u.id === id && u.medewerkerId === req.medewerkerId);
+    
+    if (index === -1) {
+        return res.status(404).json({ error: 'Uren niet gevonden of geen toegang' });
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    if (uren[index].datum !== today) {
+        return res.status(403).json({ error: 'Alleen uren van vandaag kunnen worden verwijderd' });
+    }
+    
+    uren.splice(index, 1);
+    saveUren(uren);
+    res.json({ success: true });
+});
+
+console.log('👷 Medewerkers & Uren module geladen');
+
+
+// ============================================
+// OFFERTEAANVRAGEN MODULE
+// ============================================
+
+const OFFERTEAANVRAGEN_FILE = path.join(__dirname, '.data', 'offerteaanvragen.json');
+
+// Load/Save offerteaanvragen
+function loadOfferteaanvragen() {
+    try {
+        if (fs.existsSync(OFFERTEAANVRAGEN_FILE)) {
+            return JSON.parse(fs.readFileSync(OFFERTEAANVRAGEN_FILE, 'utf8'));
+        }
+    } catch (e) {
+        console.log('Could not load offerteaanvragen:', e.message);
+    }
+    return [];
+}
+
+function saveOfferteaanvragen(data) {
+    try {
+        const dir = path.dirname(OFFERTEAANVRAGEN_FILE);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(OFFERTEAANVRAGEN_FILE, JSON.stringify(data, null, 2));
+    } catch (e) {
+        console.error('Could not save offerteaanvragen:', e.message);
+    }
+}
+
+let offerteaanvragen = loadOfferteaanvragen();
+
+// Detecteer type werk uit bericht
+function detectTypeWerk(bericht) {
+    if (!bericht) return 'overig';
+    const lower = bericht.toLowerCase();
+    if (lower.includes('spuit') || lower.includes('latex')) return 'spuitwerk';
+    if (lower.includes('isolat') || lower.includes('isoler')) return 'isolatie';
+    if (lower.includes('stuc') || lower.includes('glad') || lower.includes('wand') || lower.includes('plafond')) return 'stucwerk';
+    return 'overig';
+}
+
+// Schat m² uit bericht
+function schatM2(bericht) {
+    if (!bericht) return null;
+    const match = bericht.match(/(\d+)\s*m[²2]/i);
+    return match ? parseInt(match[1]) : null;
+}
+
+// Get alle offerteaanvragen (admin)
+app.get('/api/offerteaanvragen', requireAuth, (req, res) => {
+    res.json(offerteaanvragen);
+});
+
+// Nieuwe offerteaanvraag (admin/webhook)
+app.post('/api/offerteaanvragen', (req, res) => {
+    // Check of het een webhook is (geen auth) of admin request (met auth)
+    const isWebhook = req.headers['x-webhook-secret'] === 'stucologie-webhook-2024';
+    const session = sessions.get(req.cookies?.stucadmin_session);
+    
+    if (!isWebhook && !session) {
+        return res.status(401).json({ error: 'Niet geautoriseerd' });
+    }
+    
+    const { naam, email, telefoon, adres, bericht, type, bron } = req.body;
+    
+    if (!naam && !bericht) {
+        return res.status(400).json({ error: 'Naam of bericht is verplicht' });
+    }
+    
+    const newAanvraag = {
+        id: Date.now().toString(),
+        naam: naam || 'Onbekend',
+        email: email || '',
+        telefoon: telefoon || '',
+        adres: adres || '',
+        bericht: bericht || '',
+        type: type || detectTypeWerk(bericht),
+        geschatteM2: schatM2(bericht),
+        status: 'nieuw',
+        bron: bron || 'website',
+        notities: '',
+        klantAangemaakt: false,
+        moneybirdContactId: null,
+        eersteReactie: null,
+        created: new Date().toISOString()
+    };
+    
+    offerteaanvragen.push(newAanvraag);
+    saveOfferteaanvragen(offerteaanvragen);
+    
+    console.log(`📩 Nieuwe offerteaanvraag: ${newAanvraag.naam} (${newAanvraag.type})`);
+    res.json({ success: true, aanvraag: newAanvraag });
+});
+
+// Update offerteaanvraag (admin)
+app.put('/api/offerteaanvragen/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    const index = offerteaanvragen.findIndex(a => a.id === id);
+    
+    if (index === -1) {
+        return res.status(404).json({ error: 'Aanvraag niet gevonden' });
+    }
+    
+    const updates = req.body;
+    
+    if (updates.status !== undefined) offerteaanvragen[index].status = updates.status;
+    if (updates.type !== undefined) offerteaanvragen[index].type = updates.type;
+    if (updates.notities !== undefined) offerteaanvragen[index].notities = updates.notities;
+    if (updates.eersteReactie !== undefined) offerteaanvragen[index].eersteReactie = updates.eersteReactie;
+    if (updates.geschatteM2 !== undefined) offerteaanvragen[index].geschatteM2 = updates.geschatteM2;
+    
+    saveOfferteaanvragen(offerteaanvragen);
+    res.json({ success: true, aanvraag: offerteaanvragen[index] });
+});
+
+// Delete offerteaanvraag (admin)
+app.delete('/api/offerteaanvragen/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    const index = offerteaanvragen.findIndex(a => a.id === id);
+    
+    if (index === -1) {
+        return res.status(404).json({ error: 'Aanvraag niet gevonden' });
+    }
+    
+    offerteaanvragen.splice(index, 1);
+    saveOfferteaanvragen(offerteaanvragen);
+    res.json({ success: true });
+});
+
+// Maak klant aan in Moneybird vanuit aanvraag
+app.post('/api/offerteaanvragen/:id/create-contact', requireAuth, async (req, res) => {
+    const { id } = req.params;
+    const aanvraag = offerteaanvragen.find(a => a.id === id);
+    
+    if (!aanvraag) {
+        return res.status(404).json({ error: 'Aanvraag niet gevonden' });
+    }
+    
+    if (aanvraag.klantAangemaakt) {
+        return res.status(400).json({ error: 'Klant is al aangemaakt' });
+    }
+    
+    try {
+        // Parse naam
+        const naamDelen = aanvraag.naam.trim().split(' ');
+        const voornaam = naamDelen[0] || '';
+        const achternaam = naamDelen.slice(1).join(' ') || '';
+        
+        // Parse adres (probeer straat, postcode, plaats te splitsen)
+        let adres = '', postcode = '', plaats = '';
+        if (aanvraag.adres) {
+            const adresParts = aanvraag.adres.split(',').map(s => s.trim());
+            adres = adresParts[0] || '';
+            if (adresParts.length > 1) {
+                const pcPlaats = adresParts[1].match(/(\d{4}\s?[A-Za-z]{2})\s*(.*)/);
+                if (pcPlaats) {
+                    postcode = pcPlaats[1];
+                    plaats = pcPlaats[2] || adresParts[2] || '';
+                } else {
+                    plaats = adresParts[1];
+                }
+            }
+        }
+        
+        // Maak contact aan in Moneybird
+        const fetch = (await import('node-fetch')).default;
+        const response = await fetch(`https://moneybird.com/api/v2/${MONEYBIRD_ADMIN_ID}/contacts`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${MONEYBIRD_API_TOKEN}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contact: {
+                    firstname: voornaam,
+                    lastname: achternaam,
+                    email: aanvraag.email || undefined,
+                    phone: aanvraag.telefoon || undefined,
+                    address1: adres || undefined,
+                    zipcode: postcode || undefined,
+                    city: plaats || undefined,
+                    country: 'NL'
+                }
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.id) {
+            // Update aanvraag
+            const index = offerteaanvragen.findIndex(a => a.id === id);
+            offerteaanvragen[index].klantAangemaakt = true;
+            offerteaanvragen[index].moneybirdContactId = data.id;
+            saveOfferteaanvragen(offerteaanvragen);
+            
+            // Clear contacts cache
+            cache.delete('contacts');
+            
+            console.log(`👤 Klant aangemaakt in Moneybird: ${aanvraag.naam}`);
+            res.json({ success: true, contactId: data.id });
+        } else {
+            res.status(500).json({ error: data.error?.message || 'Fout bij aanmaken contact' });
+        }
+    } catch (e) {
+        console.error('Error creating Moneybird contact:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ============================================
+// SPAM FILTERING SYSTEEM
+// ============================================
+
+// Rate limiting store (IP -> timestamps)
+const rateLimitStore = new Map();
+
+// Globale rate limiting (alle requests)
+let globalRequestCount = 0;
+let globalRequestResetTime = Date.now() + 3600000;
+
+// Spam woorden blacklist
+const spamBlacklist = [
+    'viagra', 'casino', 'lottery', 'winner', 'bitcoin', 'crypto', 'investment',
+    'click here', 'free money', 'make money', 'work from home', 'nigerian',
+    'pills', 'pharmacy', 'cheap', 'buy now', 'limited time', 'act now',
+    'xxx', 'porn', 'sex', 'dating', 'singles', 'hot girls', 'webcam'
+];
+
+// Toegestane domeinen voor CORS
+const allowedOrigins = [
+    'https://stucologie.nl',
+    'https://www.stucologie.nl',
+    'https://stucologie.vercel.app',
+    'http://localhost:3000' // Voor development
+];
+
+// HTML/Script sanitizer
+function sanitizeInput(str) {
+    if (!str || typeof str !== 'string') return '';
+    return str
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Scripts verwijderen
+        .replace(/<[^>]*>/g, '') // Alle HTML tags verwijderen
+        .replace(/javascript:/gi, '') // javascript: URLs verwijderen
+        .replace(/on\w+\s*=/gi, '') // Event handlers verwijderen (onclick=, etc.)
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>') // Decode en dan weer encode
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;') // HTML entities
+        .trim()
+        .substring(0, 5000); // Max 5000 karakters
+}
+
+// Betere IP detectie (Cloudflare, proxies)
+function getClientIP(req) {
+    // Cloudflare
+    const cfIP = req.headers['cf-connecting-ip'];
+    if (cfIP) return cfIP;
+    
+    // X-Real-IP (nginx)
+    const realIP = req.headers['x-real-ip'];
+    if (realIP) return realIP;
+    
+    // X-Forwarded-For (eerste IP is de client)
+    const forwardedFor = req.headers['x-forwarded-for'];
+    if (forwardedFor) {
+        const ips = forwardedFor.split(',').map(ip => ip.trim());
+        // Filter private IPs en neem eerste publieke
+        const publicIP = ips.find(ip => !isPrivateIP(ip));
+        return publicIP || ips[0];
+    }
+    
+    // Fallback
+    return req.connection?.remoteAddress || req.socket?.remoteAddress || 'unknown';
+}
+
+// Check of IP privé is
+function isPrivateIP(ip) {
+    if (!ip) return true;
+    // IPv4 private ranges
+    if (ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.')) return true;
+    if (ip.startsWith('127.') || ip === 'localhost' || ip === '::1') return true;
+    return false;
+}
+
+// Spam score berekenen (0-100, hoger = betrouwbaarder)
+function calculateSpamScore(data) {
+    let score = 100;
+    const reasons = [];
+    
+    const { naam, email, telefoon, adres, bericht, honeypot } = data;
+    
+    // Honeypot check - als ingevuld = bot (-100)
+    if (honeypot && honeypot.trim() !== '') {
+        score -= 100;
+        reasons.push('Honeypot ingevuld (bot)');
+    }
+    
+    // Naam validatie
+    if (!naam || naam.length < 2) {
+        score -= 30;
+        reasons.push('Naam te kort');
+    } else if (!/^[a-zA-ZàáâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ\s\-\.\']+$/i.test(naam)) {
+        score -= 20;
+        reasons.push('Naam bevat vreemde tekens');
+    }
+    
+    // Email validatie
+    if (!email || email.trim() === '') {
+        score -= 25;
+        reasons.push('Geen email');
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        score -= 30;
+        reasons.push('Ongeldig email format');
+    } else {
+        // Verdachte email domeinen
+        const verdachteDomeinen = ['tempmail', 'throwaway', 'guerrilla', 'mailinator', '10minute', 'fake', 'yopmail', 'trashmail'];
+        if (verdachteDomeinen.some(d => email.toLowerCase().includes(d))) {
+            score -= 40;
+            reasons.push('Wegwerp email domein');
+        }
+    }
+    
+    // Telefoon validatie (Nederlands format)
+    if (telefoon && telefoon.trim() !== '') {
+        const cleanPhone = telefoon.replace(/[\s\-\(\)]/g, '');
+        if (!/^(\+31|0031|0)[1-9][0-9]{8,9}$/.test(cleanPhone)) {
+            score -= 10;
+            reasons.push('Telefoon niet Nederlands format');
+        } else {
+            score += 5; // Bonus voor geldig telefoonnummer
+        }
+    }
+    
+    // Adres/postcode check
+    if (adres && adres.trim() !== '') {
+        // Check voor Nederlandse postcode (1234 AB of 1234AB)
+        if (/[1-9][0-9]{3}\s?[a-zA-Z]{2}/.test(adres)) {
+            score += 10; // Bonus voor Nederlandse postcode
+        }
+    } else {
+        score -= 15;
+        reasons.push('Geen adres');
+    }
+    
+    // Bericht check
+    if (!bericht || bericht.trim().length < 10) {
+        score -= 20;
+        reasons.push('Bericht te kort');
+    } else {
+        // Check voor spam woorden
+        const berichtLower = bericht.toLowerCase();
+        const gevondenSpam = spamBlacklist.filter(word => berichtLower.includes(word));
+        if (gevondenSpam.length > 0) {
+            score -= gevondenSpam.length * 20;
+            reasons.push(`Spam woorden: ${gevondenSpam.join(', ')}`);
+        }
+        
+        // Te veel links = spam
+        const linkCount = (bericht.match(/https?:\/\//g) || []).length;
+        if (linkCount > 2) {
+            score -= 30;
+            reasons.push(`Te veel links (${linkCount})`);
+        }
+        
+        // Alleen hoofdletters = spam
+        const upperRatio = (bericht.match(/[A-Z]/g) || []).length / bericht.length;
+        if (upperRatio > 0.5 && bericht.length > 20) {
+            score -= 15;
+            reasons.push('Te veel hoofdletters');
+        }
+    }
+    
+    // Score begrenzen tussen 0 en 100
+    score = Math.max(0, Math.min(100, score));
+    
+    return { score, reasons };
+}
+
+// Rate limiting check (per IP)
+function checkRateLimit(ip) {
+    const now = Date.now();
+    const hourAgo = now - 3600000; // 1 uur
+    
+    // Haal timestamps op voor dit IP
+    let timestamps = rateLimitStore.get(ip) || [];
+    
+    // Filter oude timestamps
+    timestamps = timestamps.filter(t => t > hourAgo);
+    
+    // Check limiet (max 3 per uur)
+    if (timestamps.length >= 3) {
+        return false; // Geblokkeerd
+    }
+    
+    // Voeg nieuwe timestamp toe
+    timestamps.push(now);
+    rateLimitStore.set(ip, timestamps);
+    
+    return true; // Toegestaan
+}
+
+// Globale rate limiting check
+function checkGlobalRateLimit() {
+    const now = Date.now();
+    
+    // Reset counter als uur voorbij is
+    if (now > globalRequestResetTime) {
+        globalRequestCount = 0;
+        globalRequestResetTime = now + 3600000;
+    }
+    
+    // Check limiet (max 20 per uur globaal)
+    if (globalRequestCount >= 20) {
+        return false;
+    }
+    
+    globalRequestCount++;
+    return true;
+}
+
+// Clean rate limit store elke 10 minuten
+setInterval(() => {
+    const hourAgo = Date.now() - 3600000;
+    for (const [ip, timestamps] of rateLimitStore.entries()) {
+        const filtered = timestamps.filter(t => t > hourAgo);
+        if (filtered.length === 0) {
+            rateLimitStore.delete(ip);
+        } else {
+            rateLimitStore.set(ip, filtered);
+        }
+    }
+}, 600000);
+
+// Webhook endpoint voor externe formulieren (Vercel, etc.)
+app.post('/api/webhook/offerteaanvraag', (req, res) => {
+    // CORS check - alleen toegestane origins
+    const origin = req.headers.origin || req.headers.referer || '';
+    const isAllowedOrigin = allowedOrigins.some(allowed => origin.startsWith(allowed));
+    
+    // Set CORS headers
+    if (isAllowedOrigin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    
+    // Block requests van niet-toegestane origins (behalve directe requests zonder origin)
+    if (origin && !isAllowedOrigin) {
+        console.log(`🚫 CORS geblokkeerd: ${origin}`);
+        return res.status(403).json({ success: false, error: 'Niet toegestaan' });
+    }
+    
+    // Check request body size (max 10KB)
+    const contentLength = parseInt(req.headers['content-length'] || '0');
+    if (contentLength > 10240) {
+        console.log(`🚫 Request te groot: ${contentLength} bytes`);
+        return res.status(413).json({ success: false, error: 'Request te groot' });
+    }
+    
+    // Globale rate limiting
+    if (!checkGlobalRateLimit()) {
+        console.log('🚫 Globale rate limit bereikt');
+        return res.status(429).json({ success: false, error: 'Server is druk. Probeer later opnieuw.' });
+    }
+    
+    // Get client IP
+    const ip = getClientIP(req);
+    
+    // Per-IP rate limiting
+    if (!checkRateLimit(ip)) {
+        console.log(`🚫 Rate limit: ${ip} geblokkeerd`);
+        return res.status(429).json({ success: false, error: 'Te veel aanvragen. Probeer later opnieuw.' });
+    }
+    
+    const { naam, name, email, telefoon, phone, tel, adres, address, bericht, message, website, company_url } = req.body;
+    
+    // Honeypot velden (onzichtbare velden die bots invullen)
+    const honeypot = req.body.website || req.body.company_url || req.body.fax || '';
+    
+    // Normaliseer en sanitize data
+    const cleanData = {
+        naam: sanitizeInput(naam || name || ''),
+        email: sanitizeInput(email || '').toLowerCase(),
+        telefoon: sanitizeInput(telefoon || phone || tel || ''),
+        adres: sanitizeInput(adres || address || ''),
+        bericht: sanitizeInput(bericht || message || ''),
+        honeypot: sanitizeInput(honeypot)
+    };
+    
+    // Bereken spam score
+    const { score, reasons } = calculateSpamScore(cleanData);
+    
+    // Bepaal status op basis van score
+    let status = 'nieuw';
+    if (score < 30) {
+        console.log(`🚫 Spam geblokkeerd (score: ${score}): ${reasons.join(', ')}`);
+        // Blokkeer maar geef success terug (zodat spammers niet weten dat ze geblokkeerd zijn)
+        return res.json({ success: true, message: 'Aanvraag ontvangen' });
+    } else if (score < 60) {
+        status = 'review'; // Verdacht, handmatig checken
+    }
+    
+    const newAanvraag = {
+        id: Date.now().toString(),
+        naam: cleanData.naam || 'Onbekend',
+        email: cleanData.email,
+        telefoon: cleanData.telefoon,
+        adres: cleanData.adres,
+        bericht: cleanData.bericht,
+        type: detectTypeWerk(cleanData.bericht),
+        geschatteM2: schatM2(cleanData.bericht),
+        status,
+        spamScore: score,
+        spamReasons: reasons,
+        bron: 'website',
+        ip: ip.substring(0, 20), // Bewaar deel van IP voor analyse
+        notities: score < 60 ? `⚠️ Verdacht (score: ${score}): ${reasons.join(', ')}` : '',
+        klantAangemaakt: false,
+        moneybirdContactId: null,
+        eersteReactie: null,
+        created: new Date().toISOString()
+    };
+    
+    offerteaanvragen.push(newAanvraag);
+    saveOfferteaanvragen(offerteaanvragen);
+    
+    const statusEmoji = status === 'review' ? '⚠️' : '📩';
+    console.log(`${statusEmoji} Webhook: ${newAanvraag.naam} (score: ${score}, status: ${status})`);
+    
+    // Return success (voor CORS/form submissions)
+    res.json({ success: true, message: 'Aanvraag ontvangen' });
+});
+
+console.log('📩 Offerteaanvragen module geladen');
 
 
 // ============================================
@@ -2167,5 +3233,7 @@ app.listen(PORT, () => {
     console.log(`📦 Materialen Pro module actief`);
     console.log(`📅 Google Calendar integratie actief`);
     console.log(`📧 Gmail integratie actief`);
+    console.log(`👷 Medewerkers module actief`);
+    console.log(`📩 Offerteaanvragen module actief`);
     console.log(`📊 Login: http://localhost:${PORT}/login.html`);
 });

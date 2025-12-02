@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Offerteaanvragen - StucAdmin Pro</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#f97316">
+    <link rel="apple-touch-icon" href="/logo-stucologie.jpg">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; color: #1a1a2e; }
+        
+        .sidebar { background: #ffffff; border-right: 1px solid #e5e7eb; position: fixed; left: 0; top: 0; bottom: 0; width: 256px; display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s ease; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; transition: all 0.2s; text-decoration: none; margin-bottom: 4px; position: relative; }
+        .nav-item:hover { background: #f1f5f9; color: #1e293b; }
+        .nav-item.active { background: #6366f1; color: white; }
+        .logout-btn { color: #ef4444; }
+        .logout-btn:hover { background: #fef2f2; color: #dc2626; }
+        
+        .nav-badge { position: absolute; right: 12px; background: #ef4444; color: white; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 10px; min-width: 20px; text-align: center; }
+        
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        
+        .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+        .kpi-card { position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent, #6366f1); }
+        .kpi-value { font-size: 2rem; font-weight: 800; color: var(--accent, #6366f1); }
+        
+        .input-field { width: 100%; padding: 10px 14px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; }
+        .input-field:focus { outline: none; border-color: #6366f1; }
+        .btn { padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary { background: #6366f1; color: white; }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-secondary { background: #f1f5f9; color: #475569; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 13px; }
+        
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .badge-nieuw { background: #dbeafe; color: #1d4ed8; }
+        .badge-review { background: #fef3c7; color: #b45309; border: 1px dashed #f59e0b; }
+        .badge-behandeling { background: #fef3c7; color: #b45309; }
+        .badge-offerte { background: #e0e7ff; color: #4338ca; }
+        .badge-gewonnen { background: #d1fae5; color: #047857; }
+        .badge-verloren { background: #fee2e2; color: #dc2626; }
+        
+        .urgentie-hoog { border-left: 4px solid #ef4444; }
+        .urgentie-normaal { border-left: 4px solid #f59e0b; }
+        .urgentie-laag { border-left: 4px solid #10b981; }
+        
+        .aanvraag-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 12px; transition: all 0.2s; }
+        .aanvraag-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        
+        .type-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #f1f5f9; color: #64748b; margin-right: 4px; }
+        .type-stucwerk { background: #dbeafe; color: #1d4ed8; }
+        .type-spuitwerk { background: #fce7f3; color: #be185d; }
+        .type-isolatie { background: #d1fae5; color: #047857; }
+        
+        main { margin-left: 256px; padding: 32px; min-height: 100vh; }
+        
+        .hidden { display: none !important; }
+        
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            main { margin-left: 0; padding: 70px 16px 24px 16px; }
+            .kpi-value { font-size: 1.5rem; }
+        }
+        
+        @media (max-width: 768px) {
+            .desktop-only { display: none; }
+            .card { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
+    <div class="flex min-h-screen">
+        <aside class="sidebar">
+            <div class="p-4 border-b border-gray-100">
+                <img src="/logo-stucologie.jpg" alt="Stucologie B.V." style="max-width: 180px; height: auto;">
+            </div>
+            <nav class="flex-1 p-4 overflow-y-auto">
+                <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+                <a href="omzet.html" class="nav-item">💹 Omzet</a>
+                <a href="crm.html" class="nav-item">👥 Klanten</a>
+                <a href="planning.html" class="nav-item">📅 Planning</a>
+                <a href="opname.html" class="nav-item">📋 Opname</a>
+                <a href="offerteaanvragen.html" class="nav-item active">📩 Offertes <span class="nav-badge" id="navBadge">0</span></a>
+                <a href="zzp-inhuur.html" class="nav-item">🤝 ZZP Inhuur</a>
+                <a href="uren.html" class="nav-item">⏱️ Uren</a>
+                <a href="calculator.html" class="nav-item">🧮 Calculator</a>
+                <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
+                <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
+            </nav>
+            <div class="border-t border-gray-200 my-4"></div>
+            <a href="beveiliging.html" class="nav-item mx-4">🔐 Beveiliging</a>
+            <div class="p-4 border-t border-gray-100">
+                <button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button>
+            </div>
+        </aside>
+
+        <main class="flex-1">
+            <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold">📩 Offerteaanvragen</h1>
+                    <p class="text-gray-500 text-sm">Beheer en volg je offerteaanvragen</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="showAddAanvraag()" class="btn btn-primary">+ Handmatig toevoegen</button>
+                </div>
+            </header>
+
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6">
+                <div class="card kpi-card p-4" style="--accent: #ef4444">
+                    <p class="text-gray-500 text-xs mb-1">Nieuw</p>
+                    <p class="kpi-value text-lg sm:text-2xl" id="kpiNieuw">0</p>
+                    <p class="text-gray-400 text-xs">wacht op reactie</p>
+                </div>
+                <div class="card kpi-card p-4" style="--accent: #f59e0b">
+                    <p class="text-gray-500 text-xs mb-1">In behandeling</p>
+                    <p class="kpi-value text-lg sm:text-2xl" id="kpiBehandeling">0</p>
+                </div>
+                <div class="card kpi-card p-4" style="--accent: #10b981">
+                    <p class="text-gray-500 text-xs mb-1">Conversie</p>
+                    <p class="kpi-value text-lg sm:text-2xl" id="kpiConversie">0%</p>
+                    <p class="text-gray-400 text-xs">deze maand</p>
+                </div>
+                <div class="card kpi-card p-4" style="--accent: #6366f1">
+                    <p class="text-gray-500 text-xs mb-1">Gem. reactietijd</p>
+                    <p class="kpi-value text-lg sm:text-2xl" id="kpiReactietijd">-</p>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="card">
+                <div class="flex flex-wrap gap-3 mb-4">
+                    <select id="filterStatus" class="input-field" style="width: auto;" onchange="filterAanvragen()">
+                        <option value="">Alle statussen</option>
+                        <option value="nieuw">🔵 Nieuw</option>
+                        <option value="review">⚠️ Te controleren</option>
+                        <option value="in_behandeling">🟡 In behandeling</option>
+                        <option value="offerte_verstuurd">🟣 Offerte verstuurd</option>
+                        <option value="gewonnen">🟢 Gewonnen</option>
+                        <option value="verloren">🔴 Verloren</option>
+                    </select>
+                    <select id="filterType" class="input-field" style="width: auto;" onchange="filterAanvragen()">
+                        <option value="">Alle types</option>
+                        <option value="stucwerk">Stucwerk</option>
+                        <option value="spuitwerk">Spuitwerk</option>
+                        <option value="isolatie">Isolatie</option>
+                        <option value="overig">Overig</option>
+                    </select>
+                    <select id="filterPeriode" class="input-field" style="width: auto;" onchange="filterAanvragen()">
+                        <option value="week">Deze week</option>
+                        <option value="maand">Deze maand</option>
+                        <option value="alles">Alles</option>
+                    </select>
+                </div>
+
+                <!-- Aanvragen lijst -->
+                <div id="aanvragenLijst">
+                    <p class="text-center text-gray-400 py-8">Laden...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal: Aanvraag Details -->
+    <div id="detailModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-start mb-4">
+                <h3 class="text-lg font-bold">📩 Aanvraag Details</h3>
+                <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            
+            <div id="detailContent">
+                <!-- Wordt gevuld door JavaScript -->
+            </div>
+            
+            <div class="border-t pt-4 mt-4">
+                <h4 class="font-semibold mb-3">⚡ Snelle acties</h4>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="gaNaarCalculator()" class="btn btn-primary btn-sm">🧮 Calculator</button>
+                    <button onclick="planOpname()" class="btn btn-warning btn-sm">📅 Plan opname</button>
+                    <button onclick="stuurEmail()" class="btn btn-secondary btn-sm">📧 E-mail</button>
+                    <button onclick="maakKlantAan()" class="btn btn-success btn-sm">👤 Klant aanmaken</button>
+                </div>
+            </div>
+            
+            <div class="border-t pt-4 mt-4">
+                <h4 class="font-semibold mb-3">📝 Status wijzigen</h4>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="wijzigStatus('nieuw')" class="btn btn-sm badge-nieuw">Nieuw</button>
+                    <button onclick="wijzigStatus('in_behandeling')" class="btn btn-sm badge-behandeling">In behandeling</button>
+                    <button onclick="wijzigStatus('offerte_verstuurd')" class="btn btn-sm badge-offerte">Offerte verstuurd</button>
+                    <button onclick="wijzigStatus('gewonnen')" class="btn btn-sm badge-gewonnen">Gewonnen</button>
+                    <button onclick="wijzigStatus('verloren')" class="btn btn-sm badge-verloren">Verloren</button>
+                </div>
+            </div>
+            
+            <div class="border-t pt-4 mt-4">
+                <h4 class="font-semibold mb-3">📝 Notities</h4>
+                <textarea id="detailNotities" class="input-field" rows="3" placeholder="Voeg notities toe..."></textarea>
+                <button onclick="saveNotities()" class="btn btn-secondary btn-sm mt-2">💾 Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Handmatig Toevoegen -->
+    <div id="addModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-bold mb-4">📩 Aanvraag Toevoegen</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Naam *</label>
+                    <input type="text" id="addNaam" class="input-field" placeholder="Volledige naam">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                    <input type="email" id="addEmail" class="input-field" placeholder="email@voorbeeld.nl">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Telefoon</label>
+                    <input type="tel" id="addTelefoon" class="input-field" placeholder="06-12345678">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Adres</label>
+                    <input type="text" id="addAdres" class="input-field" placeholder="Straat, Postcode, Plaats">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Type werk</label>
+                    <select id="addType" class="input-field">
+                        <option value="stucwerk">Stucwerk</option>
+                        <option value="spuitwerk">Spuitwerk</option>
+                        <option value="isolatie">Isolatie</option>
+                        <option value="overig">Overig</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Bericht *</label>
+                    <textarea id="addBericht" class="input-field" rows="4" placeholder="Beschrijving van de aanvraag..."></textarea>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 mt-6">
+                <button onclick="saveAanvraag()" class="btn btn-success flex-1">Opslaan</button>
+                <button onclick="closeAddModal()" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let aanvragen = [];
+        let currentAanvraag = null;
+
+        // Toggle menu
+        function toggleMenu() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.querySelector('.sidebar-overlay').classList.toggle('open');
+        }
+
+        // Logout
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
+
+        // Load aanvragen
+        async function loadAanvragen() {
+            try {
+                const res = await fetch('/api/offerteaanvragen');
+                if (res.ok) {
+                    aanvragen = await res.json();
+                    updateKPIs();
+                    filterAanvragen();
+                }
+            } catch (e) {
+                console.error('Fout bij laden aanvragen:', e);
+            }
+        }
+
+        // Update KPIs
+        function updateKPIs() {
+            const nieuw = aanvragen.filter(a => a.status === 'nieuw').length;
+            const review = aanvragen.filter(a => a.status === 'review').length;
+            const behandeling = aanvragen.filter(a => a.status === 'in_behandeling').length;
+            
+            document.getElementById('kpiNieuw').textContent = nieuw;
+            document.getElementById('kpiBehandeling').textContent = behandeling;
+            
+            // Update nav badge (nieuw + review)
+            const badge = document.getElementById('navBadge');
+            const totalNieuw = nieuw + review;
+            badge.textContent = totalNieuw;
+            badge.style.display = totalNieuw > 0 ? 'inline' : 'none';
+            
+            // Conversie berekenen (deze maand)
+            const now = new Date();
+            const maandStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+            const dezeMaand = aanvragen.filter(a => a.created >= maandStart);
+            const gewonnen = dezeMaand.filter(a => a.status === 'gewonnen').length;
+            const afgehandeld = dezeMaand.filter(a => ['gewonnen', 'verloren'].includes(a.status)).length;
+            const conversie = afgehandeld > 0 ? Math.round((gewonnen / afgehandeld) * 100) : 0;
+            document.getElementById('kpiConversie').textContent = conversie + '%';
+            
+            // Gemiddelde reactietijd
+            const metReactie = aanvragen.filter(a => a.eersteReactie);
+            if (metReactie.length > 0) {
+                const totaalUren = metReactie.reduce((sum, a) => {
+                    const diff = new Date(a.eersteReactie) - new Date(a.created);
+                    return sum + (diff / 3600000);
+                }, 0);
+                const gemiddeld = totaalUren / metReactie.length;
+                document.getElementById('kpiReactietijd').textContent = gemiddeld < 24 ? Math.round(gemiddeld) + 'u' : Math.round(gemiddeld/24) + 'd';
+            }
+        }
+
+        // Filter aanvragen
+        function filterAanvragen() {
+            const status = document.getElementById('filterStatus').value;
+            const type = document.getElementById('filterType').value;
+            const periode = document.getElementById('filterPeriode').value;
+            
+            let filtered = [...aanvragen];
+            
+            if (status) {
+                filtered = filtered.filter(a => a.status === status);
+            }
+            if (type) {
+                filtered = filtered.filter(a => a.type === type);
+            }
+            
+            const now = new Date();
+            if (periode === 'week') {
+                const weekStart = new Date(now);
+                weekStart.setDate(now.getDate() - 7);
+                filtered = filtered.filter(a => new Date(a.created) >= weekStart);
+            } else if (periode === 'maand') {
+                const maandStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                filtered = filtered.filter(a => new Date(a.created) >= maandStart);
+            }
+            
+            // Sorteer op datum (nieuwste eerst)
+            filtered.sort((a, b) => new Date(b.created) - new Date(a.created));
+            
+            renderAanvragen(filtered);
+        }
+
+        // Render aanvragen
+        function renderAanvragen(lijst) {
+            const container = document.getElementById('aanvragenLijst');
+            
+            if (lijst.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-400 py-8">Geen aanvragen gevonden</p>';
+                return;
+            }
+            
+            container.innerHTML = lijst.map(a => {
+                const datum = new Date(a.created);
+                const urgentie = getUrgentie(a);
+                const statusBadge = getStatusBadge(a.status);
+                const typeBadge = a.type ? `<span class="type-tag type-${a.type}">${a.type}</span>` : '';
+                
+                return `
+                    <div class="aanvraag-card ${urgentie}" onclick="openDetail('${a.id}')">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h4 class="font-semibold">${a.naam || 'Onbekend'}</h4>
+                                <p class="text-sm text-gray-500">${a.adres || 'Geen adres'}</p>
+                            </div>
+                            <div class="text-right">
+                                ${statusBadge}
+                                <p class="text-xs text-gray-400 mt-1">${datum.toLocaleDateString('nl-NL')} ${datum.toLocaleTimeString('nl-NL', {hour: '2-digit', minute: '2-digit'})}</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600 line-clamp-2 mb-2">${a.bericht || ''}</p>
+                        <div class="flex justify-between items-center">
+                            <div>
+                                ${typeBadge}
+                                ${a.geschatteM2 ? `<span class="type-tag">${a.geschatteM2} m²</span>` : ''}
+                            </div>
+                            <div class="text-sm text-gray-500">
+                                ${a.telefoon ? '📞' : ''} ${a.email ? '📧' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Get urgentie class
+        function getUrgentie(aanvraag) {
+            if (aanvraag.status !== 'nieuw') return '';
+            const uren = (Date.now() - new Date(aanvraag.created)) / 3600000;
+            if (uren > 24) return 'urgentie-hoog';
+            if (uren > 8) return 'urgentie-normaal';
+            return 'urgentie-laag';
+        }
+
+        // Get status badge
+        function getStatusBadge(status) {
+            const badges = {
+                'nieuw': '<span class="badge badge-nieuw">Nieuw</span>',
+                'review': '<span class="badge badge-review">⚠️ Controleren</span>',
+                'in_behandeling': '<span class="badge badge-behandeling">In behandeling</span>',
+                'offerte_verstuurd': '<span class="badge badge-offerte">Offerte verstuurd</span>',
+                'gewonnen': '<span class="badge badge-gewonnen">Gewonnen</span>',
+                'verloren': '<span class="badge badge-verloren">Verloren</span>'
+            };
+            return badges[status] || '<span class="badge">Onbekend</span>';
+        }
+
+        // Open detail modal
+        function openDetail(id) {
+            currentAanvraag = aanvragen.find(a => a.id === id);
+            if (!currentAanvraag) return;
+            
+            const a = currentAanvraag;
+            const datum = new Date(a.created);
+            
+            document.getElementById('detailContent').innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <p class="text-sm text-gray-500">Naam</p>
+                        <p class="font-semibold">${a.naam || '-'}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Status</p>
+                        ${getStatusBadge(a.status)}
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">E-mail</p>
+                        <p class="font-semibold">${a.email ? `<a href="mailto:${a.email}" class="text-indigo-600">${a.email}</a>` : '-'}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Telefoon</p>
+                        <p class="font-semibold">${a.telefoon ? `<a href="tel:${a.telefoon}" class="text-indigo-600">${a.telefoon}</a>` : '-'}</p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <p class="text-sm text-gray-500">Adres</p>
+                        <p class="font-semibold">${a.adres || '-'}</p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <p class="text-sm text-gray-500">Bericht</p>
+                        <p class="bg-gray-50 p-3 rounded-lg">${a.bericht || '-'}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Type werk</p>
+                        <p class="font-semibold">${a.type || '-'}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Geschatte m²</p>
+                        <p class="font-semibold">${a.geschatteM2 || '-'}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Binnengekomen</p>
+                        <p class="font-semibold">${datum.toLocaleDateString('nl-NL')} ${datum.toLocaleTimeString('nl-NL', {hour: '2-digit', minute: '2-digit'})}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Bron</p>
+                        <p class="font-semibold">${a.bron || 'Website'}</p>
+                    </div>
+                    ${a.spamScore !== undefined ? `
+                    <div>
+                        <p class="text-sm text-gray-500">Spam score</p>
+                        <p class="font-semibold ${a.spamScore < 60 ? 'text-orange-600' : 'text-green-600'}">${a.spamScore}/100</p>
+                    </div>
+                    ` : ''}
+                </div>
+                ${a.spamReasons && a.spamReasons.length > 0 ? `
+                <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-3">
+                    <p class="text-sm font-medium text-orange-800">⚠️ Spam indicatoren:</p>
+                    <ul class="text-sm text-orange-700 mt-1">
+                        ${a.spamReasons.map(r => `<li>• ${r}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+            `;
+            
+            document.getElementById('detailNotities').value = a.notities || '';
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        // Close detail modal
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+            currentAanvraag = null;
+        }
+
+        // Wijzig status
+        async function wijzigStatus(nieuweStatus) {
+            if (!currentAanvraag) return;
+            
+            try {
+                const res = await fetch(`/api/offerteaanvragen/${currentAanvraag.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        status: nieuweStatus,
+                        eersteReactie: currentAanvraag.status === 'nieuw' && nieuweStatus !== 'nieuw' ? new Date().toISOString() : currentAanvraag.eersteReactie
+                    })
+                });
+                
+                if (res.ok) {
+                    await loadAanvragen();
+                    openDetail(currentAanvraag.id);
+                }
+            } catch (e) {
+                alert('Fout bij wijzigen status');
+            }
+        }
+
+        // Save notities
+        async function saveNotities() {
+            if (!currentAanvraag) return;
+            
+            const notities = document.getElementById('detailNotities').value;
+            
+            try {
+                const res = await fetch(`/api/offerteaanvragen/${currentAanvraag.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notities })
+                });
+                
+                if (res.ok) {
+                    alert('✅ Notities opgeslagen');
+                    await loadAanvragen();
+                }
+            } catch (e) {
+                alert('Fout bij opslaan');
+            }
+        }
+
+        // Snelle acties
+        function gaNaarCalculator() {
+            if (!currentAanvraag) return;
+            // Sla gegevens op in localStorage voor de calculator
+            localStorage.setItem('calculatorKlant', JSON.stringify({
+                naam: currentAanvraag.naam,
+                adres: currentAanvraag.adres,
+                email: currentAanvraag.email,
+                telefoon: currentAanvraag.telefoon
+            }));
+            window.location.href = '/calculator.html';
+        }
+
+        function planOpname() {
+            if (!currentAanvraag) return;
+            localStorage.setItem('planningKlant', JSON.stringify({
+                naam: currentAanvraag.naam,
+                adres: currentAanvraag.adres,
+                telefoon: currentAanvraag.telefoon
+            }));
+            window.location.href = '/planning.html';
+        }
+
+        function stuurEmail() {
+            if (!currentAanvraag || !currentAanvraag.email) {
+                alert('Geen e-mailadres beschikbaar');
+                return;
+            }
+            window.location.href = `mailto:${currentAanvraag.email}?subject=Re: Offerteaanvraag Stucologie`;
+        }
+
+        async function maakKlantAan() {
+            if (!currentAanvraag) return;
+            
+            if (!confirm(`Klant "${currentAanvraag.naam}" aanmaken in Moneybird?`)) return;
+            
+            try {
+                const res = await fetch('/api/offerteaanvragen/' + currentAanvraag.id + '/create-contact', {
+                    method: 'POST'
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.success) {
+                    alert('✅ Klant aangemaakt in Moneybird!');
+                    await loadAanvragen();
+                    openDetail(currentAanvraag.id);
+                } else {
+                    alert('❌ ' + (data.error || 'Fout bij aanmaken klant'));
+                }
+            } catch (e) {
+                alert('Verbindingsfout');
+            }
+        }
+
+        // Show add modal
+        function showAddAanvraag() {
+            document.getElementById('addNaam').value = '';
+            document.getElementById('addEmail').value = '';
+            document.getElementById('addTelefoon').value = '';
+            document.getElementById('addAdres').value = '';
+            document.getElementById('addType').value = 'stucwerk';
+            document.getElementById('addBericht').value = '';
+            document.getElementById('addModal').classList.remove('hidden');
+        }
+
+        // Close add modal
+        function closeAddModal() {
+            document.getElementById('addModal').classList.add('hidden');
+        }
+
+        // Save nieuwe aanvraag
+        async function saveAanvraag() {
+            const naam = document.getElementById('addNaam').value.trim();
+            const bericht = document.getElementById('addBericht').value.trim();
+            
+            if (!naam || !bericht) {
+                alert('Naam en bericht zijn verplicht');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/offerteaanvragen', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        naam,
+                        email: document.getElementById('addEmail').value.trim(),
+                        telefoon: document.getElementById('addTelefoon').value.trim(),
+                        adres: document.getElementById('addAdres').value.trim(),
+                        type: document.getElementById('addType').value,
+                        bericht,
+                        bron: 'handmatig'
+                    })
+                });
+                
+                if (res.ok) {
+                    closeAddModal();
+                    await loadAanvragen();
+                    alert('✅ Aanvraag toegevoegd');
+                } else {
+                    const data = await res.json();
+                    alert('❌ ' + (data.error || 'Fout bij opslaan'));
+                }
+            } catch (e) {
+                alert('Verbindingsfout');
+            }
+        }
+
+        // Detecteer type werk uit bericht
+        function detectType(bericht) {
+            const lower = bericht.toLowerCase();
+            if (lower.includes('spuit') || lower.includes('latex')) return 'spuitwerk';
+            if (lower.includes('isolat') || lower.includes('isoler')) return 'isolatie';
+            if (lower.includes('stuc') || lower.includes('glad') || lower.includes('wand') || lower.includes('plafond')) return 'stucwerk';
+            return 'overig';
+        }
+
+        // Init
+        loadAanvragen();
+    </script>
+</body>
+</html>
