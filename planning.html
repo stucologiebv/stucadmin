@@ -3,467 +3,1390 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Planning - StucAdmin Pro</title>
+    <title>Planning Pro - StucAdmin</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: #f5f7fa; }
+        body { background: #f5f7fa; margin: 0; }
+        
+        /* Sidebar */
         .sidebar { background: #fff; border-right: 1px solid #e5e7eb; position: fixed; left: 0; top: 0; bottom: 0; width: 256px; display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s ease; }
         .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; text-decoration: none; margin-bottom: 4px; }
         .nav-item:hover { background: #f1f5f9; }
         .nav-item.active { background: #6366f1; color: white; }
         .logout-btn { color: #ef4444; }
+        
+        /* Mobile */
         .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
         .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
-        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; }
-        .btn-primary { background: #6366f1; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; min-height: 44px; }
-        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
-        .btn-google { background: #4285f4; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-        .btn-google:hover { background: #3367d6; }
-        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; width: 100%; font-size: 16px; min-height: 44px; }
-        .input-field:focus { outline: none; border-color: #6366f1; }
-        .project-card { background: #fff; border-left: 4px solid #6366f1; border-radius: 0 12px 12px 0; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; }
-        .project-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .project-card.google { border-left-color: #4285f4; }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
-        .modal-content { background: white; border-radius: 16px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 20px; }
-        .calendar-day { min-height: 80px; border: 1px solid #e5e7eb; padding: 8px; font-size: 12px; }
-        .calendar-day.today { background: #eef2ff; }
-        .calendar-day.other-month { background: #f8fafc; color: #94a3b8; }
-        .event-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-        .event-dot.local { background: #6366f1; }
-        .event-dot.google { background: #4285f4; }
+        
         main { margin-left: 256px; padding: 24px; min-height: 100vh; }
+        
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; }
+        
+        /* Buttons */
+        .btn { padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: #6366f1; color: white; }
+        .btn-primary:hover { background: #4f46e5; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-secondary { background: #f1f5f9; color: #475569; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-whatsapp { background: #25D366; color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 13px; }
+        
+        /* Toggle */
+        .toggle-group { display: flex; background: #f1f5f9; border-radius: 10px; padding: 4px; }
+        .toggle-btn { padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: #64748b; }
+        .toggle-btn.active { background: white; color: #6366f1; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        
+        /* Week View */
+        .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; }
+        .week-day { background: white; border: 1px solid #e5e7eb; border-radius: 12px; min-height: 400px; }
+        .week-day-header { background: #f8fafc; padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center; border-radius: 12px 12px 0 0; }
+        .week-day-header.today { background: #6366f1; color: white; }
+        .week-day-content { padding: 8px; }
+        
+        /* Calendar Grid (Month) */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #e5e7eb; border-radius: 12px; overflow: hidden; }
+        .calendar-header { background: #6366f1; color: white; padding: 12px; text-align: center; font-weight: 600; font-size: 13px; }
+        .calendar-day { background: white; min-height: 100px; padding: 8px; position: relative; }
+        .calendar-day.today { background: #eef2ff; }
+        .calendar-day.other-month { background: #f8fafc; }
+        .calendar-day.other-month .day-number { color: #cbd5e1; }
+        .day-number { font-weight: 600; font-size: 14px; color: #374151; margin-bottom: 4px; }
+        .day-number.today { background: #6366f1; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        
+        /* Project Item in Calendar */
+        .cal-project { font-size: 11px; padding: 4px 6px; border-radius: 6px; margin-bottom: 4px; cursor: pointer; transition: all 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cal-project:hover { transform: scale(1.02); }
+        .cal-project.local { background: #dbeafe; color: #1e40af; border-left: 3px solid #3b82f6; }
+        .cal-project.google { background: #fef3c7; color: #b45309; border-left: 3px solid #f59e0b; }
+        .cal-project.opname { background: #d1fae5; color: #065f46; border-left: 3px solid #10b981; }
+        
+        /* Project Card */
+        .project-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 12px; transition: all 0.2s; }
+        .project-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .project-title { font-weight: 600; color: #1f2937; font-size: 15px; }
+        .project-meta { color: #6b7280; font-size: 13px; margin-top: 4px; }
+        
+        /* Status Badge */
+        .status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .status-offerte { background: #fef3c7; color: #b45309; }
+        .status-gepland { background: #dbeafe; color: #1e40af; }
+        .status-bezig { background: #fed7aa; color: #c2410c; }
+        .status-afgerond { background: #d1fae5; color: #065f46; }
+        
+        /* Contact Actions */
+        .contact-actions { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+        .contact-btn { padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; border: none; cursor: pointer; }
+        .contact-btn.call { background: #dcfce7; color: #16a34a; }
+        .contact-btn.mail { background: #dbeafe; color: #2563eb; }
+        .contact-btn.whatsapp { background: #d1fae5; color: #059669; }
+        
+        /* Shift Buttons */
+        .shift-btn { width: 32px; height: 32px; border-radius: 6px; border: 1px solid #e5e7eb; background: white; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+        .shift-btn:hover { background: #f1f5f9; }
+        
+        /* ZZP Badge */
+        .zzp-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #f3e8ff; border-radius: 20px; font-size: 11px; color: #7c3aed; font-weight: 500; }
+        .zzp-avatar { width: 20px; height: 20px; border-radius: 50%; background: #8b5cf6; color: white; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
+        
+        /* Type Badge */
+        .type-badge { display: inline-flex; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+        .type-stucwerk { background: #dbeafe; color: #1e40af; }
+        .type-spuitwerk { background: #fce7f3; color: #be185d; }
+        .type-sierpleister { background: #f3e8ff; color: #7c3aed; }
+        .type-spackspuiten { background: #ccfbf1; color: #0d9488; }
+        .type-buitengevel { background: #ffedd5; color: #c2410c; }
+        .type-overig { background: #f1f5f9; color: #475569; }
+        
+        /* Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.open { display: flex; }
+        .modal { background: white; border-radius: 16px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { font-size: 18px; font-weight: 700; }
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end; }
+        
+        /* Form */
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px; }
+        .form-input, .form-select, .form-textarea { width: 100%; padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; }
+        .form-input:focus, .form-select:focus { outline: none; border-color: #6366f1; }
+        .form-textarea { min-height: 120px; resize: vertical; }
+        
+        /* Toast */
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 14px 24px; border-radius: 12px; color: white; font-weight: 500; z-index: 9999; animation: slideIn 0.3s ease; }
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        .toast.info { background: #6366f1; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        /* Grid Layout */
+        .planning-layout { display: grid; grid-template-columns: 1fr 380px; gap: 24px; }
+        
+        /* Tabs */
+        .tab-group { display: flex; gap: 4px; margin-bottom: 16px; }
+        .tab-btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: #f1f5f9; color: #64748b; }
+        .tab-btn.active { background: #6366f1; color: white; }
+        
+        /* Mobile */
+        @media (max-width: 1200px) {
+            .planning-layout { grid-template-columns: 1fr; }
+            .week-grid { grid-template-columns: 1fr; }
+        }
+        
         @media (max-width: 1024px) {
             .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
             .sidebar { transform: translateX(-100%); }
             .sidebar.open { transform: translateX(0); }
             .sidebar-overlay.open { display: block; }
             main { margin-left: 0; padding: 70px 12px 24px 12px; }
-            .calendar-day { min-height: 60px; padding: 4px; }
+            .calendar-day { min-height: 80px; padding: 4px; }
+            .cal-project { font-size: 10px; padding: 2px 4px; }
         }
-        .google-badge { background: #4285f4; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; }
-        .local-badge { background: #6366f1; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; }
-        .sync-status { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; font-size: 12px; }
-        .sync-status.connected { background: #dcfce7; color: #166534; }
-        .sync-status.disconnected { background: #fef3c7; color: #92400e; }
     </style>
 </head>
 <body>
     <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
     <div class="sidebar-overlay" onclick="toggleMenu()"></div>
     
-    <div class="flex min-h-screen">
-        <aside class="sidebar">
-            <div class="p-4 border-b border-gray-100"><img src="/logo-stucologie.jpg" alt="Stucologie B.V." style="max-width: 180px; height: auto;"></div>
-            <nav class="flex-1 p-4 overflow-y-auto">
-                <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
-                <a href="omzet.html" class="nav-item">💹 Omzet</a>
-                <a href="crm.html" class="nav-item">👥 Klanten</a>
-                <a href="planning.html" class="nav-item active">📅 Planning</a>
-                <a href="opname.html" class="nav-item">📋 Opname</a>
-                <a href="zzp-inhuur.html" class="nav-item">🤝 ZZP Inhuur</a>
-                <a href="uren.html" class="nav-item">⏱️ Uren</a>
-                <a href="calculator.html" class="nav-item">🧮 Calculator</a>
-                <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
-                <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
-            </nav>
+    <aside class="sidebar">
+        <div class="p-4 border-b border-gray-100">
+            <img src="/logo-stucologie.jpg" alt="Stucologie B.V." style="max-width: 180px; height: auto;">
+        </div>
+        <nav class="flex-1 p-4 overflow-y-auto">
+            <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+            <a href="omzet.html" class="nav-item">💹 Omzet</a>
+            <a href="crm.html" class="nav-item">👥 Klanten</a>
+            <a href="planning.html" class="nav-item active">📅 Planning</a>
+            <a href="opname.html" class="nav-item">📋 Opname</a>
+            <a href="offerteaanvragen.html" class="nav-item">📩 Offertes</a>
+            <a href="zzp-inhuur.html" class="nav-item">🤝 ZZP Inhuur</a>
+            <a href="uren.html" class="nav-item">⏱️ Uren</a>
+            <a href="calculator.html" class="nav-item">🧮 Calculator</a>
+            <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
+            <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
             <div class="border-t border-gray-200 my-4"></div>
             <a href="beveiliging.html" class="nav-item">🔐 Beveiliging</a>
         </nav>
-        <div class="p-4 border-t border-gray-100"><button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button></div>
-        </aside>
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button>
+        </div>
+    </aside>
 
-        <main class="flex-1">
-            <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <div><h1 class="text-lg sm:text-xl font-bold">📅 Planning</h1><p class="text-gray-500 text-sm">Beheer je projecten</p></div>
-                <div class="flex gap-2 flex-wrap">
-                    <div id="googleStatus"></div>
-                    <button onclick="openNieuwProject()" class="btn-primary text-sm">+ Nieuw project</button>
+    <main>
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold">📅 Planning Pro</h1>
+                <p class="text-gray-500 text-sm">Projecten, medewerkers en afspraken in één overzicht</p>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+                <span id="googleStatus" class="text-sm"></span>
+                <button onclick="connectGoogle()" id="connectBtn" class="btn btn-secondary btn-sm" style="display:none;">🔗 Connect Google</button>
+                <button onclick="openNewProjectModal()" class="btn btn-success btn-sm">➕ Nieuw Project</button>
+            </div>
+        </header>
+
+        <!-- View Toggle & Navigation -->
+        <div class="card p-4 mb-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="toggle-group">
+                    <button class="toggle-btn active" id="viewWeek" onclick="setView('week')">📆 Week</button>
+                    <button class="toggle-btn" id="viewMonth" onclick="setView('month')">📅 Maand</button>
                 </div>
-            </header>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2">
-                    <div class="card p-4 mb-4">
-                        <div class="flex justify-between items-center mb-4">
-                            <button onclick="vorigeMaand()" class="btn-secondary text-sm">◀</button>
-                            <h2 class="font-bold" id="maandTitel">December 2024</h2>
-                            <button onclick="volgendeMaand()" class="btn-secondary text-sm">▶</button>
-                        </div>
-                        <div class="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-2">
-                            <div>Ma</div><div>Di</div><div>Wo</div><div>Do</div><div>Vr</div><div>Za</div><div>Zo</div>
-                        </div>
-                        <div class="grid grid-cols-7 gap-1" id="kalender"></div>
-                    </div>
-                    
-                    <div class="flex gap-4 text-xs text-gray-500">
-                        <div class="flex items-center gap-1"><span class="event-dot local"></span> Lokaal project</div>
-                        <div class="flex items-center gap-1"><span class="event-dot google"></span> Google Agenda</div>
-                    </div>
-                </div>
-
-                <div>
-                    <h2 class="font-bold mb-4 text-sm">📋 Komende projecten</h2>
-                    <div id="projectenLijst"></div>
+                <div class="flex items-center gap-3">
+                    <button onclick="navigate(-1)" class="btn btn-secondary btn-sm">←</button>
+                    <span class="font-semibold text-sm" id="periodLabel">-</span>
+                    <button onclick="navigate(1)" class="btn btn-secondary btn-sm">→</button>
+                    <button onclick="navigate(0)" class="btn btn-secondary btn-sm">Vandaag</button>
                 </div>
             </div>
-        </main>
+        </div>
+
+        <!-- Main Layout -->
+        <div class="planning-layout">
+            <!-- Calendar / Week View -->
+            <div>
+                <div id="weekView" class="week-grid"></div>
+                <div id="monthView" style="display:none;"></div>
+            </div>
+
+            <!-- Sidebar: Projects & Info -->
+            <div>
+                <!-- Quick Stats -->
+                <div class="card p-4 mb-4">
+                    <h3 class="font-bold text-sm mb-3">📊 Deze Week</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-blue-50 rounded-lg p-3 text-center">
+                            <div class="text-2xl font-bold text-blue-600" id="statProjects">0</div>
+                            <div class="text-xs text-gray-500">Projecten</div>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-3 text-center">
+                            <div class="text-2xl font-bold text-green-600" id="statOmzet">€0</div>
+                            <div class="text-xs text-gray-500">Omzet</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upcoming Projects -->
+                <div class="card p-4 mb-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-bold text-sm">📋 Komende Projecten</h3>
+                        <button onclick="loadData()" class="btn btn-secondary btn-sm">🔄</button>
+                    </div>
+                    <div class="tab-group">
+                        <button class="tab-btn active" onclick="filterProjects('all', this)">Alle</button>
+                        <button class="tab-btn" onclick="filterProjects('today', this)">Vandaag</button>
+                        <button class="tab-btn" onclick="filterProjects('week', this)">Week</button>
+                    </div>
+                    <div id="projectsList" style="max-height: 500px; overflow-y: auto;"></div>
+                </div>
+
+                <!-- ZZP Overview -->
+                <div class="card p-4">
+                    <h3 class="font-bold text-sm mb-3">👷 Medewerkers Vandaag</h3>
+                    <div id="zzpToday"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Project Detail Modal -->
+    <div class="modal-overlay" id="projectModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Project Details</h3>
+                <button onclick="closeModal('projectModal')" class="btn btn-secondary btn-sm">✕</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+            <div class="modal-footer" id="modalFooter"></div>
+        </div>
     </div>
 
-    <div id="projectModal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <div class="flex justify-between mb-4"><h2 class="font-bold">Nieuw project</h2><button onclick="sluitModal()" class="text-gray-400 text-2xl">&times;</button></div>
-            <form onsubmit="saveProject(event)" class="space-y-4">
-                <input type="hidden" id="projectId">
-                <input type="hidden" id="projectSource" value="local">
-                <div><label class="text-xs text-gray-500">Projectnaam</label><input type="text" id="projectNaam" class="input-field" required></div>
-                <div><label class="text-xs text-gray-500">Klant</label><input type="text" id="projectKlant" class="input-field"></div>
-                <div><label class="text-xs text-gray-500">Adres/Locatie</label><input type="text" id="projectAdres" class="input-field"></div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="text-xs text-gray-500">Startdatum</label><input type="date" id="projectStart" class="input-field" required></div>
-                    <div><label class="text-xs text-gray-500">Einddatum</label><input type="date" id="projectEind" class="input-field"></div>
-                </div>
-                <div><label class="text-xs text-gray-500">Notities</label><textarea id="projectNotities" class="input-field" rows="3"></textarea></div>
-                
-                <div id="syncOption" class="flex items-center gap-2 p-3 bg-blue-50 rounded-lg hidden">
-                    <input type="checkbox" id="syncToGoogle" checked>
-                    <label for="syncToGoogle" class="text-sm text-blue-700">📅 Ook toevoegen aan Google Agenda</label>
+    <!-- New Project Modal -->
+    <div class="modal-overlay" id="newProjectModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">➕ Nieuw Project Plannen</h3>
+                <button onclick="closeModal('newProjectModal')" class="btn btn-secondary btn-sm">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Bron</label>
+                    <select class="form-select" id="projectBron" onchange="updateProjectForm()">
+                        <option value="opname">📋 Vanuit Opname</option>
+                        <option value="handmatig">✏️ Handmatig</option>
+                    </select>
                 </div>
                 
-                <div class="flex gap-3">
-                    <button type="submit" class="btn-primary flex-1">💾 Opslaan</button>
-                    <button type="button" onclick="verwijderProject()" class="btn-secondary text-red-500" id="btnVerwijder" style="display:none">🗑️</button>
+                <div id="opnameSelect" class="form-group">
+                    <label class="form-label">Selecteer Opname</label>
+                    <select class="form-select" id="selectOpname"></select>
                 </div>
-            </form>
+
+                <div id="handmatigForm" style="display:none;">
+                    <div class="form-group">
+                        <label class="form-label">Klant (uit Moneybird)</label>
+                        <select class="form-select" id="selectKlant"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Titel / Omschrijving</label>
+                        <input type="text" class="form-input" id="projectTitel" placeholder="Bijv: Stucwerk woonkamer">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Type Werk</label>
+                        <select class="form-select" id="projectType">
+                            <option value="stucwerk">Stucwerk</option>
+                            <option value="spuitwerk">Spuitwerk</option>
+                            <option value="sierpleister">Sierpleister</option>
+                            <option value="spackspuiten">Spackspuiten</option>
+                            <option value="buitengevel">Buitengevel</option>
+                            <option value="overig">Overig</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="form-group">
+                            <label class="form-label">m²</label>
+                            <input type="number" class="form-input" id="projectM2" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Geschatte dagen</label>
+                            <input type="number" class="form-input" id="projectDagen" placeholder="1">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Offertebedrag (excl. BTW)</label>
+                        <input type="number" class="form-input" id="projectBedrag" placeholder="0">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Startdatum</label>
+                    <input type="date" class="form-input" id="projectDatum">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">ZZP'er toewijzen</label>
+                    <select class="form-select" id="projectZZP">
+                        <option value="">-- Niet toegewezen --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="addToGoogle" checked>
+                        <span class="text-sm">📅 Toevoegen aan Google Calendar</span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="sendInvite">
+                        <span class="text-sm">📧 Stuur uitnodiging naar klant</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal('newProjectModal')" class="btn btn-secondary">Annuleren</button>
+                <button onclick="createProject()" class="btn btn-success">✅ Project Plannen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Send Modal -->
+    <div class="modal-overlay" id="sendModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">📤 Bevestiging Sturen</h3>
+                <button onclick="closeModal('sendModal')" class="btn btn-secondary btn-sm">✕</button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-4 text-sm text-gray-600" id="sendMessage"></p>
+                <div class="form-group">
+                    <label class="form-label">Bericht aanpassen</label>
+                    <textarea class="form-textarea" id="sendText"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer flex-wrap">
+                <button onclick="closeModal('sendModal')" class="btn btn-secondary">Annuleren</button>
+                <button onclick="sendWhatsApp()" class="btn btn-whatsapp">💬 WhatsApp</button>
+                <button onclick="sendEmail()" class="btn btn-primary">📧 Email</button>
+                <button onclick="sendCalendarInvite()" class="btn btn-success">📅 Calendar Invite</button>
+            </div>
         </div>
     </div>
 
     <script>
-        let projecten = [];
+        // ============================================
+        // STATE
+        // ============================================
+        let currentView = 'week';
+        let currentOffset = 0;
+        let isGoogleConnected = false;
+        
+        // Data stores
+        let projects = [];
+        let opnames = [];
+        let zzpers = [];
+        let zzpOpdrachten = [];
+        let contacts = [];
         let googleEvents = [];
-        let huidigeDatum = new Date();
-        let googleConnected = false;
+        
+        let selectedProject = null;
+        let currentFilter = 'all';
 
-        // Load projecten from server first, fallback to localStorage
-        async function loadProjecten() {
+        // ============================================
+        // INIT
+        // ============================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Auth check
             try {
-                const res = await fetch('/api/data/projecten');
-                if (res.ok) {
-                    const result = await res.json();
-                    if (result.data && Array.isArray(result.data) && result.data.length > 0) {
-                        projecten = result.data;
-                        localStorage.setItem('stuc_planning', JSON.stringify(projecten)); syncProjecten();
-                        // Loaded from server
-                        return;
-                    }
-                }
+                const res = await fetch('/api/auth/check');
+                if (!res.ok) window.location.href = '/login.html';
             } catch (e) {
-                // Server load failed
+                window.location.href = '/login.html';
             }
-            projecten = JSON.parse(localStorage.getItem('stuc_planning') || '[]');
-        }
-
-        // Sync projecten to server
-        async function syncProjecten() {
-            try {
-                await fetch('/api/data/projecten', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ data: projecten })
-                });
-                // Synced
-            } catch (e) {
-                // Sync failed
-            }
-        }
-
-        function toggleMenu() { document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open'); }
-        async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login.html'; }
-
-        function checkUrlParams() {
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('google_connected') === 'true') {
-                showToast('✅ Google Agenda gekoppeld!', 'success');
-                window.history.replaceState({}, '', '/planning.html');
-                loadGoogleEvents();
-            }
-            if (params.get('google_error')) {
-                showToast('❌ Google koppeling mislukt: ' + params.get('google_error'), 'error');
-                window.history.replaceState({}, '', '/planning.html');
-            }
-        }
-
-        async function checkGoogleStatus() {
-            try {
-                const res = await fetch('/api/google/status');
-                const data = await res.json();
-                googleConnected = data.connected;
-                updateGoogleStatusUI();
-                if (googleConnected) loadGoogleEvents();
-            } catch (e) {
-                // Google status failed
-            }
-        }
-
-        function updateGoogleStatusUI() {
-            const statusDiv = document.getElementById('googleStatus');
-            const syncOption = document.getElementById('syncOption');
             
-            if (googleConnected) {
-                statusDiv.innerHTML = '<div class="sync-status connected"><span>✓ Google Agenda</span><button onclick="disconnectGoogle()" class="text-xs underline">Ontkoppelen</button></div>';
-                syncOption.classList.remove('hidden');
-            } else {
-                statusDiv.innerHTML = '<button onclick="connectGoogle()" class="btn-google text-sm"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Koppel Google Agenda</button>';
-                syncOption.classList.add('hidden');
-            }
-        }
+            document.getElementById('projectDatum').value = new Date().toISOString().split('T')[0];
+            
+            await checkGoogleStatus();
+            await loadData();
+            render();
+        });
 
-        function connectGoogle() { window.location.href = '/api/google/auth'; }
-
-        async function disconnectGoogle() {
-            if (confirm('Google Agenda ontkoppelen?')) {
-                await fetch('/api/google/disconnect', { method: 'POST' });
-                googleConnected = false;
-                googleEvents = [];
-                updateGoogleStatusUI();
-                renderKalender();
-                renderProjecten();
-                showToast('Google Agenda ontkoppeld', 'info');
+        // ============================================
+        // DATA LOADING
+        // ============================================
+        async function loadData() {
+            // Load from localStorage
+            try {
+                opnames = JSON.parse(localStorage.getItem('stuc_opnames') || '[]');
+                zzpers = JSON.parse(localStorage.getItem('stuc_zzpers') || '[]');
+                zzpOpdrachten = JSON.parse(localStorage.getItem('stuc_zzp_opdrachten') || '[]');
+                projects = JSON.parse(localStorage.getItem('stuc_planning_projecten') || '[]');
+            } catch (e) {
+                console.error('Error loading localStorage:', e);
             }
+
+            // Load Moneybird contacts
+            try {
+                const res = await fetch('/api/contacts');
+                if (res.ok) contacts = await res.json();
+            } catch (e) {
+                console.error('Error loading contacts:', e);
+            }
+
+            // Load Google Calendar events
+            if (isGoogleConnected) {
+                await loadGoogleEvents();
+            }
+
+            populateDropdowns();
+            render();
         }
 
         async function loadGoogleEvents() {
             try {
-                const res = await fetch('/api/google/events');
+                const { start, end } = getDateRange();
+                const res = await fetch(`/api/google/events?timeMin=${start.toISOString()}&timeMax=${end.toISOString()}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    googleEvents = data.events || data || [];
+                }
+            } catch (e) {
+                console.error('Error loading Google events:', e);
+            }
+        }
+
+        function saveProjects() {
+            localStorage.setItem('stuc_planning_projecten', JSON.stringify(projects));
+        }
+
+        // ============================================
+        // GOOGLE STATUS
+        // ============================================
+        async function checkGoogleStatus() {
+            try {
+                const res = await fetch('/api/google/status');
                 const data = await res.json();
-                if (data.needsAuth) { googleConnected = false; updateGoogleStatusUI(); return; }
-                googleEvents = data.events || [];
-                renderKalender();
-                renderProjecten();
-            } catch (e) { 
-                // Failed to load Google events
+                isGoogleConnected = data.connected;
+                
+                document.getElementById('googleStatus').innerHTML = isGoogleConnected 
+                    ? '<span class="text-green-600 text-sm">✅ Google verbonden</span>'
+                    : '<span class="text-gray-400 text-sm">⚪ Google niet verbonden</span>';
+                document.getElementById('connectBtn').style.display = isGoogleConnected ? 'none' : 'inline-flex';
+            } catch (e) {
+                isGoogleConnected = false;
             }
         }
 
-        function getAllEvents() {
-            const local = projecten.map(p => ({ ...p, source: 'local', start: p.startDatum, end: p.eindDatum || p.startDatum, title: p.naam }));
-            const google = googleEvents.map(e => ({
-                id: e.id, naam: e.title, klant: '', adres: e.location || '',
-                startDatum: e.start?.split('T')[0] || e.start,
-                eindDatum: e.end?.split('T')[0] || e.end,
-                notities: e.description || '', source: 'google', start: e.start, end: e.end, title: e.title
-            }));
-            return [...local, ...google];
+        function connectGoogle() {
+            window.location.href = '/api/google/auth';
         }
 
-        function renderKalender() {
-            const jaar = huidigeDatum.getFullYear();
-            const maand = huidigeDatum.getMonth();
-            const maanden = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
-            document.getElementById('maandTitel').textContent = maanden[maand] + ' ' + jaar;
+        // ============================================
+        // RENDERING
+        // ============================================
+        function render() {
+            if (currentView === 'week') {
+                renderWeekView();
+                document.getElementById('weekView').style.display = 'grid';
+                document.getElementById('monthView').style.display = 'none';
+            } else {
+                renderMonthView();
+                document.getElementById('weekView').style.display = 'none';
+                document.getElementById('monthView').style.display = 'block';
+            }
+            renderProjectsList();
+            renderStats();
+            renderZZPToday();
+            updatePeriodLabel();
+        }
 
-            const eersteDag = new Date(jaar, maand, 1);
-            const laatsteDag = new Date(jaar, maand + 1, 0);
-            let startDag = eersteDag.getDay() || 7;
-            startDag--;
+        function renderWeekView() {
+            const days = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
+            const { start } = getWeekRange();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
-            const vandaag = new Date();
-            const allEvents = getAllEvents();
             let html = '';
-            
-            for (let i = 0; i < startDag; i++) {
-                const d = new Date(jaar, maand, -startDag + i + 1);
-                html += '<div class="calendar-day other-month rounded">' + d.getDate() + '</div>';
-            }
-
-            for (let dag = 1; dag <= laatsteDag.getDate(); dag++) {
-                const datum = new Date(jaar, maand, dag);
-                const datumStr = datum.toISOString().split('T')[0];
-                const isVandaag = datum.toDateString() === vandaag.toDateString();
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(start);
+                date.setDate(start.getDate() + i);
+                const isToday = date.getTime() === today.getTime();
+                const dateStr = date.toISOString().split('T')[0];
                 
-                const dagEvents = allEvents.filter(e => {
-                    const start = e.startDatum || e.start?.split('T')[0];
-                    const end = e.eindDatum || e.end?.split('T')[0] || start;
-                    return datumStr >= start && datumStr <= end;
-                });
-                
-                html += '<div class="calendar-day ' + (isVandaag ? 'today' : '') + ' rounded cursor-pointer hover:bg-indigo-50" onclick="openDag(\'' + datumStr + '\')">';
-                html += '<div class="font-semibold ' + (isVandaag ? 'text-indigo-600' : '') + '">' + dag + '</div>';
-                dagEvents.slice(0, 2).forEach(e => {
-                    const bgClass = e.source === 'google' ? 'bg-blue-100 text-blue-700' : 'bg-indigo-100 text-indigo-700';
-                    html += '<div class="text-xs ' + bgClass + ' rounded px-1 mt-1 truncate" onclick="event.stopPropagation(); openProject(\'' + e.id + '\', \'' + e.source + '\')">' + (e.naam || e.title) + '</div>';
-                });
-                if (dagEvents.length > 2) html += '<div class="text-xs text-gray-400">+' + (dagEvents.length - 2) + '</div>';
-                html += '</div>';
-            }
+                const dayProjects = getAllProjectsForDate(date);
 
-            document.getElementById('kalender').innerHTML = html;
+                html += `
+                    <div class="week-day" data-date="${dateStr}" ondrop="dropProject(event)" ondragover="allowDrop(event)">
+                        <div class="week-day-header ${isToday ? 'today' : ''}">
+                            <div class="font-semibold">${days[i]}</div>
+                            <div class="text-sm">${date.getDate()} ${date.toLocaleDateString('nl-NL', { month: 'short' })}</div>
+                        </div>
+                        <div class="week-day-content">
+                            ${dayProjects.map(p => renderCalendarProject(p)).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            document.getElementById('weekView').innerHTML = html;
         }
 
-        function renderProjecten() {
-            const allEvents = getAllEvents();
-            const komend = allEvents
-                .filter(e => new Date(e.startDatum || e.start) >= new Date(new Date().setHours(0,0,0,0)))
-                .sort((a, b) => new Date(a.startDatum || a.start) - new Date(b.startDatum || b.start))
-                .slice(0, 10);
+        function renderMonthView() {
+            const { start } = getMonthRange();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
             
-            if (komend.length === 0) {
-                document.getElementById('projectenLijst').innerHTML = '<p class="text-gray-400 text-sm text-center py-8">Geen projecten gepland</p>';
+            const days = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
+            
+            let html = '<div class="calendar-grid">';
+            
+            days.forEach(d => {
+                html += `<div class="calendar-header">${d}</div>`;
+            });
+            
+            const firstDay = new Date(start);
+            const dayOfWeek = firstDay.getDay();
+            const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            firstDay.setDate(firstDay.getDate() + mondayOffset);
+            
+            for (let week = 0; week < 6; week++) {
+                for (let day = 0; day < 7; day++) {
+                    const date = new Date(firstDay);
+                    date.setDate(firstDay.getDate() + (week * 7) + day);
+                    
+                    const isToday = date.getTime() === today.getTime();
+                    const isOtherMonth = date.getMonth() !== start.getMonth();
+                    const dateStr = date.toISOString().split('T')[0];
+                    
+                    const dayProjects = getAllProjectsForDate(date);
+                    
+                    html += `
+                        <div class="calendar-day ${isToday ? 'today' : ''} ${isOtherMonth ? 'other-month' : ''}" 
+                             data-date="${dateStr}" ondrop="dropProject(event)" ondragover="allowDrop(event)">
+                            <div class="day-number ${isToday ? 'today' : ''}">${date.getDate()}</div>
+                            ${dayProjects.slice(0, 3).map(p => renderCalendarProject(p)).join('')}
+                            ${dayProjects.length > 3 ? `<div class="text-xs text-gray-400">+${dayProjects.length - 3} meer</div>` : ''}
+                        </div>
+                    `;
+                }
+            }
+            
+            html += '</div>';
+            document.getElementById('monthView').innerHTML = html;
+        }
+
+        function renderCalendarProject(project) {
+            const type = project.source || 'local';
+            const title = project.titel || project.summary || project.klant?.naam || 'Project';
+            return `
+                <div class="cal-project ${type}" 
+                     draggable="true" 
+                     ondragstart="dragProject(event, '${project.id}')"
+                     onclick="openProjectDetail('${project.id}')">
+                    ${title.substring(0, 20)}${title.length > 20 ? '...' : ''}
+                </div>
+            `;
+        }
+
+        function renderProjectsList() {
+            const container = document.getElementById('projectsList');
+            let allProjects = getAllProjects();
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const weekEnd = new Date(today);
+            weekEnd.setDate(today.getDate() + 7);
+            
+            if (currentFilter === 'today') {
+                allProjects = allProjects.filter(p => {
+                    const pDate = getProjectDate(p);
+                    return pDate && pDate.getTime() === today.getTime();
+                });
+            } else if (currentFilter === 'week') {
+                allProjects = allProjects.filter(p => {
+                    const pDate = getProjectDate(p);
+                    return pDate && pDate >= today && pDate <= weekEnd;
+                });
+            }
+            
+            allProjects.sort((a, b) => {
+                const dateA = getProjectDate(a) || new Date(9999, 0);
+                const dateB = getProjectDate(b) || new Date(9999, 0);
+                return dateA - dateB;
+            });
+
+            if (allProjects.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-400 py-8">Geen projecten gevonden</p>';
+                return;
+            }
+
+            container.innerHTML = allProjects.slice(0, 20).map(p => renderProjectCard(p)).join('');
+        }
+
+        function renderProjectCard(project) {
+            const title = project.titel || project.summary || project.klant?.naam || 'Project';
+            const date = getProjectDate(project);
+            const dateStr = date ? date.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' }) : 'Geen datum';
+            const klant = project.klant || findContactById(project.contactId);
+            const phone = klant?.telefoon || klant?.phone || '';
+            const email = klant?.email || '';
+            const cleanPhone = phone ? phone.replace(/[\s\-\(\)]/g, '') : '';
+            const zzp = project.zzpId ? zzpers.find(z => z.id === project.zzpId) : null;
+            const type = project.type || detectType(title);
+            const source = project.source || 'local';
+            const omzet = project.bedrag || project.totaal || 0;
+            
+            return `
+                <div class="project-card" data-id="${project.id}">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="type-badge type-${type}">${type}</span>
+                            <span class="status-badge status-${project.status || 'gepland'} ml-1">${project.status || 'gepland'}</span>
+                        </div>
+                        <span class="text-xs ${source === 'google' ? 'text-amber-600' : source === 'opname' ? 'text-green-600' : 'text-blue-600'}">
+                            ${source === 'google' ? '📅 Google' : source === 'opname' ? '📋 Opname' : '📌 Lokaal'}
+                        </span>
+                    </div>
+                    
+                    <div class="project-title">${escapeHtml(title)}</div>
+                    <div class="project-meta">📅 ${dateStr}</div>
+                    ${klant ? `<div class="project-meta">👤 ${escapeHtml(klant.naam || klant.company_name || '')}</div>` : ''}
+                    ${project.locatie || klant?.adres ? `<div class="project-meta">📍 ${escapeHtml(project.locatie || klant?.adres || '')}</div>` : ''}
+                    
+                    ${zzp ? `
+                        <div class="mt-2">
+                            <span class="zzp-badge">
+                                <span class="zzp-avatar">${zzp.naam?.charAt(0) || '?'}</span>
+                                ${escapeHtml(zzp.naam)}
+                            </span>
+                        </div>
+                    ` : ''}
+                    
+                    ${omzet > 0 ? `
+                        <div class="mt-2 text-sm">
+                            <span class="text-gray-500">Omzet:</span>
+                            <span class="font-bold text-green-600">€${omzet.toLocaleString()}</span>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="contact-actions">
+                        ${cleanPhone ? `
+                            <a href="tel:${cleanPhone}" class="contact-btn call">📞 Bel</a>
+                            <a href="https://wa.me/31${cleanPhone.replace(/^0/, '').replace(/^\+31/, '')}" target="_blank" class="contact-btn whatsapp">💬 WhatsApp</a>
+                        ` : ''}
+                        ${email ? `<a href="mailto:${email}" class="contact-btn mail">📧 Mail</a>` : ''}
+                        <button onclick="openSendModal('${project.id}')" class="contact-btn mail">📤 Sturen</button>
+                    </div>
+                    
+                    <div class="flex items-center gap-2 mt-3 pt-3 border-t">
+                        <button class="shift-btn" onclick="event.stopPropagation(); shiftProject('${project.id}', -1)" title="1 dag eerder">◀</button>
+                        <button class="shift-btn" onclick="event.stopPropagation(); shiftProject('${project.id}', 1)" title="1 dag later">▶</button>
+                        <span class="text-xs text-gray-400 ml-1">Verschuif</span>
+                        <button onclick="openProjectDetail('${project.id}')" class="btn btn-secondary btn-sm ml-auto">Details</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderStats() {
+            const { start, end } = getWeekRange();
+            const weekProjects = getAllProjects().filter(p => {
+                const date = getProjectDate(p);
+                return date && date >= start && date <= end;
+            });
+            
+            const totalOmzet = weekProjects.reduce((sum, p) => sum + (p.bedrag || p.totaal || 0), 0);
+            
+            document.getElementById('statProjects').textContent = weekProjects.length;
+            document.getElementById('statOmzet').textContent = '€' + totalOmzet.toLocaleString();
+        }
+
+        function renderZZPToday() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const todayProjects = getAllProjects().filter(p => {
+                const date = getProjectDate(p);
+                return date && date.getTime() === today.getTime();
+            });
+            
+            const assignedZZP = {};
+            todayProjects.forEach(p => {
+                if (p.zzpId) {
+                    if (!assignedZZP[p.zzpId]) assignedZZP[p.zzpId] = [];
+                    assignedZZP[p.zzpId].push(p);
+                }
+            });
+            
+            const container = document.getElementById('zzpToday');
+            
+            if (Object.keys(assignedZZP).length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">Geen medewerkers ingepland</p>';
                 return;
             }
             
-            let html = '';
-            komend.forEach(e => {
-                const badge = e.source === 'google' ? '<span class="google-badge">Google</span>' : '<span class="local-badge">Lokaal</span>';
-                html += '<div class="project-card ' + (e.source === 'google' ? 'google' : '') + '" onclick="openProject(\'' + e.id + '\', \'' + e.source + '\')">';
-                html += '<div class="flex justify-between items-start"><h3 class="font-semibold text-sm">' + (e.naam || e.title) + '</h3>' + badge + '</div>';
-                html += '<p class="text-gray-500 text-xs">' + (e.klant || e.adres || '') + '</p>';
-                html += '<p class="text-indigo-600 text-xs mt-2">📅 ' + new Date(e.startDatum || e.start).toLocaleDateString('nl-NL') + '</p>';
-                html += '</div>';
-            });
-            document.getElementById('projectenLijst').innerHTML = html;
+            container.innerHTML = Object.entries(assignedZZP).map(([zzpId, prjs]) => {
+                const zzp = zzpers.find(z => z.id === zzpId);
+                if (!zzp) return '';
+                
+                return `
+                    <div class="flex items-center gap-3 p-3 bg-purple-50 rounded-lg mb-2">
+                        <span class="zzp-avatar">${zzp.naam?.charAt(0) || '?'}</span>
+                        <div class="flex-1">
+                            <div class="font-semibold text-sm">${escapeHtml(zzp.naam)}</div>
+                            <div class="text-xs text-gray-500">${prjs.length} project(en)</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
-        function vorigeMaand() { huidigeDatum.setMonth(huidigeDatum.getMonth() - 1); renderKalender(); }
-        function volgendeMaand() { huidigeDatum.setMonth(huidigeDatum.getMonth() + 1); renderKalender(); }
-
-        function openNieuwProject() {
-            document.getElementById('projectId').value = '';
-            document.getElementById('projectSource').value = 'local';
-            document.getElementById('projectNaam').value = '';
-            document.getElementById('projectKlant').value = '';
-            document.getElementById('projectAdres').value = '';
-            document.getElementById('projectStart').value = new Date().toISOString().split('T')[0];
-            document.getElementById('projectEind').value = '';
-            document.getElementById('projectNotities').value = '';
-            document.getElementById('btnVerwijder').style.display = 'none';
-            document.getElementById('syncToGoogle').checked = googleConnected;
-            document.getElementById('projectModal').classList.remove('hidden');
+        // ============================================
+        // PROJECT ACTIONS
+        // ============================================
+        function openProjectDetail(projectId) {
+            const project = findProjectById(projectId);
+            if (!project) return;
+            
+            selectedProject = project;
+            
+            const klant = project.klant || findContactById(project.contactId);
+            const zzp = project.zzpId ? zzpers.find(z => z.id === project.zzpId) : null;
+            const date = getProjectDate(project);
+            
+            document.getElementById('modalTitle').textContent = project.titel || project.summary || 'Project Details';
+            document.getElementById('modalBody').innerHTML = `
+                <div class="space-y-4">
+                    ${klant ? `
+                        <div>
+                            <div class="text-sm text-gray-500">Klant</div>
+                            <div class="font-semibold">${escapeHtml(klant.naam || klant.company_name || '-')}</div>
+                            ${klant.adres || klant.address1 ? `<div class="text-sm text-gray-600">${escapeHtml(klant.adres || klant.address1)}</div>` : ''}
+                        </div>
+                    ` : ''}
+                    
+                    <div>
+                        <div class="text-sm text-gray-500">Datum</div>
+                        <div class="font-semibold">${date ? date.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</div>
+                    </div>
+                    
+                    ${project.type ? `
+                        <div>
+                            <div class="text-sm text-gray-500">Type werk</div>
+                            <div><span class="type-badge type-${project.type}">${project.type}</span></div>
+                        </div>
+                    ` : ''}
+                    
+                    ${project.m2 ? `
+                        <div>
+                            <div class="text-sm text-gray-500">Oppervlakte</div>
+                            <div class="font-semibold">${project.m2} m²</div>
+                        </div>
+                    ` : ''}
+                    
+                    ${project.bedrag || project.totaal ? `
+                        <div>
+                            <div class="text-sm text-gray-500">Offertebedrag</div>
+                            <div class="font-bold text-green-600 text-lg">€${(project.bedrag || project.totaal || 0).toLocaleString()}</div>
+                        </div>
+                    ` : ''}
+                    
+                    <div>
+                        <div class="text-sm text-gray-500 mb-1">Status</div>
+                        <select class="form-select" onchange="updateProjectStatus('${project.id}', this.value)">
+                            <option value="offerte" ${project.status === 'offerte' ? 'selected' : ''}>📝 Offerte</option>
+                            <option value="gepland" ${project.status === 'gepland' ? 'selected' : ''}>📅 Gepland</option>
+                            <option value="bezig" ${project.status === 'bezig' ? 'selected' : ''}>🔨 Bezig</option>
+                            <option value="afgerond" ${project.status === 'afgerond' ? 'selected' : ''}>✅ Afgerond</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <div class="text-sm text-gray-500 mb-1">ZZP'er toewijzen</div>
+                        <select class="form-select" onchange="assignZZP('${project.id}', this.value)">
+                            <option value="">-- Niet toegewezen --</option>
+                            ${zzpers.map(z => `<option value="${z.id}" ${project.zzpId === z.id ? 'selected' : ''}>${escapeHtml(z.naam)}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('modalFooter').innerHTML = `
+                <button onclick="closeModal('projectModal')" class="btn btn-secondary">Sluiten</button>
+                <button onclick="deleteProject('${project.id}')" class="btn btn-danger">🗑️ Verwijderen</button>
+                <button onclick="openSendModal('${project.id}')" class="btn btn-success">📤 Bevestiging</button>
+            `;
+            
+            openModal('projectModal');
         }
 
-        function openProject(id, source) {
-            source = source || 'local';
-            let p;
-            if (source === 'google') {
-                const ge = googleEvents.find(e => e.id === id);
-                if (ge) p = { id: ge.id, naam: ge.title, klant: '', adres: ge.location || '', startDatum: ge.start?.split('T')[0] || ge.start, eindDatum: ge.end?.split('T')[0] || ge.end, notities: ge.description || '' };
-            } else {
-                p = projecten.find(x => x.id === id);
+        async function shiftProject(projectId, days) {
+            const project = findProjectById(projectId);
+            if (!project) return;
+            
+            const currentDate = getProjectDate(project);
+            if (!currentDate) return;
+            
+            const newDate = new Date(currentDate);
+            newDate.setDate(newDate.getDate() + days);
+            const newDateStr = newDate.toISOString().split('T')[0];
+            
+            // Update local
+            if (project.source !== 'google') {
+                project.datum = newDateStr;
+                const idx = projects.findIndex(p => p.id === project.id);
+                if (idx >= 0) projects[idx] = project;
+                saveProjects();
             }
-            if (!p) return;
             
-            document.getElementById('projectId').value = p.id;
-            document.getElementById('projectSource').value = source;
-            document.getElementById('projectNaam').value = p.naam;
-            document.getElementById('projectKlant').value = p.klant || '';
-            document.getElementById('projectAdres').value = p.adres || '';
-            document.getElementById('projectStart').value = p.startDatum;
-            document.getElementById('projectEind').value = p.eindDatum || '';
-            document.getElementById('projectNotities').value = p.notities || '';
-            document.getElementById('btnVerwijder').style.display = 'block';
-            document.getElementById('syncToGoogle').checked = false;
-            document.getElementById('projectModal').classList.remove('hidden');
-        }
-
-        function openDag(datum) {
-            openNieuwProject();
-            document.getElementById('projectStart').value = datum;
-        }
-
-        async function saveProject(e) {
-            e.preventDefault();
-            const id = document.getElementById('projectId').value;
-            const source = document.getElementById('projectSource').value;
-            const syncToGoogle = document.getElementById('syncToGoogle').checked && googleConnected;
-            
-            const project = {
-                id: id || Date.now().toString(),
-                naam: document.getElementById('projectNaam').value,
-                klant: document.getElementById('projectKlant').value,
-                adres: document.getElementById('projectAdres').value,
-                startDatum: document.getElementById('projectStart').value,
-                eindDatum: document.getElementById('projectEind').value,
-                notities: document.getElementById('projectNotities').value
-            };
-            
-            if (source === 'google' && id) {
+            // Update Google
+            if (isGoogleConnected && project.source === 'google') {
                 try {
-                    await fetch('/api/google/events/' + id, {
+                    await fetch(`/api/google/events/${project.id}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ title: project.naam, description: project.notities, start: project.startDatum, end: project.eindDatum || project.startDatum, location: project.adres, allDay: true })
+                        body: JSON.stringify({
+                            summary: project.summary,
+                            location: project.location,
+                            description: project.description,
+                            start: { date: newDateStr },
+                            end: { date: newDateStr }
+                        })
                     });
-                    showToast('Google event bijgewerkt', 'success');
-                    await loadGoogleEvents();
-                } catch (err) { showToast('Fout bij bijwerken Google event', 'error'); }
-            } else {
-                if (id) { projecten = projecten.map(p => p.id === id ? project : p); }
-                else { projecten.push(project); }
-                localStorage.setItem('stuc_planning', JSON.stringify(projecten)); syncProjecten();
+                } catch (e) {
+                    console.error('Error updating Google event:', e);
+                }
+            }
+            
+            showToast(`Verschoven naar ${newDate.toLocaleDateString('nl-NL')}`, 'success');
+            await loadData();
+        }
+
+        function updateProjectStatus(projectId, status) {
+            const project = findProjectById(projectId);
+            if (!project || project.source === 'google') return;
+            
+            project.status = status;
+            const idx = projects.findIndex(p => p.id === project.id);
+            if (idx >= 0) projects[idx] = project;
+            saveProjects();
+            render();
+            showToast('Status bijgewerkt', 'success');
+        }
+
+        function assignZZP(projectId, zzpId) {
+            const project = findProjectById(projectId);
+            if (!project) return;
+            
+            project.zzpId = zzpId || null;
+            
+            if (project.source !== 'google') {
+                const idx = projects.findIndex(p => p.id === project.id);
+                if (idx >= 0) projects[idx] = project;
+                saveProjects();
+            }
+            
+            render();
+            showToast('ZZP\'er toegewezen', 'success');
+        }
+
+        function deleteProject(projectId) {
+            if (!confirm('Weet je zeker dat je dit project wilt verwijderen?')) return;
+            
+            projects = projects.filter(p => p.id !== projectId);
+            saveProjects();
+            closeModal('projectModal');
+            render();
+            showToast('Project verwijderd', 'info');
+        }
+
+        // ============================================
+        // CREATE PROJECT
+        // ============================================
+        function openNewProjectModal() {
+            document.getElementById('projectDatum').value = new Date().toISOString().split('T')[0];
+            updateProjectForm();
+            openModal('newProjectModal');
+        }
+
+        function updateProjectForm() {
+            const bron = document.getElementById('projectBron').value;
+            document.getElementById('opnameSelect').style.display = bron === 'opname' ? 'block' : 'none';
+            document.getElementById('handmatigForm').style.display = bron === 'handmatig' ? 'block' : 'none';
+        }
+
+        function populateDropdowns() {
+            const opnameSelect = document.getElementById('selectOpname');
+            opnameSelect.innerHTML = '<option value="">-- Selecteer --</option>' + 
+                opnames.map(o => `<option value="${o.id}">${escapeHtml(o.klant?.naam || 'Onbekend')} - ${escapeHtml(o.klant?.plaats || '')} (${o.datum || ''})</option>`).join('');
+            
+            const klantSelect = document.getElementById('selectKlant');
+            klantSelect.innerHTML = '<option value="">-- Selecteer --</option>' + 
+                contacts.slice(0, 100).map(c => `<option value="${c.id}">${escapeHtml(c.company_name || (c.firstname + ' ' + c.lastname))}</option>`).join('');
+            
+            const zzpSelect = document.getElementById('projectZZP');
+            zzpSelect.innerHTML = '<option value="">-- Niet toegewezen --</option>' + 
+                zzpers.map(z => `<option value="${z.id}">${escapeHtml(z.naam)}</option>`).join('');
+        }
+
+        async function createProject() {
+            const bron = document.getElementById('projectBron').value;
+            const datum = document.getElementById('projectDatum').value;
+            const zzpId = document.getElementById('projectZZP').value;
+            const addToGoogle = document.getElementById('addToGoogle').checked;
+            const sendInvite = document.getElementById('sendInvite').checked;
+            
+            if (!datum) {
+                showToast('Selecteer een datum', 'error');
+                return;
+            }
+            
+            let project = {
+                id: 'proj_' + Date.now(),
+                datum: datum,
+                status: 'gepland',
+                zzpId: zzpId || null,
+                source: 'local',
+                created: new Date().toISOString()
+            };
+            
+            if (bron === 'opname') {
+                const opnameId = document.getElementById('selectOpname').value;
+                const opname = opnames.find(o => o.id == opnameId);
+                if (!opname) {
+                    showToast('Selecteer een opname', 'error');
+                    return;
+                }
                 
-                if (syncToGoogle && !id) {
-                    try {
-                        await fetch('/api/google/events', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ title: project.naam, description: 'Klant: ' + project.klant + '\n' + project.notities, start: project.startDatum, end: project.eindDatum || project.startDatum, location: project.adres, allDay: true })
-                        });
-                        showToast('Project opgeslagen + Google Agenda', 'success');
-                        await loadGoogleEvents();
-                    } catch (err) { showToast('Project opgeslagen (Google sync mislukt)', 'warning'); }
-                } else { showToast('Project opgeslagen', 'success'); }
+                project.opnameId = opnameId;
+                project.klant = opname.klant;
+                project.titel = `${opname.klant?.naam || 'Klant'} - ${opname.klant?.plaats || ''}`;
+                project.type = detectTypeFromOpname(opname);
+                project.m2 = calculateM2FromOpname(opname);
+                project.locatie = `${opname.klant?.adres || ''}, ${opname.klant?.postcode || ''} ${opname.klant?.plaats || ''}`;
+                project.source = 'opname';
+            } else if (bron === 'handmatig') {
+                const contactId = document.getElementById('selectKlant').value;
+                const contact = contacts.find(c => c.id === contactId);
+                
+                project.contactId = contactId;
+                project.titel = document.getElementById('projectTitel').value || 'Project';
+                project.type = document.getElementById('projectType').value;
+                project.m2 = parseFloat(document.getElementById('projectM2').value) || 0;
+                project.dagen = parseInt(document.getElementById('projectDagen').value) || 1;
+                project.bedrag = parseFloat(document.getElementById('projectBedrag').value) || 0;
+                
+                if (contact) {
+                    project.klant = {
+                        naam: contact.company_name || `${contact.firstname} ${contact.lastname}`,
+                        email: contact.email,
+                        telefoon: contact.phone,
+                        adres: contact.address1,
+                        postcode: contact.zipcode,
+                        plaats: contact.city
+                    };
+                    project.locatie = `${contact.address1 || ''}, ${contact.zipcode || ''} ${contact.city || ''}`;
+                }
             }
             
-            sluitModal();
-            renderKalender();
-            renderProjecten();
-        }
-
-        async function verwijderProject() {
-            const id = document.getElementById('projectId').value;
-            const source = document.getElementById('projectSource').value;
-            if (!confirm('Project verwijderen?')) return;
-            
-            if (source === 'google') {
+            // Add to Google Calendar
+            if (addToGoogle && isGoogleConnected) {
                 try {
-                    await fetch('/api/google/events/' + id, { method: 'DELETE' });
-                    showToast('Google event verwijderd', 'success');
-                    await loadGoogleEvents();
-                } catch (err) { showToast('Fout bij verwijderen', 'error'); }
-            } else {
-                projecten = projecten.filter(p => p.id !== id);
-                localStorage.setItem('stuc_planning', JSON.stringify(projecten)); syncProjecten();
-                showToast('Project verwijderd', 'success');
+                    const eventData = {
+                        summary: project.titel,
+                        location: project.locatie || '',
+                        description: `Type: ${project.type || '-'}\nm²: ${project.m2 || '-'}\nBedrag: €${project.bedrag || '-'}`,
+                        start: { date: datum },
+                        end: { date: datum }
+                    };
+                    
+                    if (sendInvite && project.klant?.email) {
+                        eventData.attendees = [{ email: project.klant.email }];
+                        eventData.sendUpdates = 'all';
+                    }
+                    
+                    const res = await fetch('/api/google/events', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(eventData)
+                    });
+                    
+                    if (res.ok) {
+                        const googleEvent = await res.json();
+                        project.googleEventId = googleEvent.id;
+                    }
+                } catch (e) {
+                    console.error('Error creating Google event:', e);
+                }
             }
             
-            sluitModal();
-            renderKalender();
-            renderProjecten();
+            projects.push(project);
+            saveProjects();
+            
+            closeModal('newProjectModal');
+            await loadData();
+            showToast('Project aangemaakt!', 'success');
         }
 
-        function sluitModal() { document.getElementById('projectModal').classList.add('hidden'); }
+        // ============================================
+        // SEND CONFIRMATION
+        // ============================================
+        function openSendModal(projectId) {
+            selectedProject = findProjectById(projectId);
+            if (!selectedProject) return;
+            
+            const klant = selectedProject.klant || findContactById(selectedProject.contactId);
+            const date = getProjectDate(selectedProject);
+            const dateStr = date ? date.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
+            
+            const message = `Beste ${klant?.naam || 'klant'},
 
-        function showToast(message, type) {
-            type = type || 'info';
-            const colors = { success: 'bg-green-500', error: 'bg-red-500', warning: 'bg-yellow-500', info: 'bg-blue-500' };
+Hierbij bevestigen wij de afspraak voor "${selectedProject.titel || 'uw project'}" op ${dateStr}.
+
+${selectedProject.locatie ? `Locatie: ${selectedProject.locatie}` : ''}
+
+Heeft u nog vragen? Neem gerust contact met ons op.
+
+Met vriendelijke groet,
+Stucologie B.V.
+info@stucologie.nl`;
+            
+            document.getElementById('sendText').value = message;
+            document.getElementById('sendMessage').textContent = `Bevestiging sturen naar ${klant?.naam || 'klant'}`;
+            
+            closeModal('projectModal');
+            openModal('sendModal');
+        }
+
+        function sendWhatsApp() {
+            if (!selectedProject) return;
+            
+            const klant = selectedProject.klant || findContactById(selectedProject.contactId);
+            const phone = klant?.telefoon || klant?.phone;
+            
+            if (!phone) {
+                showToast('Geen telefoonnummer gevonden', 'error');
+                return;
+            }
+            
+            const cleanPhone = phone.replace(/[\s\-\(\)]/g, '').replace(/^0/, '31').replace(/^\+/, '');
+            const message = encodeURIComponent(document.getElementById('sendText').value);
+            
+            window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
+            closeModal('sendModal');
+            showToast('WhatsApp geopend', 'success');
+        }
+
+        function sendEmail() {
+            if (!selectedProject) return;
+            
+            const klant = selectedProject.klant || findContactById(selectedProject.contactId);
+            const email = klant?.email;
+            
+            if (!email) {
+                showToast('Geen email gevonden', 'error');
+                return;
+            }
+            
+            const subject = encodeURIComponent(`Bevestiging: ${selectedProject.titel || 'Uw project'}`);
+            const body = encodeURIComponent(document.getElementById('sendText').value);
+            
+            window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
+            closeModal('sendModal');
+            showToast('Email geopend', 'success');
+        }
+
+        async function sendCalendarInvite() {
+            if (!selectedProject || !isGoogleConnected) {
+                showToast('Google Calendar niet verbonden', 'error');
+                return;
+            }
+            
+            const klant = selectedProject.klant || findContactById(selectedProject.contactId);
+            const email = klant?.email;
+            
+            if (!email) {
+                showToast('Geen email voor calendar invite', 'error');
+                return;
+            }
+            
+            try {
+                const date = getProjectDate(selectedProject);
+                const dateStr = date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+                
+                const eventData = {
+                    summary: selectedProject.titel || selectedProject.summary || 'Project',
+                    location: selectedProject.locatie || selectedProject.location || '',
+                    description: document.getElementById('sendText').value,
+                    start: { date: dateStr },
+                    end: { date: dateStr },
+                    attendees: [{ email: email }],
+                    sendUpdates: 'all'
+                };
+                
+                let res;
+                if (selectedProject.googleEventId) {
+                    res = await fetch(`/api/google/events/${selectedProject.googleEventId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(eventData)
+                    });
+                } else {
+                    res = await fetch('/api/google/events', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(eventData)
+                    });
+                }
+                
+                if (res.ok) {
+                    showToast('Calendar invite verzonden naar ' + email, 'success');
+                    closeModal('sendModal');
+                } else {
+                    showToast('Fout bij verzenden invite', 'error');
+                }
+            } catch (e) {
+                console.error('Error sending invite:', e);
+                showToast('Fout bij verzenden', 'error');
+            }
+        }
+
+        // ============================================
+        // DRAG & DROP
+        // ============================================
+        function dragProject(event, projectId) {
+            event.dataTransfer.setData('projectId', projectId);
+        }
+
+        function allowDrop(event) {
+            event.preventDefault();
+        }
+
+        async function dropProject(event) {
+            event.preventDefault();
+            const projectId = event.dataTransfer.getData('projectId');
+            const targetDate = event.currentTarget.dataset.date;
+            
+            if (!projectId || !targetDate) return;
+            
+            const project = findProjectById(projectId);
+            if (!project) return;
+            
+            if (project.source !== 'google') {
+                project.datum = targetDate;
+                const idx = projects.findIndex(p => p.id === project.id);
+                if (idx >= 0) projects[idx] = project;
+                saveProjects();
+            }
+            
+            if (isGoogleConnected && project.source === 'google') {
+                try {
+                    await fetch(`/api/google/events/${project.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            summary: project.summary,
+                            location: project.location,
+                            description: project.description,
+                            start: { date: targetDate },
+                            end: { date: targetDate }
+                        })
+                    });
+                } catch (e) {
+                    console.error('Error updating Google event:', e);
+                }
+            }
+            
+            showToast('Project verplaatst', 'success');
+            await loadData();
+        }
+
+        // ============================================
+        // HELPERS
+        // ============================================
+        function getAllProjects() {
+            const all = [
+                ...projects,
+                ...googleEvents.map(e => ({ ...e, source: 'google' })),
+                ...opnames.filter(o => o.datum && !projects.some(p => p.opnameId == o.id)).map(o => ({
+                    id: 'opname_' + o.id,
+                    opnameId: o.id,
+                    titel: `${o.klant?.naam || 'Onbekend'} - ${o.klant?.plaats || ''}`,
+                    klant: o.klant,
+                    datum: o.datum,
+                    type: detectTypeFromOpname(o),
+                    m2: calculateM2FromOpname(o),
+                    locatie: `${o.klant?.adres || ''}, ${o.klant?.postcode || ''} ${o.klant?.plaats || ''}`,
+                    source: 'opname',
+                    status: 'offerte'
+                }))
+            ];
+            return all;
+        }
+
+        function getAllProjectsForDate(date) {
+            const dateStr = date.toISOString().split('T')[0];
+            return getAllProjects().filter(p => {
+                const pDate = getProjectDate(p);
+                return pDate && pDate.toISOString().split('T')[0] === dateStr;
+            });
+        }
+
+        function findProjectById(id) {
+            return getAllProjects().find(p => p.id === id || p.id === 'opname_' + id);
+        }
+
+        function findContactById(contactId) {
+            return contacts.find(c => c.id === contactId);
+        }
+
+        function getProjectDate(project) {
+            if (project.datum) return new Date(project.datum);
+            if (project.start?.dateTime) return new Date(project.start.dateTime);
+            if (project.start?.date) return new Date(project.start.date);
+            return null;
+        }
+
+        function getWeekRange() {
+            const now = new Date();
+            const dayOfWeek = now.getDay();
+            const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            
+            const start = new Date(now);
+            start.setDate(now.getDate() + mondayOffset + (currentOffset * 7));
+            start.setHours(0, 0, 0, 0);
+            
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+            
+            return { start, end };
+        }
+
+        function getMonthRange() {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), now.getMonth() + currentOffset, 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + currentOffset + 1, 0, 23, 59, 59, 999);
+            return { start, end };
+        }
+
+        function getDateRange() {
+            return currentView === 'week' ? getWeekRange() : getMonthRange();
+        }
+
+        function detectType(text) {
+            const t = (text || '').toLowerCase();
+            if (t.includes('spuit')) return 'spuitwerk';
+            if (t.includes('sier') || t.includes('pleister')) return 'sierpleister';
+            if (t.includes('spack')) return 'spackspuiten';
+            if (t.includes('buiten') || t.includes('gevel')) return 'buitengevel';
+            return 'stucwerk';
+        }
+
+        function detectTypeFromOpname(opname) {
+            let types = [];
+            (opname.ruimtes || []).forEach(r => {
+                (r.diensten || []).forEach(d => {
+                    if (d.naam) types.push(d.naam.toLowerCase());
+                });
+            });
+            
+            const typeStr = types.join(' ');
+            if (typeStr.includes('spuit')) return 'spuitwerk';
+            if (typeStr.includes('sier')) return 'sierpleister';
+            if (typeStr.includes('spack')) return 'spackspuiten';
+            return 'stucwerk';
+        }
+
+        function calculateM2FromOpname(opname) {
+            let total = 0;
+            (opname.ruimtes || []).forEach(r => {
+                (r.diensten || []).forEach(d => {
+                    total += parseFloat(d.m2 || d.aantal || 0);
+                });
+            });
+            return total;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ============================================
+        // UI CONTROLS
+        // ============================================
+        function setView(view) {
+            currentView = view;
+            document.getElementById('viewWeek').classList.toggle('active', view === 'week');
+            document.getElementById('viewMonth').classList.toggle('active', view === 'month');
+            currentOffset = 0;
+            loadGoogleEvents().then(() => render());
+        }
+
+        function navigate(direction) {
+            if (direction === 0) {
+                currentOffset = 0;
+            } else {
+                currentOffset += direction;
+            }
+            loadGoogleEvents().then(() => render());
+        }
+
+        function updatePeriodLabel() {
+            const { start, end } = getDateRange();
+            const options = { day: 'numeric', month: 'short' };
+            
+            if (currentView === 'week') {
+                document.getElementById('periodLabel').textContent = 
+                    `${start.toLocaleDateString('nl-NL', options)} - ${end.toLocaleDateString('nl-NL', options)}`;
+            } else {
+                document.getElementById('periodLabel').textContent = 
+                    start.toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
+            }
+        }
+
+        function filterProjects(filter, btn) {
+            currentFilter = filter;
+            document.querySelectorAll('.tab-group .tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderProjectsList();
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('open');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('open');
+        }
+
+        function toggleMenu() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.querySelector('.sidebar-overlay').classList.toggle('open');
+        }
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
+
+        function showToast(message, type = 'info') {
             const toast = document.createElement('div');
-            toast.className = 'fixed bottom-4 right-4 ' + colors[type] + ' text-white px-4 py-2 rounded-lg shadow-lg z-50';
+            toast.className = `toast ${type}`;
             toast.textContent = message;
             document.body.appendChild(toast);
-            setTimeout(function() { toast.remove(); }, 3000);
+            setTimeout(() => toast.remove(), 4000);
         }
-
-        // Init
-        async function init() {
-            await loadProjecten();
-            checkUrlParams();
-            checkGoogleStatus();
-            renderKalender();
-            renderProjecten();
-        }
-        init();
     </script>
 </body>
 </html>
