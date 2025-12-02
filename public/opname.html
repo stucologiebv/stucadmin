@@ -356,27 +356,39 @@
         <!-- STAP 5: Voorwaarden -->
         <div id="step5" class="step-content hidden">
             <div class="card">
-                <h2 class="text-lg font-bold mb-4">📜 Voorwaarden & Handtekening</h2>
+                <h2 class="text-lg font-bold mb-4">📜 Voorwaarden en Akkoord</h2>
                 
-                <div class="section-title">💳 Betalingswijze</div>
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <label class="flex items-center gap-3 p-4 bg-gray-50 rounded-lg cursor-pointer">
-                        <input type="radio" name="betaling" value="achteraf" checked onchange="updateBetalingsTekst()" class="w-5 h-5">
-                        <span class="font-medium">Betaling achteraf</span>
-                    </label>
-                    <label class="flex items-center gap-3 p-4 bg-gray-50 rounded-lg cursor-pointer">
-                        <input type="radio" name="betaling" value="termijnen" onchange="updateBetalingsTekst()" class="w-5 h-5">
-                        <span class="font-medium">In termijnen</span>
-                    </label>
+                <div class="bg-gray-50 rounded-lg p-4 mb-6 text-sm space-y-4">
+                    <div>
+                        <div class="font-semibold text-gray-800 mb-1">Betaling</div>
+                        <p class="text-gray-600">30% aanbetaling bij akkoord. Restant binnen 5 dagen na oplevering (particulier).</p>
+                    </div>
+                    
+                    <div>
+                        <div class="font-semibold text-gray-800 mb-1">Meetwijze</div>
+                        <p class="text-gray-600">Bij m² worden ramen, kozijnen en deuren niet afgetrokken (inbegrepen in prijs).</p>
+                    </div>
+                    
+                    <div>
+                        <div class="font-semibold text-gray-800 mb-1">Meerwerk</div>
+                        <p class="text-gray-600">Meerwerk wordt apart geoffreerd en gefactureerd. Prijzen kunnen afwijken van de oorspronkelijke offerte.</p>
+                    </div>
+                    
+                    <div>
+                        <div class="font-semibold text-gray-800 mb-1">Annulering</div>
+                        <p class="text-gray-600">Bij annulering wordt €250 administratiekosten in rekening gebracht.</p>
+                    </div>
+                    
+                    <div>
+                        <div class="font-semibold text-gray-800 mb-1">Geldigheid offerte</div>
+                        <p class="text-gray-600">Deze offerte is 30 dagen geldig.</p>
+                    </div>
+                    
+                    <div>
+                        <div class="font-semibold text-gray-800 mb-1">Verantwoordelijkheid opdrachtgever</div>
+                        <p class="text-gray-600">De opdrachtgever is verantwoordelijk voor het volledig en correct opgeven van alle gewenste werkzaamheden voorafgaand aan de offerte. Eventuele aanvullende werkzaamheden of bijzonderheden die na akkoordbevinding aan het licht komen, vallen buiten de scope van deze overeenkomst en worden als meerwerk in rekening gebracht. Een beroep op onbekendheid met de materie ontslaat de opdrachtgever niet van deze verantwoordelijkheid.</p>
+                    </div>
                 </div>
-                <p class="text-sm text-gray-600 mb-6" id="betalingsTekst"></p>
-
-                <div class="section-title">📅 Geldigheidsduur offerte</div>
-                <select id="geldigheid" class="input-field mb-6" style="max-width: 200px;">
-                    <option value="14">14 dagen</option>
-                    <option value="30" selected>30 dagen</option>
-                    <option value="60">60 dagen</option>
-                </select>
 
                 <div class="section-title">✍️ Handtekening klant</div>
                 <div class="border-2 border-gray-200 rounded-lg p-2 mb-2">
@@ -398,9 +410,11 @@
                 
                 <div id="offerteSummary" class="space-y-4"></div>
 
-                <div class="flex gap-3 mt-6">
+                <div class="flex flex-wrap gap-3 mt-6">
                     <button onclick="saveOpname()" class="btn btn-secondary flex-1">💾 Opslaan</button>
-                    <button onclick="createMoneybirdOfferte()" class="btn btn-success flex-1">📤 Verstuur naar Moneybird</button>
+                    <button onclick="genereerOffertePDF()" class="btn btn-primary flex-1">📄 Download PDF</button>
+                    <button onclick="printOfferte()" class="btn btn-primary flex-1">🖨️ Print</button>
+                    <button onclick="createMoneybirdOfferte()" class="btn btn-success flex-1">📤 Moneybird</button>
                 </div>
 
                 <div id="offerteResultaat" class="hidden mt-6">
@@ -1443,6 +1457,237 @@
                 console.error(e);
                 alert('Fout bij verbinden met server');
             }
+        }
+
+        // ============================================
+        // PDF & PRINT OFFERTE
+        // ============================================
+        function getOfferteHTML() {
+            const klantNaam = document.getElementById('klantNaam').value || 'Onbekend';
+            const klantEmail = document.getElementById('klantEmail').value || '';
+            const werkAdres = document.getElementById('werkAdres').value || '';
+            const werkPostcode = document.getElementById('werkPostcode').value || '';
+            const werkPlaats = document.getElementById('werkPlaats').value || '';
+            const datum = new Date().toLocaleDateString('nl-NL');
+            const offerteNr = 'OFF-' + Date.now().toString().slice(-8);
+            
+            // Bereken totalen
+            let subtotaalDiensten = 0;
+            let subtotaalOpties = 0;
+            let dienstenHTML = '';
+            let optiesHTML = '';
+            
+            ruimtes.forEach(r => {
+                r.diensten.forEach(d => {
+                    if (d.hoeveelheid > 0) {
+                        const totaal = d.hoeveelheid * d.prijs;
+                        const row = `
+                            <tr>
+                                <td style="padding: 8px; border-bottom: 1px solid #eee;">${d.naam}</td>
+                                <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${r.naam || 'Onbenoemd'}</td>
+                                <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${d.hoeveelheid} ${d.eenheid}</td>
+                                <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">€${d.prijs.toFixed(2)}</td>
+                                <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">€${totaal.toFixed(2)}</td>
+                            </tr>
+                            ${d.notitie ? `<tr><td colspan="5" style="padding: 4px 8px 8px 20px; font-style: italic; color: #666; font-size: 12px;">↳ ${d.notitie}</td></tr>` : ''}
+                        `;
+                        if (d.isOptie) {
+                            optiesHTML += row;
+                            subtotaalOpties += totaal;
+                        } else {
+                            dienstenHTML += row;
+                            subtotaalDiensten += totaal;
+                        }
+                    }
+                });
+            });
+            
+            let extraKostenHTML = '';
+            let subtotaalExtra = 0;
+            extraKosten.forEach(k => {
+                subtotaalExtra += k.bedrag;
+                extraKostenHTML += `
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee;" colspan="4">${k.naam}</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">€${k.bedrag.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+            
+            const subtotaal = subtotaalDiensten + subtotaalExtra;
+            const btw = subtotaal * 0.21;
+            const totaal = subtotaal + btw;
+            
+            // Handtekening
+            let handtekeningImg = '';
+            if (signatureCanvas) {
+                const ctx = signatureCanvas.getContext('2d');
+                const pixelData = ctx.getImageData(0, 0, signatureCanvas.width, signatureCanvas.height).data;
+                const hasSignature = pixelData.some((val, i) => i % 4 === 3 && val > 0);
+                if (hasSignature) {
+                    handtekeningImg = signatureCanvas.toDataURL('image/png');
+                }
+            }
+            
+            return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Offerte ${offerteNr} - Stucologie</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 14px; color: #333; line-height: 1.5; }
+        .container { max-width: 800px; margin: 0 auto; padding: 40px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 3px solid #4f46e5; padding-bottom: 20px; }
+        .logo { font-size: 28px; font-weight: bold; color: #4f46e5; }
+        .logo-sub { font-size: 12px; color: #666; }
+        .offerte-info { text-align: right; }
+        .offerte-nr { font-size: 18px; font-weight: bold; color: #4f46e5; }
+        .section { margin-bottom: 30px; }
+        .section-title { font-size: 16px; font-weight: bold; color: #4f46e5; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; }
+        .klant-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .klant-box { background: #f9fafb; padding: 15px; border-radius: 8px; }
+        .klant-label { font-size: 12px; color: #666; margin-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th { background: #4f46e5; color: white; padding: 10px; text-align: left; }
+        th:nth-child(3), th:nth-child(4), th:nth-child(5) { text-align: center; }
+        th:last-child { text-align: right; }
+        .totalen { background: #f0fdf4; padding: 20px; border-radius: 8px; }
+        .totaal-row { display: flex; justify-content: space-between; padding: 5px 0; }
+        .totaal-row.groot { font-size: 20px; font-weight: bold; color: #16a34a; border-top: 2px solid #16a34a; margin-top: 10px; padding-top: 10px; }
+        .voorwaarden { background: #f9fafb; padding: 20px; border-radius: 8px; font-size: 12px; }
+        .voorwaarden h4 { margin-bottom: 10px; }
+        .voorwaarden p { margin-bottom: 8px; }
+        .handtekening { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+        .handtekening-box { border: 1px solid #e5e7eb; padding: 15px; border-radius: 8px; min-height: 120px; }
+        .handtekening-label { font-size: 12px; color: #666; margin-bottom: 10px; }
+        .handtekening-img { max-height: 80px; }
+        .opties-section { background: #fffbeb; padding: 15px; border-radius: 8px; border: 2px dashed #f59e0b; margin-top: 20px; }
+        .opties-title { color: #b45309; font-weight: bold; margin-bottom: 10px; }
+        .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #e5e7eb; padding-top: 20px; }
+        @media print {
+            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .container { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <div class="logo">STUCOLOGIE</div>
+                <div class="logo-sub">Stucadoorsbedrijf</div>
+            </div>
+            <div class="offerte-info">
+                <div class="offerte-nr">${offerteNr}</div>
+                <div>Datum: ${datum}</div>
+                <div>Geldig tot: ${new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('nl-NL')}</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="klant-grid">
+                <div class="klant-box">
+                    <div class="klant-label">OPDRACHTGEVER</div>
+                    <strong>${klantNaam}</strong><br>
+                    ${klantEmail ? klantEmail + '<br>' : ''}
+                </div>
+                <div class="klant-box">
+                    <div class="klant-label">WERKADRES</div>
+                    ${werkAdres}<br>
+                    ${werkPostcode} ${werkPlaats}
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Werkzaamheden</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Omschrijving</th>
+                        <th>Ruimte</th>
+                        <th>Aantal</th>
+                        <th>Prijs</th>
+                        <th>Totaal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${dienstenHTML}
+                    ${extraKostenHTML}
+                </tbody>
+            </table>
+            
+            ${optiesHTML ? `
+            <div class="opties-section">
+                <div class="opties-title">⚡ Optionele werkzaamheden (niet inbegrepen in totaal)</div>
+                <table>
+                    <tbody>
+                        ${optiesHTML}
+                    </tbody>
+                </table>
+                <div style="text-align: right; font-weight: bold; color: #b45309;">Subtotaal opties: €${subtotaalOpties.toFixed(2)}</div>
+            </div>
+            ` : ''}
+            
+            <div class="totalen">
+                <div class="totaal-row"><span>Subtotaal</span><span>€${subtotaal.toFixed(2)}</span></div>
+                <div class="totaal-row"><span>BTW (21%)</span><span>€${btw.toFixed(2)}</span></div>
+                <div class="totaal-row groot"><span>Totaal incl. BTW</span><span>€${totaal.toFixed(2)}</span></div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Voorwaarden</div>
+            <div class="voorwaarden">
+                <p><strong>Betaling:</strong> 30% aanbetaling bij akkoord. Restant binnen 5 dagen na oplevering.</p>
+                <p><strong>Meetwijze:</strong> Bij m² worden ramen, kozijnen en deuren niet afgetrokken (inbegrepen in prijs).</p>
+                <p><strong>Meerwerk:</strong> Meerwerk wordt apart geoffreerd en gefactureerd. Prijzen kunnen afwijken van de oorspronkelijke offerte.</p>
+                <p><strong>Annulering:</strong> Bij annulering wordt €250 administratiekosten in rekening gebracht.</p>
+                <p><strong>Verantwoordelijkheid:</strong> De opdrachtgever is verantwoordelijk voor het volledig en correct opgeven van alle gewenste werkzaamheden voorafgaand aan de offerte. Eventuele aanvullende werkzaamheden of bijzonderheden die na akkoordbevinding aan het licht komen, vallen buiten de scope van deze overeenkomst en worden als meerwerk in rekening gebracht. Een beroep op onbekendheid met de materie ontslaat de opdrachtgever niet van deze verantwoordelijkheid.</p>
+            </div>
+        </div>
+        
+        <div class="handtekening">
+            <div class="handtekening-box">
+                <div class="handtekening-label">Handtekening opdrachtgever</div>
+                ${handtekeningImg ? `<img src="${handtekeningImg}" class="handtekening-img">` : '<div style="color: #999; font-style: italic;">Niet getekend</div>'}
+                <div style="margin-top: 10px; font-size: 12px;">Datum: ${datum}</div>
+            </div>
+            <div class="handtekening-box">
+                <div class="handtekening-label">Voor akkoord namens Stucologie</div>
+                <div style="margin-top: 40px; border-top: 1px solid #ccc; padding-top: 5px; font-size: 12px;">Naam:</div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <strong>Stucologie B.V.</strong><br>
+            info@stucologie.nl | www.stucologie.nl | KvK: 12345678
+        </div>
+    </div>
+</body>
+</html>`;
+        }
+        
+        function printOfferte() {
+            const html = getOfferteHTML();
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(html);
+            printWindow.document.close();
+            setTimeout(() => printWindow.print(), 500);
+        }
+        
+        function genereerOffertePDF() {
+            const html = getOfferteHTML();
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(html);
+            printWindow.document.close();
+            // Gebruiker kan dan Ctrl+P of Print > Save as PDF gebruiken
+            setTimeout(() => {
+                alert('Gebruik Ctrl+P of Print > Opslaan als PDF om de offerte als PDF te downloaden');
+                printWindow.print();
+            }, 500);
         }
     </script>
 </body>
