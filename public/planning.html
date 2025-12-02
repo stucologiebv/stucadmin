@@ -254,10 +254,10 @@
 
                 // Load calendar events
                 const { start, end } = getWeekRange();
-                const calRes = await fetch(`/api/calendar/events?start=${start}&end=${end}`);
+                const calRes = await fetch(`/api/calendar/events?timeMin=${start}&timeMax=${end}`);
                 if (calRes.ok) {
                     const data = await calRes.json();
-                    events = data.events || data || [];
+                    events = data.items || data.events || data || [];
                 }
 
                 renderPlanning();
