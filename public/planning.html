@@ -2,546 +2,541 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Planning - StucAdmin Pro</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planning - StucAdmin</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
     <style>
-        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: #f5f7fa; }
-        .sidebar { background: #fff; border-right: 1px solid #e5e7eb; position: fixed; left: 0; top: 0; bottom: 0; width: 256px; display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s ease; }
-        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; text-decoration: none; margin-bottom: 4px; }
-        .nav-item:hover { background: #f1f5f9; }
-        .nav-item.active { background: #6366f1; color: white; }
-        .logout-btn { color: #ef4444; }
-        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
-        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
-        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; }
-        .btn-primary { background: #6366f1; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; min-height: 44px; }
-        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
-        .btn-google { background: #4285f4; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-        .btn-google:hover { background: #3367d6; }
-        .btn-call { background: #10b981; color: white; padding: 6px 12px; border-radius: 8px; font-weight: 500; border: none; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
-        .btn-call:hover { background: #059669; }
-        .btn-email { background: #3b82f6; color: white; padding: 6px 12px; border-radius: 8px; font-weight: 500; border: none; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
-        .btn-email:hover { background: #2563eb; }
-        .btn-whatsapp { background: #25d366; color: white; padding: 6px 12px; border-radius: 8px; font-weight: 500; border: none; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
-        .btn-whatsapp:hover { background: #20bd5a; }
-        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; width: 100%; font-size: 16px; min-height: 44px; }
-        .input-field:focus { outline: none; border-color: #6366f1; }
-        .project-card { background: #fff; border-left: 4px solid #4285f4; border-radius: 0 12px 12px 0; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s; }
-        .project-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-1px); }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
-        .modal-content { background: white; border-radius: 16px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 20px; }
-        .calendar-day { min-height: 80px; border: 1px solid #e5e7eb; padding: 8px; font-size: 12px; cursor: pointer; transition: background 0.2s; }
-        .calendar-day:hover { background: #f1f5f9; }
-        .calendar-day.today { background: #eef2ff; border-color: #6366f1; }
-        .calendar-day.other-month { background: #f8fafc; color: #94a3b8; }
-        .event-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-        .event-dot.google { background: #4285f4; }
-        main { margin-left: 256px; padding: 24px; min-height: 100vh; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f3f4f6; min-height: 100vh; }
         
-        /* Status badges */
-        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-        .status-gepland { background: #dbeafe; color: #1d4ed8; }
+        .header { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; padding: 20px; }
+        .header h1 { font-size: 24px; font-weight: bold; }
+        
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        
+        .filters { background: white; border-radius: 12px; padding: 16px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+        .filter-group { display: flex; align-items: center; gap: 8px; }
+        .filter-label { font-size: 14px; font-weight: 500; color: #374151; }
+        .filter-select, .filter-input { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
+        
+        .view-toggle { display: flex; gap: 4px; background: #f3f4f6; border-radius: 8px; padding: 4px; }
+        .view-btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: #6b7280; }
+        .view-btn.active { background: white; color: #4f46e5; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        
+        .planning-grid { display: grid; gap: 16px; }
+        .planning-grid.list { grid-template-columns: 1fr; }
+        .planning-grid.cards { grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); }
+        
+        .project-card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; transition: all 0.2s; }
+        .project-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        
+        .card-header { padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: flex-start; }
+        .card-title { font-size: 16px; font-weight: 600; color: #111827; }
+        .card-date { font-size: 13px; color: #6b7280; margin-top: 4px; }
+        
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-ingepland { background: #dbeafe; color: #1e40af; }
         .status-bezig { background: #fef3c7; color: #b45309; }
-        .status-afgerond { background: #d1fae5; color: #047857; }
-        .status-geannuleerd { background: #fee2e2; color: #dc2626; }
+        .status-afgerond { background: #d1fae5; color: #065f46; }
+        .status-geannuleerd { background: #fee2e2; color: #991b1b; }
         
-        /* Info grid */
-        .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 12px; }
-        .info-item { background: #f8fafc; padding: 10px 12px; border-radius: 8px; }
-        .info-item label { font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 600; display: block; }
-        .info-item p { font-size: 14px; color: #1e293b; font-weight: 500; margin-top: 2px; }
-        .info-item.full { grid-column: span 2; }
+        .card-body { padding: 16px; }
         
-        .google-badge { background: #4285f4; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; }
-        .sync-status { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; font-size: 12px; }
-        .sync-status.connected { background: #dcfce7; color: #166534; }
-        .sync-status.disconnected { background: #fef3c7; color: #92400e; }
+        .info-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; font-size: 14px; }
+        .info-icon { width: 20px; text-align: center; color: #6b7280; }
+        .info-content { flex: 1; color: #374151; }
+        .info-label { font-size: 12px; color: #9ca3af; display: block; }
         
-        .hidden { display: none !important; }
+        .contact-buttons { display: flex; gap: 8px; margin-top: 12px; }
+        .contact-btn { flex: 1; padding: 10px; border-radius: 8px; font-size: 13px; font-weight: 500; text-decoration: none; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; }
+        .contact-btn.mail { background: #eff6ff; color: #2563eb; }
+        .contact-btn.mail:hover { background: #dbeafe; }
+        .contact-btn.tel { background: #f0fdf4; color: #16a34a; }
+        .contact-btn.tel:hover { background: #dcfce7; }
+        .contact-btn.whatsapp { background: #ecfdf5; color: #059669; }
+        .contact-btn.whatsapp:hover { background: #d1fae5; }
         
-        @media (max-width: 1024px) {
-            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
-            .sidebar { transform: translateX(-100%); }
-            .sidebar.open { transform: translateX(0); }
-            .sidebar-overlay.open { display: block; }
-            main { margin-left: 0; padding: 70px 12px 24px 12px; }
-            .calendar-day { min-height: 60px; padding: 4px; }
-            .info-grid { grid-template-columns: 1fr; }
-            .info-item.full { grid-column: span 1; }
+        .card-footer { padding: 16px; border-top: 1px solid #e5e7eb; background: #f9fafb; }
+        .footer-row { display: flex; gap: 12px; align-items: center; }
+        .footer-select { flex: 1; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; background: white; }
+        
+        .zzp-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: #f3f4f6; border-radius: 20px; font-size: 12px; color: #374151; }
+        .zzp-avatar { width: 20px; height: 20px; border-radius: 50%; background: #4f46e5; color: white; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
+        
+        .progress-bar { height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #4f46e5, #7c3aed); border-radius: 3px; transition: width 0.3s; }
+        
+        .empty-state { text-align: center; padding: 60px 20px; color: #6b7280; }
+        .empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+        
+        .loading { text-align: center; padding: 40px; color: #6b7280; }
+        .spinner { width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #4f46e5; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .week-nav { display: flex; align-items: center; gap: 16px; }
+        .week-btn { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; background: white; cursor: pointer; font-size: 14px; }
+        .week-btn:hover { background: #f3f4f6; }
+        .week-current { font-weight: 600; color: #111827; min-width: 200px; text-align: center; }
+        
+        .day-header { background: #4f46e5; color: white; padding: 12px 16px; border-radius: 8px 8px 0 0; font-weight: 600; margin-top: 20px; }
+        .day-header:first-child { margin-top: 0; }
+        
+        .no-events { padding: 20px; text-align: center; color: #9ca3af; font-size: 14px; background: white; border-radius: 0 0 8px 8px; }
+        
+        .hamburger { display: none; background: none; border: none; cursor: pointer; padding: 8px; }
+        .hamburger span { display: block; width: 24px; height: 2px; background: white; margin: 5px 0; }
+        
+        .sidebar { position: fixed; left: -280px; top: 0; width: 280px; height: 100%; background: #1f2937; z-index: 1000; transition: left 0.3s; padding-top: 60px; }
+        .sidebar.open { left: 0; }
+        .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; display: none; }
+        .sidebar-overlay.open { display: block; }
+        .sidebar a { display: block; padding: 16px 24px; color: #d1d5db; text-decoration: none; font-size: 15px; }
+        .sidebar a:hover { background: #374151; color: white; }
+        .sidebar a.active { background: #4f46e5; color: white; }
+        
+        @media (max-width: 768px) {
+            .hamburger { display: block; }
+            .filters { flex-direction: column; align-items: stretch; }
+            .planning-grid.cards { grid-template-columns: 1fr; }
+            .contact-buttons { flex-direction: column; }
         }
     </style>
 </head>
 <body>
-    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
-    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
-    
-    <div class="flex min-h-screen">
-        <aside class="sidebar">
-            <div class="p-4 border-b border-gray-100"><img src="/logo-stucologie.jpg" alt="Stucologie B.V." style="max-width: 180px; height: auto;"></div>
-            <nav class="flex-1 p-4 overflow-y-auto">
-                <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
-                <a href="omzet.html" class="nav-item">💹 Omzet</a>
-                <a href="crm.html" class="nav-item">👥 Klanten</a>
-                <a href="planning.html" class="nav-item active">📅 Planning</a>
-                <a href="opname.html" class="nav-item">📋 Opname</a>
-                <a href="offerteaanvragen.html" class="nav-item">📩 Offertes</a>
-                <a href="zzp-inhuur.html" class="nav-item">🤝 ZZP Inhuur</a>
-                <a href="uren.html" class="nav-item">⏱️ Uren</a>
-                <a href="calculator.html" class="nav-item">🧮 Calculator</a>
-                <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
-                <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
-            </nav>
-            <div class="p-4 border-t border-gray-100"><button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button></div>
-        </aside>
-
-        <main class="flex-1">
-            <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <div><h1 class="text-lg sm:text-xl font-bold">📅 Planning</h1><p class="text-gray-500 text-sm">Overzicht van alle afspraken</p></div>
-                <div class="flex gap-2 flex-wrap">
-                    <div id="googleStatus"></div>
-                </div>
-            </header>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2">
-                    <div class="card p-4 mb-4">
-                        <div class="flex justify-between items-center mb-4">
-                            <button onclick="vorigeMaand()" class="btn-secondary text-sm">◀</button>
-                            <h2 class="font-bold" id="maandTitel">December 2024</h2>
-                            <button onclick="volgendeMaand()" class="btn-secondary text-sm">▶</button>
-                        </div>
-                        <div class="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-2">
-                            <div>Ma</div><div>Di</div><div>Wo</div><div>Do</div><div>Vr</div><div>Za</div><div>Zo</div>
-                        </div>
-                        <div class="grid grid-cols-7 gap-1" id="kalender"></div>
-                    </div>
-                    
-                    <div class="flex gap-4 text-xs text-gray-500">
-                        <div class="flex items-center gap-1"><span class="event-dot google"></span> Google Agenda</div>
-                    </div>
-                </div>
-
-                <div>
-                    <h2 class="font-bold mb-4 text-sm">📋 Komende afspraken</h2>
-                    <div id="projectenLijst"></div>
-                </div>
-            </div>
-        </main>
+    <!-- Sidebar -->
+    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar">
+        <a href="index.html">🏠 Dashboard</a>
+        <a href="planning.html" class="active">📅 Planning</a>
+        <a href="opname.html">📋 Opname</a>
+        <a href="calculator.html">🧮 Calculator</a>
+        <a href="offerteaanvragen.html">📨 Offerteaanvragen</a>
     </div>
 
-    <!-- Detail Modal -->
-    <div id="detailModal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <div class="flex justify-between mb-4">
-                <h2 class="font-bold text-lg" id="modalTitle">Afspraak details</h2>
-                <button onclick="sluitModal()" class="text-gray-400 text-2xl">&times;</button>
-            </div>
-            
-            <div id="modalContent">
-                <!-- Wordt dynamisch gevuld -->
-            </div>
-            
-            <div class="flex gap-2 mt-6 pt-4 border-t">
-                <button onclick="sluitModal()" class="btn-secondary flex-1">Sluiten</button>
+    <!-- Header -->
+    <div class="header">
+        <div style="display: flex; align-items: center; gap: 16px; max-width: 1400px; margin: 0 auto;">
+            <button class="hamburger" onclick="toggleSidebar()">
+                <span></span><span></span><span></span>
+            </button>
+            <div>
+                <h1>📅 Planning</h1>
+                <p style="font-size: 14px; opacity: 0.9;">Overzicht van alle geplande werkzaamheden</p>
             </div>
         </div>
     </div>
 
-    <script>
-        let huidigJaar = new Date().getFullYear();
-        let huidigeMaand = new Date().getMonth();
-        let googleEvents = [];
-        let googleConnected = false;
-        let klanten = [];
-
-        const maandNamen = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
-
-        function toggleMenu() {
-            document.querySelector('.sidebar').classList.toggle('open');
-            document.querySelector('.sidebar-overlay').classList.toggle('open');
-        }
-
-        function logout() {
-            fetch('/api/auth/logout', { method: 'POST' }).then(() => window.location.href = '/login.html');
-        }
-
-        function vorigeMaand() {
-            huidigeMaand--;
-            if (huidigeMaand < 0) { huidigeMaand = 11; huidigJaar--; }
-            renderKalender();
-        }
-
-        function volgendeMaand() {
-            huidigeMaand++;
-            if (huidigeMaand > 11) { huidigeMaand = 0; huidigJaar++; }
-            renderKalender();
-        }
-
-        function renderKalender() {
-            document.getElementById('maandTitel').textContent = maandNamen[huidigeMaand] + ' ' + huidigJaar;
-            const container = document.getElementById('kalender');
-            container.innerHTML = '';
-
-            const eersteDag = new Date(huidigJaar, huidigeMaand, 1);
-            const laatsteDag = new Date(huidigJaar, huidigeMaand + 1, 0);
-            let startDag = eersteDag.getDay() || 7;
+    <div class="container">
+        <!-- Filters -->
+        <div class="filters">
+            <div class="week-nav">
+                <button class="week-btn" onclick="changeWeek(-1)">← Vorige</button>
+                <span class="week-current" id="weekLabel">Deze week</span>
+                <button class="week-btn" onclick="changeWeek(1)">Volgende →</button>
+            </div>
             
-            const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
+            <div class="filter-group">
+                <span class="filter-label">Status:</span>
+                <select class="filter-select" id="filterStatus" onchange="renderPlanning()">
+                    <option value="">Alle</option>
+                    <option value="ingepland">Ingepland</option>
+                    <option value="bezig">Bezig</option>
+                    <option value="afgerond">Afgerond</option>
+                    <option value="geannuleerd">Geannuleerd</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <span class="filter-label">ZZP'er:</span>
+                <select class="filter-select" id="filterZzp" onchange="renderPlanning()">
+                    <option value="">Alle</option>
+                </select>
+            </div>
+            
+            <div class="filter-group" style="margin-left: auto;">
+                <div class="view-toggle">
+                    <button class="view-btn active" id="viewList" onclick="setView('list')">📋 Lijst</button>
+                    <button class="view-btn" id="viewCards" onclick="setView('cards')">🗂️ Cards</button>
+                </div>
+            </div>
+        </div>
 
-            // Vorige maand dagen
-            for (let i = startDag - 1; i > 0; i--) {
-                const d = new Date(huidigJaar, huidigeMaand, 1 - i);
-                container.innerHTML += `<div class="calendar-day other-month">${d.getDate()}</div>`;
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Planning laden...</p>
+        </div>
+
+        <!-- Planning Grid -->
+        <div class="planning-grid list" id="planningGrid" style="display: none;"></div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-state-icon">📅</div>
+            <h3 style="font-size: 18px; color: #374151; margin-bottom: 8px;">Geen projecten gevonden</h3>
+            <p>Er zijn geen geplande werkzaamheden voor deze periode.</p>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // STATE
+        // ============================================
+        let events = [];
+        let contacts = [];
+        let zzpers = [
+            { id: 1, naam: 'Eigen bedrijf', initialen: 'EB' },
+            { id: 2, naam: 'Ahmed K.', initialen: 'AK' },
+            { id: 3, naam: 'Mohammed B.', initialen: 'MB' },
+            { id: 4, naam: 'Jan de V.', initialen: 'JV' }
+        ];
+        let projectStatuses = {}; // event_id -> status
+        let projectZzpers = {}; // event_id -> zzp_id
+        let currentWeekOffset = 0;
+        let currentView = 'list';
+
+        // ============================================
+        // INIT
+        // ============================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            loadLocalStorage();
+            populateZzpFilter();
+            await loadData();
+        });
+
+        function loadLocalStorage() {
+            try {
+                projectStatuses = JSON.parse(localStorage.getItem('projectStatuses') || '{}');
+                projectZzpers = JSON.parse(localStorage.getItem('projectZzpers') || '{}');
+            } catch (e) {
+                console.error('Error loading localStorage:', e);
             }
+        }
 
-            // Deze maand dagen
-            for (let dag = 1; dag <= laatsteDag.getDate(); dag++) {
-                const datum = `${huidigJaar}-${String(huidigeMaand + 1).padStart(2, '0')}-${String(dag).padStart(2, '0')}`;
-                const isToday = datum === todayStr;
-                
-                // Check voor Google events op deze dag
-                const dagEvents = googleEvents.filter(e => {
-                    const eventStart = e.start?.split('T')[0] || e.start;
-                    return eventStart === datum;
-                });
-                
-                let eventHtml = '';
-                dagEvents.slice(0, 3).forEach(e => {
-                    eventHtml += `<div class="text-xs truncate mt-1 text-blue-600 cursor-pointer" onclick="event.stopPropagation(); openEvent('${e.id}')">${e.title || 'Geen titel'}</div>`;
-                });
-                if (dagEvents.length > 3) {
-                    eventHtml += `<div class="text-xs text-gray-400">+${dagEvents.length - 3} meer</div>`;
+        function saveLocalStorage() {
+            localStorage.setItem('projectStatuses', JSON.stringify(projectStatuses));
+            localStorage.setItem('projectZzpers', JSON.stringify(projectZzpers));
+        }
+
+        function populateZzpFilter() {
+            const select = document.getElementById('filterZzp');
+            zzpers.forEach(z => {
+                select.innerHTML += `<option value="${z.id}">${z.naam}</option>`;
+            });
+        }
+
+        // ============================================
+        // DATA LOADING
+        // ============================================
+        async function loadData() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('planningGrid').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
+
+            try {
+                // Load contacts from Moneybird
+                const contactsRes = await fetch('/api/contacts');
+                if (contactsRes.ok) {
+                    contacts = await contactsRes.json();
                 }
 
-                container.innerHTML += `
-                    <div class="calendar-day ${isToday ? 'today' : ''}" onclick="openDag('${datum}')">
-                        <div class="font-medium">${dag}</div>
-                        ${eventHtml}
-                    </div>`;
-            }
+                // Load calendar events
+                const { start, end } = getWeekRange();
+                const calRes = await fetch(`/api/calendar/events?start=${start}&end=${end}`);
+                if (calRes.ok) {
+                    const data = await calRes.json();
+                    events = data.events || data || [];
+                }
 
-            // Volgende maand dagen
-            const remaining = 42 - container.children.length;
-            for (let i = 1; i <= remaining && remaining < 14; i++) {
-                container.innerHTML += `<div class="calendar-day other-month">${i}</div>`;
+                renderPlanning();
+            } catch (e) {
+                console.error('Error loading data:', e);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'block';
             }
         }
 
-        function renderProjecten() {
-            const container = document.getElementById('projectenLijst');
-            const today = new Date().toISOString().split('T')[0];
+        function getWeekRange() {
+            const now = new Date();
+            const dayOfWeek = now.getDay();
+            const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
             
-            // Filter en sorteer komende events
-            const komend = googleEvents
-                .filter(e => {
-                    const start = e.start?.split('T')[0] || e.start;
-                    return start >= today;
-                })
-                .sort((a, b) => {
-                    const startA = a.start?.split('T')[0] || a.start;
-                    const startB = b.start?.split('T')[0] || b.start;
-                    return startA.localeCompare(startB);
-                })
-                .slice(0, 10);
+            const monday = new Date(now);
+            monday.setDate(now.getDate() + mondayOffset + (currentWeekOffset * 7));
+            monday.setHours(0, 0, 0, 0);
+            
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            sunday.setHours(23, 59, 59, 999);
+            
+            updateWeekLabel(monday, sunday);
+            
+            return {
+                start: monday.toISOString(),
+                end: sunday.toISOString()
+            };
+        }
 
-            if (komend.length === 0) {
-                container.innerHTML = '<p class="text-gray-400 text-sm">Geen komende afspraken</p>';
+        function updateWeekLabel(monday, sunday) {
+            const options = { day: 'numeric', month: 'short' };
+            const label = document.getElementById('weekLabel');
+            
+            if (currentWeekOffset === 0) {
+                label.textContent = `Deze week (${monday.toLocaleDateString('nl-NL', options)} - ${sunday.toLocaleDateString('nl-NL', options)})`;
+            } else {
+                label.textContent = `${monday.toLocaleDateString('nl-NL', options)} - ${sunday.toLocaleDateString('nl-NL', options)}`;
+            }
+        }
+
+        function changeWeek(offset) {
+            currentWeekOffset += offset;
+            loadData();
+        }
+
+        // ============================================
+        // RENDERING
+        // ============================================
+        function renderPlanning() {
+            const grid = document.getElementById('planningGrid');
+            const loading = document.getElementById('loading');
+            const emptyState = document.getElementById('emptyState');
+            
+            loading.style.display = 'none';
+            
+            // Filter events
+            let filtered = events.filter(e => {
+                const statusFilter = document.getElementById('filterStatus').value;
+                const zzpFilter = document.getElementById('filterZzp').value;
+                
+                const eventStatus = projectStatuses[e.id] || 'ingepland';
+                const eventZzp = projectZzpers[e.id];
+                
+                if (statusFilter && eventStatus !== statusFilter) return false;
+                if (zzpFilter && eventZzp != zzpFilter) return false;
+                
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                grid.style.display = 'none';
+                emptyState.style.display = 'block';
                 return;
             }
 
-            container.innerHTML = komend.map(e => {
-                const startDate = e.start?.split('T')[0] || e.start;
-                const startTime = e.start?.includes('T') ? e.start.split('T')[1]?.substring(0, 5) : '';
-                const klantInfo = zoekKlantBijEvent(e);
+            emptyState.style.display = 'none';
+            grid.style.display = 'grid';
+            grid.className = `planning-grid ${currentView}`;
+
+            if (currentView === 'list') {
+                renderListView(grid, filtered);
+            } else {
+                renderCardsView(grid, filtered);
+            }
+        }
+
+        function renderListView(grid, filtered) {
+            // Group by date
+            const byDate = {};
+            filtered.forEach(e => {
+                const date = new Date(e.start?.dateTime || e.start?.date).toDateString();
+                if (!byDate[date]) byDate[date] = [];
+                byDate[date].push(e);
+            });
+
+            const sortedDates = Object.keys(byDate).sort((a, b) => new Date(a) - new Date(b));
+            
+            grid.innerHTML = sortedDates.map(date => {
+                const dateObj = new Date(date);
+                const dayName = dateObj.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
                 
                 return `
-                    <div class="project-card" onclick="openEvent('${e.id}')">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="font-semibold text-sm">${e.title || 'Geen titel'}</div>
-                            <span class="google-badge">Google</span>
-                        </div>
-                        <div class="text-xs text-gray-500 mb-1">
-                            📅 ${formatDatum(startDate)}${startTime ? ' om ' + startTime : ''}
-                        </div>
-                        ${e.location ? `<div class="text-xs text-gray-500 mb-1">📍 ${e.location}</div>` : ''}
-                        ${klantInfo ? `
-                            <div class="text-xs text-gray-600 mb-2">👤 ${klantInfo.naam}</div>
-                            <div class="flex gap-2 mt-2 flex-wrap">
-                                ${klantInfo.phone ? `<a href="tel:${klantInfo.phone}" class="btn-call" onclick="event.stopPropagation()">📞 Bel</a>` : ''}
-                                ${klantInfo.email ? `<a href="mailto:${klantInfo.email}" class="btn-email" onclick="event.stopPropagation()">✉️ Mail</a>` : ''}
-                            </div>
-                        ` : ''}
+                    <div>
+                        <div class="day-header">${dayName}</div>
+                        ${byDate[date].map(e => renderProjectCard(e)).join('')}
                     </div>
                 `;
             }).join('');
         }
 
-        function zoekKlantBijEvent(event) {
-            // Probeer klant te vinden op basis van event titel of description
-            const titel = (event.title || '').toLowerCase();
-            const desc = (event.description || '').toLowerCase();
-            const location = (event.location || '').toLowerCase();
-            
-            for (const klant of klanten) {
-                const bedrijfsnaam = (klant.company_name || '').toLowerCase();
-                const volleNaam = (`${klant.firstname || ''} ${klant.lastname || ''}`).toLowerCase().trim();
-                
-                // Match op bedrijfsnaam of volledige naam
-                if (bedrijfsnaam && (titel.includes(bedrijfsnaam) || desc.includes(bedrijfsnaam))) {
-                    return buildKlantInfo(klant);
-                }
-                if (volleNaam.length > 2 && (titel.includes(volleNaam) || desc.includes(volleNaam))) {
-                    return buildKlantInfo(klant);
-                }
-                
-                // Match op achternaam alleen als titel of description die bevat
-                const achternaam = (klant.lastname || '').toLowerCase();
-                if (achternaam.length > 2 && (titel.includes(achternaam) || desc.includes(achternaam))) {
-                    return buildKlantInfo(klant);
-                }
-            }
-            
-            // Probeer ook op adres te zoeken
-            if (event.location) {
-                for (const klant of klanten) {
-                    const straat = (klant.address1 || '').toLowerCase();
-                    if (straat.length > 3 && location.includes(straat.split(' ')[0])) {
-                        return buildKlantInfo(klant);
-                    }
-                }
-            }
-            
-            return null;
+        function renderCardsView(grid, filtered) {
+            grid.innerHTML = filtered.map(e => renderProjectCard(e)).join('');
         }
 
-        function buildKlantInfo(klant) {
-            return {
-                id: klant.id,
-                naam: klant.company_name || `${klant.firstname || ''} ${klant.lastname || ''}`.trim() || 'Onbekend',
-                phone: klant.phone || '',
-                email: klant.email || '',
-                address: formatAddress(klant)
-            };
-        }
-
-        function formatAddress(klant) {
-            const parts = [];
-            if (klant.address1) parts.push(klant.address1);
-            if (klant.zipcode || klant.city) {
-                parts.push([klant.zipcode, klant.city].filter(Boolean).join(' '));
-            }
-            return parts.join(', ');
-        }
-
-        function formatDatum(dateStr) {
-            if (!dateStr) return '';
-            const d = new Date(dateStr);
-            const dagen = ['Zo', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za'];
-            return `${dagen[d.getDay()]} ${d.getDate()} ${maandNamen[d.getMonth()]}`;
-        }
-
-        function formatTelefoon(tel) {
-            if (!tel) return '';
-            // Clean en format Nederlands nummer
-            let clean = tel.replace(/[^0-9+]/g, '');
-            if (clean.startsWith('06') && clean.length === 10) {
-                return clean.replace(/(\d{2})(\d{4})(\d{4})/, '$1 $2 $3');
-            }
-            return tel;
-        }
-
-        function openEvent(id) {
-            const event = googleEvents.find(e => e.id === id);
-            if (!event) return;
+        function renderProjectCard(event) {
+            const status = projectStatuses[event.id] || 'ingepland';
+            const zzpId = projectZzpers[event.id];
+            const zzp = zzpers.find(z => z.id == zzpId);
             
-            const klantInfo = zoekKlantBijEvent(event);
-            const startDate = event.start?.split('T')[0] || event.start;
-            const startTime = event.start?.includes('T') ? event.start.split('T')[1]?.substring(0, 5) : '';
-            const endTime = event.end?.includes('T') ? event.end.split('T')[1]?.substring(0, 5) : '';
+            // Parse event details
+            const title = event.summary || 'Geen titel';
+            const location = event.location || '';
+            const description = event.description || '';
+            const startTime = event.start?.dateTime ? new Date(event.start.dateTime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }) : 'Hele dag';
+            const endTime = event.end?.dateTime ? new Date(event.end.dateTime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }) : '';
             
-            // Parse description voor extra info (m², status, notities)
-            const desc = event.description || '';
-            const m2Match = desc.match(/(\d+)\s*m[²2]/i);
-            const geschatteM2 = m2Match ? m2Match[1] : null;
+            // Try to match with Moneybird contact
+            const contact = findContact(title, description);
+            const phone = contact?.phone || extractPhone(description);
+            const email = contact?.email || extractEmail(description);
+            const cleanPhone = phone?.replace(/[^0-9+]/g, '') || '';
             
-            // Bepaal status uit description
-            let status = 'gepland';
-            if (desc.toLowerCase().includes('afgerond') || desc.toLowerCase().includes('klaar')) status = 'afgerond';
-            else if (desc.toLowerCase().includes('bezig') || desc.toLowerCase().includes('gestart')) status = 'bezig';
-            else if (desc.toLowerCase().includes('geannuleerd') || desc.toLowerCase().includes('cancelled')) status = 'geannuleerd';
-            
-            document.getElementById('modalTitle').textContent = event.title || 'Afspraak';
-            document.getElementById('modalContent').innerHTML = `
-                <div class="mb-4">
-                    <span class="status-badge status-${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>
-                    <span class="google-badge ml-2">Google Calendar</span>
-                </div>
-                
-                <div class="info-grid">
-                    <div class="info-item">
-                        <label>📅 Datum</label>
-                        <p>${formatDatum(startDate)}</p>
-                    </div>
-                    <div class="info-item">
-                        <label>🕐 Tijd</label>
-                        <p>${startTime ? startTime + (endTime && endTime !== startTime ? ' - ' + endTime : '') : 'Hele dag'}</p>
-                    </div>
-                    ${event.location ? `
-                    <div class="info-item full">
-                        <label>📍 Locatie</label>
-                        <p>${event.location}</p>
-                    </div>
-                    ` : ''}
-                    ${geschatteM2 ? `
-                    <div class="info-item">
-                        <label>📐 Geschatte m²</label>
-                        <p>${geschatteM2} m²</p>
-                    </div>
-                    ` : ''}
-                </div>
-                
-                ${klantInfo ? `
-                <div class="mt-6 p-4 bg-indigo-50 rounded-xl">
-                    <h3 class="font-semibold text-sm mb-3 flex items-center gap-2">👤 Klantgegevens 
-                        <a href="crm.html?klant=${klantInfo.id}" class="text-xs text-indigo-600 hover:underline">(Open dossier)</a>
-                    </h3>
-                    <div class="space-y-2 text-sm">
-                        <p><strong>Naam:</strong> ${klantInfo.naam}</p>
-                        ${klantInfo.address ? `<p><strong>Adres:</strong> ${klantInfo.address}</p>` : ''}
-                        ${klantInfo.phone ? `<p><strong>Telefoon:</strong> ${formatTelefoon(klantInfo.phone)}</p>` : ''}
-                        ${klantInfo.email ? `<p><strong>Email:</strong> ${klantInfo.email}</p>` : ''}
-                    </div>
-                    <div class="flex gap-2 mt-4 flex-wrap">
-                        ${klantInfo.phone ? `<a href="tel:${klantInfo.phone}" class="btn-call">📞 Bellen</a>` : ''}
-                        ${klantInfo.email ? `<a href="mailto:${klantInfo.email}" class="btn-email">✉️ Email</a>` : ''}
-                        ${klantInfo.phone ? `<a href="https://wa.me/31${klantInfo.phone.replace(/[^0-9]/g, '').replace(/^0/, '')}" target="_blank" class="btn-whatsapp">💬 WhatsApp</a>` : ''}
-                    </div>
-                </div>
-                ` : '<p class="mt-4 text-sm text-gray-500 italic">Geen klant gekoppeld aan deze afspraak</p>'}
-                
-                ${desc ? `
-                <div class="mt-4">
-                    <label class="text-xs text-gray-500 font-semibold block mb-2">📝 Notities</label>
-                    <div class="text-sm bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">${desc}</div>
-                </div>
-                ` : ''}
-            `;
-            
-            document.getElementById('detailModal').classList.remove('hidden');
-        }
-
-        function openDag(datum) {
-            // Toon events voor deze dag
-            const dagEvents = googleEvents.filter(e => {
-                const eventStart = e.start?.split('T')[0] || e.start;
-                return eventStart === datum;
-            });
-            
-            if (dagEvents.length === 1) {
-                openEvent(dagEvents[0].id);
-            } else if (dagEvents.length > 1) {
-                document.getElementById('modalTitle').textContent = `📅 ${formatDatum(datum)}`;
-                document.getElementById('modalContent').innerHTML = `
-                    <p class="text-sm text-gray-500 mb-4">${dagEvents.length} afspraken op deze dag</p>
-                    ${dagEvents.map(e => {
-                        const klantInfo = zoekKlantBijEvent(e);
-                        return `
-                        <div class="project-card mb-3" onclick="sluitModal(); setTimeout(() => openEvent('${e.id}'), 100)">
-                            <div class="font-semibold text-sm">${e.title || 'Geen titel'}</div>
-                            ${e.location ? `<div class="text-xs text-gray-500 mt-1">📍 ${e.location}</div>` : ''}
-                            ${klantInfo ? `<div class="text-xs text-gray-600 mt-1">👤 ${klantInfo.naam}</div>` : ''}
+            return `
+                <div class="project-card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">${escapeHtml(title)}</div>
+                            <div class="card-date">🕐 ${startTime}${endTime ? ' - ' + endTime : ''}</div>
                         </div>
-                    `}).join('')}
-                `;
-                document.getElementById('detailModal').classList.remove('hidden');
-            } else {
-                showToast('Geen afspraken op deze dag', 'info');
+                        <span class="status-badge status-${status}">${capitalizeFirst(status)}</span>
+                    </div>
+                    
+                    <div class="card-body">
+                        ${location ? `
+                        <div class="info-row">
+                            <span class="info-icon">📍</span>
+                            <div class="info-content">
+                                <span class="info-label">Werkadres</span>
+                                ${escapeHtml(location)}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        ${phone ? `
+                        <div class="info-row">
+                            <span class="info-icon">📞</span>
+                            <div class="info-content">
+                                <span class="info-label">Telefoon</span>
+                                ${escapeHtml(phone)}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        ${email ? `
+                        <div class="info-row">
+                            <span class="info-icon">📧</span>
+                            <div class="info-content">
+                                <span class="info-label">E-mail</span>
+                                ${escapeHtml(email)}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        ${description ? `
+                        <div class="info-row">
+                            <span class="info-icon">📝</span>
+                            <div class="info-content">
+                                <span class="info-label">Notities</span>
+                                ${escapeHtml(description.substring(0, 150))}${description.length > 150 ? '...' : ''}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        ${zzp ? `
+                        <div class="info-row">
+                            <span class="info-icon">👷</span>
+                            <div class="info-content">
+                                <span class="zzp-badge">
+                                    <span class="zzp-avatar">${zzp.initialen}</span>
+                                    ${zzp.naam}
+                                </span>
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="contact-buttons">
+                            ${email ? `<a href="mailto:${email}" class="contact-btn mail">📧 Mail</a>` : '<span class="contact-btn mail" style="opacity:0.4; cursor:not-allowed;">📧 Mail</span>'}
+                            ${cleanPhone ? `<a href="tel:${cleanPhone}" class="contact-btn tel">📞 Bel</a>` : '<span class="contact-btn tel" style="opacity:0.4; cursor:not-allowed;">📞 Bel</span>'}
+                            ${cleanPhone ? `<a href="https://wa.me/31${cleanPhone.replace(/^0/, '').replace(/^\+31/, '')}" target="_blank" class="contact-btn whatsapp">💬 WhatsApp</a>` : '<span class="contact-btn whatsapp" style="opacity:0.4; cursor:not-allowed;">💬 WhatsApp</span>'}
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer">
+                        <div class="footer-row">
+                            <select class="footer-select" onchange="updateStatus('${event.id}', this.value)">
+                                <option value="ingepland" ${status === 'ingepland' ? 'selected' : ''}>📅 Ingepland</option>
+                                <option value="bezig" ${status === 'bezig' ? 'selected' : ''}>🔨 Bezig</option>
+                                <option value="afgerond" ${status === 'afgerond' ? 'selected' : ''}>✅ Afgerond</option>
+                                <option value="geannuleerd" ${status === 'geannuleerd' ? 'selected' : ''}>❌ Geannuleerd</option>
+                            </select>
+                            <select class="footer-select" onchange="updateZzp('${event.id}', this.value)">
+                                <option value="">👷 Wijs ZZP'er toe</option>
+                                ${zzpers.map(z => `<option value="${z.id}" ${zzpId == z.id ? 'selected' : ''}>${z.naam}</option>`).join('')}
+                            </select>
+                        </div>
+                        
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${getProgressPercent(status)}%;"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // HELPERS
+        // ============================================
+        function findContact(title, description) {
+            const searchText = (title + ' ' + description).toLowerCase();
+            return contacts.find(c => {
+                const name = (c.company_name || c.firstname + ' ' + c.lastname || '').toLowerCase();
+                return name && searchText.includes(name);
+            });
+        }
+
+        function extractPhone(text) {
+            const match = text.match(/(\+31|0)[0-9\s\-]{9,}/);
+            return match ? match[0].trim() : null;
+        }
+
+        function extractEmail(text) {
+            const match = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+            return match ? match[0] : null;
+        }
+
+        function getProgressPercent(status) {
+            switch(status) {
+                case 'ingepland': return 25;
+                case 'bezig': return 60;
+                case 'afgerond': return 100;
+                case 'geannuleerd': return 0;
+                default: return 0;
             }
         }
 
-        function sluitModal() {
-            document.getElementById('detailModal').classList.add('hidden');
+        function updateStatus(eventId, status) {
+            projectStatuses[eventId] = status;
+            saveLocalStorage();
+            renderPlanning();
         }
 
-        async function checkGoogleStatus() {
-            try {
-                const res = await fetch('/api/google/status');
-                const data = await res.json();
-                googleConnected = data.connected;
-                
-                document.getElementById('googleStatus').innerHTML = googleConnected 
-                    ? `<div class="sync-status connected">✅ Google verbonden</div>`
-                    : `<button onclick="connectGoogle()" class="btn-google text-sm">🔗 Google koppelen</button>`;
-                
-                if (googleConnected) {
-                    await loadGoogleEvents();
-                }
-            } catch (err) {
-                console.error('Google status check failed:', err);
-            }
+        function updateZzp(eventId, zzpId) {
+            projectZzpers[eventId] = zzpId;
+            saveLocalStorage();
+            renderPlanning();
         }
 
-        async function connectGoogle() {
-            window.location.href = '/api/google/auth';
+        function setView(view) {
+            currentView = view;
+            document.getElementById('viewList').classList.toggle('active', view === 'list');
+            document.getElementById('viewCards').classList.toggle('active', view === 'cards');
+            renderPlanning();
         }
 
-        async function loadGoogleEvents() {
-            if (!googleConnected) return;
-            try {
-                const res = await fetch('/api/google/events');
-                const data = await res.json();
-                googleEvents = data.events || [];
-                renderKalender();
-                renderProjecten();
-            } catch (err) {
-                console.error('Google events laden mislukt:', err);
-            }
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.querySelector('.sidebar-overlay').classList.toggle('open');
         }
 
-        async function loadKlanten() {
-            try {
-                const res = await fetch('/api/contacts');
-                const data = await res.json();
-                klanten = data.contacts || [];
-            } catch (err) {
-                console.error('Klanten laden mislukt:', err);
-            }
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
-        function showToast(message, type) {
-            type = type || 'info';
-            const colors = { success: 'bg-green-500', error: 'bg-red-500', warning: 'bg-yellow-500', info: 'bg-blue-500' };
-            const toast = document.createElement('div');
-            toast.className = 'fixed bottom-4 right-4 ' + colors[type] + ' text-white px-4 py-2 rounded-lg shadow-lg z-50';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(function() { toast.remove(); }, 3000);
+        function capitalizeFirst(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
         }
-
-        function checkUrlParams() {
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('datum')) {
-                const datum = params.get('datum');
-                const d = new Date(datum);
-                huidigJaar = d.getFullYear();
-                huidigeMaand = d.getMonth();
-            }
-        }
-
-        // Init
-        async function init() {
-            checkUrlParams();
-            await loadKlanten();
-            await checkGoogleStatus();
-            renderKalender();
-            renderProjecten();
-        }
-        init();
     </script>
 </body>
 </html>
