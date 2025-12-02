@@ -51,14 +51,18 @@
         .ruimte-section-title { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
         
         /* Dienst in ruimte */
-        .dienst-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: white; border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 8px; }
+        .dienst-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: white; border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+        .dienst-item.is-optie { border-color: #f59e0b; background: #fffbeb; border-style: dashed; }
         .dienst-item:last-child { margin-bottom: 0; }
-        .dienst-info { flex: 1; }
+        .dienst-info { flex: 1; min-width: 150px; }
         .dienst-naam { font-weight: 600; font-size: 14px; }
         .dienst-prijs { font-size: 12px; color: #059669; }
         .dienst-input { width: 80px; text-align: center; padding: 8px; border: 1px solid #e2e8f0; border-radius: 8px; }
         .dienst-totaal { font-weight: 700; color: #059669; min-width: 80px; text-align: right; }
         .dienst-remove { background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; width: 32px; height: 32px; cursor: pointer; font-size: 16px; }
+        .optie-badge { background: #f59e0b; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+        .optie-checkbox { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #64748b; }
+        .optie-checkbox input { width: 16px; height: 16px; accent-color: #f59e0b; }
         
         /* Foto grid */
         .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
@@ -283,15 +287,18 @@
                 <div class="grid grid-cols-3 gap-4 mb-6">
                     <div class="afwerking-card" onclick="selectAfwerking('basis')" id="afwerkingBasis">
                         <div class="titel">Basis</div>
-                        <div class="subtitel">Standaard afwerking</div>
+                        <div class="subtitel">Standaard</div>
+                        <div class="text-xs text-gray-500 mt-1">+0%</div>
                     </div>
                     <div class="afwerking-card selected" onclick="selectAfwerking('premium')" id="afwerkingPremium">
                         <div class="titel">Premium</div>
-                        <div class="subtitel">Extra vlak & strak</div>
+                        <div class="subtitel">Extra vlak</div>
+                        <div class="text-xs text-indigo-600 mt-1 font-semibold">+27%</div>
                     </div>
                     <div class="afwerking-card" onclick="selectAfwerking('luxe')" id="afwerkingLuxe">
                         <div class="titel">Luxe</div>
                         <div class="subtitel">Topkwaliteit</div>
+                        <div class="text-xs text-purple-600 mt-1 font-semibold">+60%</div>
                     </div>
                 </div>
 
@@ -461,39 +468,52 @@
 
     <script>
         // ============================================
-        // PRIJZEN DATABASE
+        // PRIJZEN DATABASE - Alleen basisprijs
+        // Afwerking: Basis +0%, Premium +27%, Luxe +60%
         // ============================================
+        const AFWERKING_MULTIPLIER = {
+            'basis': 1.00,
+            'premium': 1.27,
+            'luxe': 1.60
+        };
+        
         const PRIJZEN = {
-            // Stucwerk [basis, premium, luxe]
-            glad_stucwerk_wanden: { naam: 'Glad Stucwerk - Wanden', prijzen: [15, 19, 24], eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
-            glad_stucwerk_plafonds: { naam: 'Glad Stucwerk - Plafonds', prijzen: [15, 19, 24], eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
-            waterpas_stucwerk_wanden: { naam: 'Waterpas Stucwerk - Wanden', prijzen: [28, 28, 28], eenheid: 'm²', type: 'wanden', heeftNiveaus: false },
-            waterpas_stucwerk_plafonds: { naam: 'Waterpas Stucwerk - Plafonds', prijzen: [28, 28, 28], eenheid: 'm²', type: 'plafonds', heeftNiveaus: false },
-            dunpleister_wanden: { naam: 'Dunpleister - Wanden', prijzen: [12, 14, 16], eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
-            dunpleister_plafonds: { naam: 'Dunpleister - Plafonds', prijzen: [12, 14, 16], eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
-            spachtelputz_wanden: { naam: 'Spachtelputz - Wanden', prijzen: [18, 24, 27], eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
-            spachtelputz_plafonds: { naam: 'Spachtelputz - Plafonds', prijzen: [18, 24, 27], eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
-            betonlook_wanden: { naam: 'Betonlook - Wanden', prijzen: [35, 100, 250], eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
-            betonlook_plafonds: { naam: 'Betonlook - Plafonds', prijzen: [35, 100, 250], eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
+            // Stucwerk
+            glad_stucwerk_wanden: { naam: 'Glad Stucwerk - Wanden', basisPrijs: 15, eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
+            glad_stucwerk_plafonds: { naam: 'Glad Stucwerk - Plafonds', basisPrijs: 15, eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
+            waterpas_stucwerk_wanden: { naam: 'Waterpas Stucwerk - Wanden', basisPrijs: 28, eenheid: 'm²', type: 'wanden', heeftNiveaus: false },
+            waterpas_stucwerk_plafonds: { naam: 'Waterpas Stucwerk - Plafonds', basisPrijs: 28, eenheid: 'm²', type: 'plafonds', heeftNiveaus: false },
+            dunpleister_wanden: { naam: 'Dunpleister - Wanden', basisPrijs: 12, eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
+            dunpleister_plafonds: { naam: 'Dunpleister - Plafonds', basisPrijs: 12, eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
+            spachtelputz_wanden: { naam: 'Spachtelputz - Wanden', basisPrijs: 18, eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
+            spachtelputz_plafonds: { naam: 'Spachtelputz - Plafonds', basisPrijs: 18, eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
+            betonlook_wanden: { naam: 'Betonlook - Wanden', basisPrijs: 35, eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
+            betonlook_plafonds: { naam: 'Betonlook - Plafonds', basisPrijs: 35, eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
             
             // Spuiten
-            latex_wanden: { naam: 'Latex spuiten - Wanden', prijzen: [11, 13, 15], eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
-            latex_plafonds: { naam: 'Latex spuiten - Plafonds', prijzen: [10, 11, 14], eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
-            spack_wanden: { naam: 'Spack spuiten - Wanden', prijzen: [12, 14, 16], eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
-            spack_plafonds: { naam: 'Spack spuiten - Plafonds', prijzen: [12, 14, 16], eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
+            latex_wanden: { naam: 'Latex spuiten - Wanden', basisPrijs: 11, eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
+            latex_plafonds: { naam: 'Latex spuiten - Plafonds', basisPrijs: 10, eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
+            spack_wanden: { naam: 'Spack spuiten - Wanden', basisPrijs: 12, eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
+            spack_plafonds: { naam: 'Spack spuiten - Plafonds', basisPrijs: 12, eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
             
             // Overig
-            kozijnen: { naam: 'Kozijnen schilderen', prijzen: [25, 35, 45], eenheid: 'm²', type: 'aantal', heeftNiveaus: true },
-            deuren: { naam: 'Deuren schilderen', prijzen: [65, 95, 125], eenheid: 'stuk', type: 'aantal', heeftNiveaus: true },
-            plinten: { naam: 'Plinten schilderen', prijzen: [6, 6, 6], eenheid: 'm¹', type: 'aantal', heeftNiveaus: false },
-            trap: { naam: 'Trap schilderen', prijzen: [750, 950, 1250], eenheid: 'trapdeel', type: 'aantal', heeftNiveaus: true },
-            kitwerk: { naam: 'Kit Werkzaamheden', prijzen: [3, 3, 3], eenheid: 'm¹', type: 'aantal', heeftNiveaus: false },
-            stucwerk_restauratie: { naam: 'Stucwerk Restauratie', prijzen: [120, 120, 120], eenheid: 'uur', type: 'aantal', heeftNiveaus: false },
-            gevelstucwerk: { naam: 'Gevelstucwerk (Glad)', prijzen: [45, 55, 65], eenheid: 'm²', type: 'aantal', heeftNiveaus: true },
-            gevelisolatie: { naam: 'Gevelisolatie', prijzen: [55, 65, 75], eenheid: 'm²', type: 'aantal', heeftNiveaus: true },
-            brandwerend: { naam: 'Brandwerende Coating', prijzen: [22, 22, 22], eenheid: 'm²', type: 'aantal', heeftNiveaus: false },
-            '2k_coating': { naam: '2K Coating', prijzen: [17, 17, 17], eenheid: 'm²', type: 'aantal', heeftNiveaus: false }
+            kozijnen: { naam: 'Kozijnen schilderen', basisPrijs: 25, eenheid: 'm²', type: 'aantal', heeftNiveaus: true },
+            deuren: { naam: 'Deuren schilderen', basisPrijs: 65, eenheid: 'stuk', type: 'aantal', heeftNiveaus: true },
+            plinten: { naam: 'Plinten schilderen', basisPrijs: 6, eenheid: 'm¹', type: 'aantal', heeftNiveaus: false },
+            trap: { naam: 'Trap schilderen', basisPrijs: 750, eenheid: 'trapdeel', type: 'aantal', heeftNiveaus: true },
+            kitwerk: { naam: 'Kit Werkzaamheden', basisPrijs: 3, eenheid: 'm¹', type: 'aantal', heeftNiveaus: false },
+            stucwerk_restauratie: { naam: 'Stucwerk Restauratie', basisPrijs: 120, eenheid: 'uur', type: 'aantal', heeftNiveaus: false },
+            gevelstucwerk: { naam: 'Gevelstucwerk (Glad)', basisPrijs: 45, eenheid: 'm²', type: 'aantal', heeftNiveaus: true },
+            gevelisolatie: { naam: 'Gevelisolatie', basisPrijs: 55, eenheid: 'm²', type: 'aantal', heeftNiveaus: true },
+            brandwerend: { naam: 'Brandwerende Coating', basisPrijs: 22, eenheid: 'm²', type: 'aantal', heeftNiveaus: false },
+            '2k_coating': { naam: '2K Coating', basisPrijs: 17, eenheid: 'm²', type: 'aantal', heeftNiveaus: false }
         };
+        
+        // Bereken prijs met afwerking
+        function berekenPrijsMetAfwerking(basisPrijs, heeftNiveaus) {
+            if (!heeftNiveaus) return basisPrijs;
+            return Math.round(basisPrijs * AFWERKING_MULTIPLIER[selectedAfwerking]);
+        }
 
         // ============================================
         // STATE
@@ -699,9 +719,12 @@
 
         function renderDienstItem(ruimteId, dienst) {
             return `
-                <div class="dienst-item">
+                <div class="dienst-item ${dienst.isOptie ? 'is-optie' : ''}">
                     <div class="dienst-info">
-                        <div class="dienst-naam">${dienst.naam}</div>
+                        <div class="dienst-naam">
+                            ${dienst.naam}
+                            ${dienst.isOptie ? '<span class="optie-badge">OPTIE</span>' : ''}
+                        </div>
                         <div class="dienst-prijs">€${dienst.prijs}/${dienst.eenheid}</div>
                     </div>
                     <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1"
@@ -709,9 +732,37 @@
                            onchange="updateDienstHoeveelheid(${ruimteId}, '${dienst.id}', this.value)">
                     <span class="text-gray-500 text-sm">${dienst.eenheid}</span>
                     <div class="dienst-totaal">€${((dienst.hoeveelheid || 0) * dienst.prijs).toFixed(2)}</div>
+                    <label class="optie-checkbox" title="Markeer als optie voor klant">
+                        <input type="checkbox" ${dienst.isOptie ? 'checked' : ''} 
+                               onchange="toggleDienstOptie(${ruimteId}, '${dienst.id}', this.checked)">
+                        <span>Optie</span>
+                    </label>
                     <button onclick="removeDienst(${ruimteId}, '${dienst.id}')" class="dienst-remove">✕</button>
                 </div>
+                <div class="dienst-notitie-row" style="margin-bottom: 8px; margin-top: -4px;">
+                    <input type="text" class="input-field text-sm" style="padding: 8px 12px;" 
+                           placeholder="Notitie..." 
+                           value="${dienst.notitie || ''}"
+                           onchange="updateDienstNotitie(${ruimteId}, '${dienst.id}', this.value)">
+                </div>
             `;
+        }
+
+        function updateDienstNotitie(ruimteId, dienstId, notitie) {
+            const ruimte = ruimtes.find(r => r.id === ruimteId);
+            if (!ruimte) return;
+            const dienst = ruimte.diensten.find(d => d.id === dienstId);
+            if (dienst) dienst.notitie = notitie;
+        }
+
+        function toggleDienstOptie(ruimteId, dienstId, isOptie) {
+            const ruimte = ruimtes.find(r => r.id === ruimteId);
+            if (!ruimte) return;
+            const dienst = ruimte.diensten.find(d => d.id === dienstId);
+            if (dienst) {
+                dienst.isOptie = isOptie;
+                renderRuimtes();
+            }
         }
 
         function updateDienstHoeveelheid(ruimteId, dienstId, value) {
@@ -756,12 +807,11 @@
         }
 
         function renderModalDiensten(dienstIds) {
-            const idx = getAfwerkingIndex();
             const container = document.getElementById('dienstModalList');
             
             container.innerHTML = dienstIds.map(id => {
                 const info = PRIJZEN[id];
-                const prijs = info.prijzen[info.heeftNiveaus ? idx : 0];
+                const prijs = berekenPrijsMetAfwerking(info.basisPrijs, info.heeftNiveaus);
                 return `
                     <div class="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-indigo-50 transition" onclick="addDienstToRuimte('${id}')">
                         <div class="flex justify-between items-center">
@@ -779,8 +829,7 @@
             if (!ruimte) return;
             
             const info = PRIJZEN[dienstId];
-            const idx = getAfwerkingIndex();
-            let prijs = info.prijzen[info.heeftNiveaus ? idx : 0];
+            const prijs = berekenPrijsMetAfwerking(info.basisPrijs, info.heeftNiveaus);
             
             // Check of deze dienst al bestaat in deze ruimte
             if (ruimte.diensten.some(d => d.dienstId === dienstId)) {
@@ -793,11 +842,13 @@
                 dienstId: dienstId,
                 naam: info.naam,
                 prijs: prijs,
-                basisPrijs: prijs,
+                basisPrijs: info.basisPrijs,
                 eenheid: info.eenheid,
                 type: info.type,
                 heeftNiveaus: info.heeftNiveaus,
-                hoeveelheid: 0
+                hoeveelheid: 0,
+                isOptie: false,
+                notitie: ''
             });
             
             hideDienstModal();
@@ -827,7 +878,8 @@
                 eenheid: eenheid,
                 type: 'custom',
                 heeftNiveaus: false,
-                hoeveelheid: 0
+                hoeveelheid: 0,
+                isOptie: false
             });
             
             document.getElementById('customDienstNaam').value = '';
@@ -896,12 +948,7 @@
             if (currentStep === 4) berekenPrijzen();
         }
 
-        function getAfwerkingIndex() {
-            return { 'basis': 0, 'premium': 1, 'luxe': 2 }[selectedAfwerking] || 1;
-        }
-
         function updateAllePrijzen() {
-            const idx = getAfwerkingIndex();
             const extraSterk = document.getElementById('extraSterk')?.checked || false;
             
             ruimtes.forEach(r => {
@@ -909,7 +956,7 @@
                     if (d.dienstId !== 'custom') {
                         const info = PRIJZEN[d.dienstId];
                         if (info) {
-                            let prijs = info.prijzen[info.heeftNiveaus ? idx : 0];
+                            let prijs = berekenPrijsMetAfwerking(info.basisPrijs, info.heeftNiveaus);
                             if (extraSterk && d.dienstId.includes('stucwerk')) {
                                 prijs = Math.round(prijs * 1.2);
                             }
@@ -1135,21 +1182,32 @@
             const werkAdres = document.getElementById('werkAdres').value;
             const werkPlaats = document.getElementById('werkPlaats').value;
             
-            // Alle diensten verzamelen
-            let alleDiensten = [];
+            // Alle diensten verzamelen - gescheiden in vast en optie
+            let vasteDiensten = [];
+            let optieDiensten = [];
             ruimtes.forEach(r => {
                 r.diensten.forEach(d => {
                     if (d.hoeveelheid > 0) {
-                        alleDiensten.push({ ...d, ruimteNaam: r.naam || 'Onbenoemd' });
+                        const item = { ...d, ruimteNaam: r.naam || 'Onbenoemd', ruimteNotitie: r.notitie };
+                        if (d.isOptie) {
+                            optieDiensten.push(item);
+                        } else {
+                            vasteDiensten.push(item);
+                        }
                     }
                 });
             });
             
-            const subtotaalDiensten = alleDiensten.reduce((sum, d) => sum + (d.hoeveelheid * d.prijs), 0);
+            const subtotaalVast = vasteDiensten.reduce((sum, d) => sum + (d.hoeveelheid * d.prijs), 0);
+            const subtotaalOpties = optieDiensten.reduce((sum, d) => sum + (d.hoeveelheid * d.prijs), 0);
             const extraTotaal = extraKosten.reduce((sum, k) => sum + k.bedrag, 0);
-            const subtotaal = subtotaalDiensten + extraTotaal;
+            const subtotaal = subtotaalVast + extraTotaal;
             const btw = subtotaal * 0.21;
             const totaal = subtotaal + btw;
+            
+            // Opties apart berekenen
+            const btwOpties = subtotaalOpties * 0.21;
+            const totaalOpties = subtotaalOpties + btwOpties;
             
             container.innerHTML = `
                 <div class="bg-gray-50 rounded-lg p-4">
@@ -1160,7 +1218,7 @@
                 
                 <div class="bg-gray-50 rounded-lg p-4">
                     <h3 class="font-bold mb-2">🛠️ Werkzaamheden (${selectedAfwerking})</h3>
-                    ${alleDiensten.map(d => `
+                    ${vasteDiensten.map(d => `
                         <div class="flex justify-between text-sm py-1">
                             <span>${d.naam} <span class="text-gray-400">(${d.ruimteNaam})</span></span>
                             <span>${d.hoeveelheid} ${d.eenheid} × €${d.prijs} = <strong>€${(d.hoeveelheid * d.prijs).toFixed(2)}</strong></span>
@@ -1177,6 +1235,24 @@
                         </div>
                     ` : ''}
                 </div>
+                
+                ${optieDiensten.length > 0 ? `
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <h3 class="font-bold mb-2 text-amber-700">⭐ Opties (niet in totaal)</h3>
+                    ${optieDiensten.map(d => `
+                        <div class="flex justify-between text-sm py-1">
+                            <span>${d.naam} <span class="text-gray-400">(${d.ruimteNaam})</span></span>
+                            <span>${d.hoeveelheid} ${d.eenheid} × €${d.prijs} = <strong>€${(d.hoeveelheid * d.prijs).toFixed(2)}</strong></span>
+                        </div>
+                    `).join('')}
+                    <div class="border-t mt-2 pt-2 text-amber-700">
+                        <div class="flex justify-between font-semibold">
+                            <span>Totaal opties incl. BTW</span>
+                            <span>€${totaalOpties.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
                 
                 <div class="bg-green-50 border border-green-200 rounded-lg p-4">
                     <div class="flex justify-between mb-1">
