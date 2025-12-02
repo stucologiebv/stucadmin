@@ -3301,3 +3301,63 @@ app.listen(PORT, () => {
     console.log(`📩 Offerteaanvragen module actief`);
     console.log(`📊 Login: http://localhost:${PORT}/login.html`);
 });
+
+// WEBSITE FORMULIER ENDPOINT (publiek, geen auth)
+app.post('/api/offerteaanvragen/website', async (req, res) => {
+    res.header('Access-Control-Allow-Origin', 'https://stucologie.nl');
+    res.header('Access-Control-Allow-Origin', 'https://www.stucologie.nl');
+    
+    const { firstname, email, phone, address, message } = req.body;
+    
+    if (!firstname || !email || !message) {
+        return res.status(400).json({ error: 'Naam, email en bericht zijn verplicht' });
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Ongeldig emailadres' });
+    }
+    
+    const nameClean = firstname.trim().toLowerCase();
+    if (nameClean.length < 2 || /^(.)\1+$/.test(nameClean) || /[bcdfghjklmnpqrstvwxyz]{5,}/i.test(nameClean)) {
+        return res.status(400).json({ error: 'Ongeldige naam' });
+    }
+    
+    try {
+        const aanvraag = {
+            id: 'web_' + Date.now(),
+            naam: firstname.trim(),
+            email: email.trim().toLowerCase(),
+            telefoon: phone?.trim() || '',
+            adres: address?.trim() || '',
+            bericht: message.trim(),
+            status: 'nieuw',
+            bron: 'website',
+            created: new Date().toISOString()
+        };
+        
+        const filePath = '/home/info/stucadmin-data/offerteaanvragen.json';
+        let aanvragen = [];
+        try {
+            const data = await fs.readFile(filePath, 'utf8');
+            aanvragen = JSON.parse(data);
+        } catch (e) {}
+        
+        aanvragen.push(aanvraag);
+        await fs.writeFile(filePath, JSON.stringify(aanvragen, null, 2));
+        
+        console.log('Nieuwe website aanvraag: ' + aanvraag.naam);
+        res.json({ success: true, id: aanvraag.id });
+        
+    } catch (error) {
+        console.error('Error saving aanvraag:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+app.options('/api/offerteaanvragen/website', (req, res) => {
+    res.header('Access-Control-Allow-Origin', 'https://stucologie.nl');
+    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.sendStatus(200);
+});
