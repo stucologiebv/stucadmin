@@ -3339,12 +3339,12 @@ app.post('/api/offerteaanvragen/website', async (req, res) => {
         const filePath = '/home/info/stucadmin-data/offerteaanvragen.json';
         let aanvragen = [];
         try {
-            const data = await fs.readFile(filePath, 'utf8');
+            const data = await fs.promises.readFile(filePath, 'utf8');
             aanvragen = JSON.parse(data);
         } catch (e) {}
         
         aanvragen.push(aanvraag);
-        await fs.writeFile(filePath, JSON.stringify(aanvragen, null, 2));
+        await fs.promises.writeFile(filePath, JSON.stringify(aanvragen, null, 2));
         
         console.log('Nieuwe website aanvraag: ' + aanvraag.naam);
         res.json({ success: true, id: aanvraag.id });
