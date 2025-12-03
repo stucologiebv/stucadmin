@@ -13,8 +13,8 @@ const PORT = process.env.PORT || 3001;
 
 // Security configuration
 const SECURITY_CONFIG = {
-    maxLoginAttempts: 5,           // Max login pogingen
-    lockoutDuration: 15 * 60 * 1000, // 15 minuten lockout
+    maxLoginAttempts: 10,           // Max login pogingen
+    lockoutDuration: 2 * 60 * 1000, // 15 minuten lockout
     sessionDuration: 24 * 60 * 60 * 1000, // 24 uur sessie
     passwordMinLength: 8,
     bcryptRounds: 12
