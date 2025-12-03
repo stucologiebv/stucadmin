@@ -3426,3 +3426,52 @@ app.options('/api/offerteaanvragen/website', (req, res) => {
     res.header('Access-Control-Allow-Headers', 'Content-Type');
     res.sendStatus(200);
 });
+
+
+// ============================================
+// STUCIE - AI ASSISTENT
+// ============================================
+
+app.post('/api/stucie/chat', requireAuth, async (req, res) => {
+    const { message } = req.body;
+    
+    try {
+        const context = await getStucieContext();
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.CLAUDE_API_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 2048,
+                system: 'Je bent Stucie, de vriendelijke AI-assistent van Stucologie B.V. Eigenaar is Minas. Huidige data: ' + JSON.stringify(context) + '. Gebruik emoji en HTML formatting.',
+                messages: [{ role: 'user', content: message }]
+            })
+        });
+        const data = await response.json();
+        if (data.error) return res.status(500).json({ error: 'AI niet beschikbaar' });
+        res.json({ response: data.content[0].text });
+    } catch (error) {
+        console.error('Stucie error:', error);
+        res.status(500).json({ error: 'Er ging iets mis' });
+    }
+});
+
+async function getStucieContext() {
+    const ctx = { datum: new Date().toLocaleDateString('nl-NL'), tijd: new Date().toLocaleTimeString('nl-NL') };
+    try {
+        const d = await fs.promises.readFile('/home/info/stucadmin-data/offerteaanvragen.json','utf8');
+        const a = JSON.parse(d);
+        ctx.offerteaanvragen = { totaal: a.length, nieuw: a.filter(x=>x.status==='nieuw').length };
+    } catch(e){}
+    if(cache.contacts?.data) ctx.klanten = cache.contacts.data.length;
+    if(cache.invoices?.data) {
+        const m = new Date().toISOString().slice(0,7);
+        const i = cache.invoices.data.filter(x=>x.invoice_date?.startsWith(m));
+        ctx.omzet = i.reduce((s,x)=>s+parseFloat(x.total_price_incl_tax||0),0).toFixed(2);
+    }
+    return ctx;
+}

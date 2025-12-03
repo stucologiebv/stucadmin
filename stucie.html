@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stucie - AI Assistent | StucAdmin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #e67e22;
+            --primary-dark: #d35400;
+            --secondary: #3498db;
+            --bg-dark: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-chat: #1a1a24;
+            --text: #ffffff;
+            --text-muted: #8888aa;
+            --border: #2a2a3a;
+            --success: #27ae60;
+            --glow: rgba(230, 126, 34, 0.3);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text);
+        }
+        
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 15px var(--glow);
+        }
+        
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        .logo-text span {
+            color: var(--primary);
+        }
+        
+        .nav-section {
+            padding: 15px 10px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .nav-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 10px 15px 5px;
+            letter-spacing: 1px;
+        }
+        
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 10px;
+            margin: 2px 5px;
+            transition: all 0.2s;
+        }
+        
+        .nav-item:hover {
+            background: rgba(255,255,255,0.05);
+            color: var(--text);
+        }
+        
+        .nav-item.active {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 4px 15px var(--glow);
+        }
+        
+        .nav-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+        
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        /* Chat Header */
+        .chat-header {
+            padding: 20px 30px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .chat-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .stucie-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 var(--glow); }
+            50% { box-shadow: 0 0 20px 10px transparent; }
+        }
+        
+        .stucie-info h1 {
+            font-size: 22px;
+            font-weight: 600;
+        }
+        
+        .stucie-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--success);
+            font-size: 13px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: blink 2s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .header-btn {
+            padding: 10px 20px;
+            background: var(--bg-chat);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .header-btn:hover {
+            background: var(--border);
+        }
+        
+        /* Chat Messages */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .message {
+            display: flex;
+            gap: 15px;
+            max-width: 85%;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+        
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        
+        .message.assistant .message-avatar {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+        
+        .message.user .message-avatar {
+            background: var(--secondary);
+        }
+        
+        .message-content {
+            background: var(--bg-chat);
+            padding: 15px 20px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+        
+        .message.user .message-content {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border: none;
+        }
+        
+        .message-text {
+            font-size: 15px;
+            line-height: 1.6;
+        }
+        
+        .message-text code {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .message-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+        
+        .message.user .message-time {
+            color: rgba(255,255,255,0.7);
+        }
+        
+        /* Quick Actions */
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .quick-action {
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: var(--text);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .quick-action:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        /* Typing Indicator */
+        .typing-indicator {
+            display: none;
+            gap: 15px;
+            max-width: 85%;
+        }
+        
+        .typing-indicator.visible {
+            display: flex;
+        }
+        
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+            padding: 20px;
+            background: var(--bg-chat);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes typing {
+            0%, 100% { transform: translateY(0); opacity: 0.5; }
+            50% { transform: translateY(-5px); opacity: 1; }
+        }
+        
+        /* Chat Input */
+        .chat-input-container {
+            padding: 20px 30px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+        }
+        
+        .chat-input-wrapper {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            background: var(--bg-chat);
+            border: 1px solid var(--border);
+            border-radius: 25px;
+            padding: 10px 15px;
+            transition: all 0.2s;
+        }
+        
+        .chat-input-wrapper:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--glow);
+        }
+        
+        .chat-input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 15px;
+            padding: 8px 0;
+            resize: none;
+            max-height: 120px;
+            outline: none;
+        }
+        
+        .chat-input::placeholder {
+            color: var(--text-muted);
+        }
+        
+        .input-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .input-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .voice-btn {
+            background: var(--bg-card);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+        
+        .voice-btn:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .voice-btn.recording {
+            background: #e74c3c;
+            color: white;
+            border-color: #e74c3c;
+            animation: pulse-red 1s infinite;
+        }
+        
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.5); }
+            50% { box-shadow: 0 0 15px 5px transparent; }
+        }
+        
+        .send-btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            box-shadow: 0 4px 15px var(--glow);
+        }
+        
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Suggestions */
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .suggestion {
+            padding: 8px 14px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .suggestion:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <a href="dashboard.html" class="logo">
+                <div class="logo-icon">🏠</div>
+                <div class="logo-text">Stuc<span>Admin</span></div>
+            </a>
+        </div>
+        <div class="nav-section">
+            <div class="nav-label">Modules</div>
+            <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+            <a href="crm.html" class="nav-item"><span class="nav-icon">👥</span> CRM</a>
+            <a href="planning.html" class="nav-item"><span class="nav-icon">📅</span> Planning</a>
+            <a href="opname.html" class="nav-item"><span class="nav-icon">📋</span> Opname</a>
+            <a href="offerteaanvragen.html" class="nav-item"><span class="nav-icon">📩</span> Offertes</a>
+            <a href="zzp-inhuur.html" class="nav-item"><span class="nav-icon">👷</span> ZZP Inhuur</a>
+            <a href="uren.html" class="nav-item"><span class="nav-icon">⏱️</span> Uren</a>
+            <a href="materials.html" class="nav-item"><span class="nav-icon">🧱</span> Materialen</a>
+            <a href="calculator.html" class="nav-item"><span class="nav-icon">🧮</span> Calculator</a>
+            
+            <div class="nav-label">AI</div>
+            <a href="stucie.html" class="nav-item active"><span class="nav-icon">🤖</span> Stucie</a>
+            
+            <div class="nav-label">Systeem</div>
+            <a href="beveiliging.html" class="nav-item"><span class="nav-icon">🔒</span> Beveiliging</a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Chat Header -->
+        <header class="chat-header">
+            <div class="chat-title">
+                <div class="stucie-avatar">🤖</div>
+                <div class="stucie-info">
+                    <h1>Stucie</h1>
+                    <div class="stucie-status">
+                        <span class="status-dot"></span>
+                        Online - Klaar om te helpen
+                    </div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="header-btn" onclick="clearChat()">🗑️ Wis gesprek</button>
+            </div>
+        </header>
+
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chatMessages">
+            <div class="message assistant">
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <div class="message-text">
+                        <strong>Hallo Minas! 👋</strong><br><br>
+                        Ik ben <strong>Stucie</strong>, jouw persoonlijke AI-assistent voor Stucologie B.V.<br><br>
+                        Ik heb toegang tot al je bedrijfsdata en kan je helpen met:
+                        <ul style="margin: 10px 0 10px 20px;">
+                            <li>📊 Bedrijfsinzichten & statistieken</li>
+                            <li>👥 Klantgegevens opzoeken</li>
+                            <li>📅 Planning bekijken & aanpassen</li>
+                            <li>📩 Offerteaanvragen beheren</li>
+                            <li>🧱 Materialen & prijzen</li>
+                            <li>💰 Omzet & financiën</li>
+                            <li>✍️ Emails & teksten schrijven</li>
+                        </ul>
+                        Vraag me wat je wilt of gebruik de snelkoppelingen hieronder!
+                    </div>
+                    <div class="quick-actions">
+                        <button class="quick-action" onclick="sendQuickAction('Hoe gaat het met mijn bedrijf vandaag?')">📊 Bedrijfsoverzicht</button>
+                        <button class="quick-action" onclick="sendQuickAction('Hoeveel nieuwe offerteaanvragen zijn er?')">📩 Nieuwe aanvragen</button>
+                        <button class="quick-action" onclick="sendQuickAction('Wat staat er vandaag gepland?')">📅 Planning vandaag</button>
+                        <button class="quick-action" onclick="sendQuickAction('Hoeveel omzet heb ik deze maand?')">💰 Omzet</button>
+                    </div>
+                    <div class="message-time">Nu</div>
+                </div>
+            </div>
+            
+            <!-- Typing indicator -->
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="message-avatar" style="background: linear-gradient(135deg, var(--primary), var(--secondary));">🤖</div>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Input -->
+        <div class="chat-input-container">
+            <div class="chat-input-wrapper">
+                <textarea 
+                    class="chat-input" 
+                    id="chatInput" 
+                    placeholder="Vraag iets aan Stucie... (of druk op 🎤 om te spreken)"
+                    rows="1"
+                    onkeydown="handleKeyDown(event)"
+                ></textarea>
+                <div class="input-actions">
+                    <button class="input-btn voice-btn" id="voiceBtn" onclick="toggleVoice()">🎤</button>
+                    <button class="input-btn send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+                </div>
+            </div>
+            <div class="suggestions">
+                <button class="suggestion" onclick="sendQuickAction('Voeg een nieuw materiaal toe')">➕ Materiaal toevoegen</button>
+                <button class="suggestion" onclick="sendQuickAction('Schrijf een follow-up email voor openstaande offertes')">✉️ Follow-up email</button>
+                <button class="suggestion" onclick="sendQuickAction('Welke klanten moet ik nog nabellen?')">📞 Nabellen</button>
+                <button class="suggestion" onclick="sendQuickAction('Analyseer mijn best presterende diensten')">📈 Analyse</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Check auth
+        fetch('/api/auth/check')
+            .then(r => r.json())
+            .then(data => {
+                if (!data.authenticated) {
+                    window.location.href = '/login.html';
+                }
+            });
+        
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const voiceBtn = document.getElementById('voiceBtn');
+        
+        let isRecording = false;
+        let recognition = null;
+        
+        // Speech Recognition Setup
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'nl-NL';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                chatInput.value = transcript;
+                stopRecording();
+                sendMessage();
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                stopRecording();
+            };
+            
+            recognition.onend = () => {
+                stopRecording();
+            };
+        }
+        
+        function toggleVoice() {
+            if (!recognition) {
+                alert('Spraakherkenning wordt niet ondersteund in deze browser.');
+                return;
+            }
+            
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+        
+        function startRecording() {
+            isRecording = true;
+            voiceBtn.classList.add('recording');
+            voiceBtn.textContent = '⏹️';
+            recognition.start();
+        }
+        
+        function stopRecording() {
+            isRecording = false;
+            voiceBtn.classList.remove('recording');
+            voiceBtn.textContent = '🎤';
+            if (recognition) {
+                recognition.stop();
+            }
+        }
+        
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+        
+        function sendQuickAction(text) {
+            chatInput.value = text;
+            sendMessage();
+        }
+        
+        function addMessage(text, isUser = false) {
+            const time = new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${isUser ? '👤' : '🤖'}</div>
+                <div class="message-content">
+                    <div class="message-text">${text}</div>
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+            
+            // Insert before typing indicator
+            chatMessages.insertBefore(messageDiv, typingIndicator);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function showTyping(show) {
+            typingIndicator.classList.toggle('visible', show);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        async function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+            
+            // Add user message
+            addMessage(message, true);
+            chatInput.value = '';
+            
+            // Show typing
+            showTyping(true);
+            
+            try {
+                const response = await fetch('/api/stucie/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                
+                const data = await response.json();
+                showTyping(false);
+                
+                if (data.error) {
+                    addMessage('❌ Er ging iets mis: ' + data.error);
+                } else {
+                    addMessage(data.response);
+                    
+                    // Text-to-speech (optional)
+                    if (data.speak && 'speechSynthesis' in window) {
+                        const utterance = new SpeechSynthesisUtterance(data.speakText || data.response.replace(/<[^>]*>/g, ''));
+                        utterance.lang = 'nl-NL';
+                        speechSynthesis.speak(utterance);
+                    }
+                }
+            } catch (error) {
+                showTyping(false);
+                addMessage('❌ Kon geen verbinding maken met Stucie. Probeer het opnieuw.');
+                console.error('Chat error:', error);
+            }
+        }
+        
+        function clearChat() {
+            if (confirm('Weet je zeker dat je het gesprek wilt wissen?')) {
+                const messages = chatMessages.querySelectorAll('.message');
+                messages.forEach((msg, index) => {
+                    if (index > 0) msg.remove(); // Keep first welcome message
+                });
+            }
+        }
+        
+        // Auto-resize textarea
+        chatInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+    </script>
+</body>
+</html>
