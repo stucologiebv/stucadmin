@@ -3007,7 +3007,7 @@ const spamBlacklist = [
 // Toegestane domeinen voor CORS
 const allowedOrigins = [
     'https://stucologie.nl',
-    'https://www.stucologie.nl',
+    'https://https://www.stucologie.nl',
     'https://stucologie.vercel.app',
     'http://localhost:3000' // Voor development
 ];
@@ -3335,7 +3335,7 @@ app.listen(PORT, () => {
 // WEBSITE FORMULIER ENDPOINT (publiek, geen auth)
 app.post('/api/offerteaanvragen/website', async (req, res) => {
     res.header('Access-Control-Allow-Origin', 'https://stucologie.nl');
-    res.header('Access-Control-Allow-Origin', 'https://www.stucologie.nl');
+    res.header('Access-Control-Allow-Origin', 'https://https://www.stucologie.nl');
     
     const { firstname, email, phone, address, message } = req.body;
     
@@ -3388,7 +3388,26 @@ Telefoon: ${aanvraag.telefoon}
 Adres: ${aanvraag.adres}
 Bericht: ${aanvraag.bericht}
 
-Bekijk in StucAdmin: https://stucadmin.stucologie.nl/offerteaanvragen.html`;
+Bekijk in StucAdmin: https://stucadmin.stucologie.nl/offerteaanvragen.html
+
+--
+Met Vriendelijke Groeten,
+
+Minas S. Tsjitian
+Directeur
+
+STUCOLOGIE B.V.
+P. +3185-2129-613
+M. +31640836450
+E. info@stucologie.nl
+A. Rijnstraat 42, 8226LS, Lelystad
+KVK: 98077627 | BTW: NL868349859B01
+
+https://www.stucologie.nl
+https://www.facebook.com/destucoloog
+https://www.tiktok.com/@de_stucoloog
+
+Op al onze offertes, opdrachten en werkzaamheden zijn onze algemene voorwaarden van toepassing, gedeponeerd bij de Kamer van Koophandel.`;
             await sendGmailNotification('Nieuwe offerteaanvraag: ' + aanvraag.naam, emailBody);
         } catch (emailError) {
             console.error('Email notificatie mislukt:', emailError);
