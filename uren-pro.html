@@ -1,23 +1,577 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uren Pro+ | StucAdmin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f8fafc; }
+        
+        .main-content { margin-left: 260px; min-height: 100vh; padding: 24px; }
+        
+        .card { background: white; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 20px; }
+        .card-header { padding: 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+        .card-body { padding: 20px; }
+        
+        .tab-bar { display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 12px; margin-bottom: 24px; overflow-x: auto; }
+        .tab-btn { padding: 12px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; background: none; color: #64748b; white-space: nowrap; }
+        .tab-btn.active { background: white; color: #6366f1; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .tab-btn:hover:not(.active) { color: #1e293b; }
+        
+        .stat-card { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 16px; padding: 24px; color: white; }
+        .stat-card.green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .stat-card.orange { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .stat-card.blue { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+        .stat-value { font-size: 32px; font-weight: 800; }
+        .stat-label { opacity: 0.9; font-size: 14px; margin-top: 4px; }
+        
+        .btn { padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; }
+        .btn-primary:hover { box-shadow: 0 4px 12px rgba(99,102,241,0.4); transform: translateY(-1px); }
+        .btn-secondary { background: #f1f5f9; color: #475569; }
+        .btn-secondary:hover { background: #e5e7eb; }
+        .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th { text-align: left; padding: 14px 16px; font-size: 12px; font-weight: 600; text-transform: uppercase; color: #64748b; background: #f8fafc; }
+        .data-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; }
+        .data-table tr:hover { background: #f8fafc; }
+        
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .badge-vast { background: #dbeafe; color: #1d4ed8; }
+        .badge-zzp { background: #fef3c7; color: #b45309; }
+        .badge-actief { background: #dcfce7; color: #16a34a; }
+        .badge-working { background: #dcfce7; color: #16a34a; animation: pulse 2s infinite; }
+        
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        
+        .input-field { width: 100%; padding: 12px 16px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; transition: all 0.2s; }
+        .input-field:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99,102,241,0.1); }
+        
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; border-radius: 20px; padding: 24px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+        
+        .live-indicator { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: #dcfce7; border-radius: 20px; }
+        .live-dot { width: 8px; height: 8px; background: #16a34a; border-radius: 50%; animation: pulse 1.5s infinite; }
+        
+        .manstaat-preview { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; }
+        .manstaat-header { border-bottom: 2px solid #1e293b; padding-bottom: 16px; margin-bottom: 16px; }
+        .manstaat-table { width: 100%; border-collapse: collapse; }
+        .manstaat-table th, .manstaat-table td { padding: 10px; border: 1px solid #e5e7eb; text-align: left; }
+        .manstaat-table th { background: #f8fafc; font-weight: 600; }
+        .manstaat-footer { border-top: 2px solid #1e293b; padding-top: 16px; margin-top: 16px; }
+        
+        .live-card { background: linear-gradient(135deg, #dcfce7, #bbf7d0); border: 2px solid #86efac; border-radius: 16px; padding: 20px; }
+        .live-card .avatar { width: 48px; height: 48px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 18px; }
+        
+        @media (max-width: 1024px) {
+            .main-content { margin-left: 0; padding: 16px; padding-top: 70px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        
+        @media (max-width: 640px) {
+            .stats-grid { grid-template-columns: 1fr !important; }
+            .card-header { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebarContainer"></div>
+    
+    <main class="main-content">
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">⏱️ Uren Pro+</h1>
+                <p class="text-gray-500">Beheer medewerkers, uren en manstaten</p>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+                <div class="live-indicator" id="liveWorkers" style="display: none;">
+                    <div class="live-dot"></div>
+                    <span class="font-semibold text-green-700"><span id="liveCount">0</span> aan het werk</span>
+                </div>
+                <button onclick="copyPortalLink()" class="btn btn-secondary">🔗 Medewerker Link</button>
+                <button onclick="showAddMedewerker()" class="btn btn-primary">➕ Medewerker</button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-4 gap-4 mb-6 stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="statUrenVandaag">0</div>
+                <div class="stat-label">Uren vandaag</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-value" id="statUrenWeek">0</div>
+                <div class="stat-label">Uren deze week</div>
+            </div>
+            <div class="stat-card orange">
+                <div class="stat-value" id="statMedewerkers">0</div>
+                <div class="stat-label">Actieve medewerkers</div>
+            </div>
+            <div class="stat-card blue">
+                <div class="stat-value" id="statProjecten">0</div>
+                <div class="stat-label">Lopende projecten</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tab-bar">
+            <button class="tab-btn active" data-tab="live" onclick="showTab('live', this)">🟢 Live Overzicht</button>
+            <button class="tab-btn" data-tab="uren" onclick="showTab('uren', this)">📊 Alle Uren</button>
+            <button class="tab-btn" data-tab="medewerkers" onclick="showTab('medewerkers', this)">👷 Medewerkers</button>
+            <button class="tab-btn" data-tab="projecten" onclick="showTab('projecten', this)">📋 Projecten</button>
+            <button class="tab-btn" data-tab="manstaat" onclick="showTab('manstaat', this)">📄 Manstaat</button>
+            <button class="tab-btn" data-tab="rapportage" onclick="showTab('rapportage', this)">📈 Rapportage</button>
+        </div>
+
+        <!-- Tab: Live Overzicht -->
+        <div id="tab-live" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="font-bold text-lg">🟢 Live Status Medewerkers</h2>
+                    <button onclick="refreshLive()" class="btn btn-secondary">🔄 Ververs</button>
+                </div>
+                <div class="card-body">
+                    <div id="liveGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                    <div id="noLive" class="text-center text-gray-400 py-12">
+                        <div class="text-5xl mb-4">😴</div>
+                        <p class="text-lg">Niemand is op dit moment aan het werk</p>
+                        <p class="text-sm mt-2">Medewerkers kunnen starten via de Medewerker Portal</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Alle Uren -->
+        <div id="tab-uren" class="tab-content" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="font-bold text-lg">📊 Uren Overzicht</h2>
+                    <div class="flex gap-2 flex-wrap">
+                        <select id="filterMedewerker" class="input-field" style="width: auto;" onchange="filterUren()">
+                            <option value="">Alle medewerkers</option>
+                        </select>
+                        <select id="filterPeriode" class="input-field" style="width: auto;" onchange="filterUren()">
+                            <option value="week">Deze week</option>
+                            <option value="maand">Deze maand</option>
+                            <option value="alles">Alles</option>
+                        </select>
+                        <button onclick="exportUren()" class="btn btn-secondary">📥 Export</button>
+                    </div>
+                </div>
+                <div class="card-body p-0 overflow-x-auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Datum</th>
+                                <th>Medewerker</th>
+                                <th>Project</th>
+                                <th>Tijd</th>
+                                <th>Uren</th>
+                                <th>Locatie</th>
+                                <th>Notitie</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="urenTabel">
+                            <tr><td colspan="8" class="text-center text-gray-400 py-8">Laden...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-body border-t">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Totaal gefilterd:</span>
+                        <span class="text-2xl font-bold text-indigo-600" id="totaalUren">0 uur</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Medewerkers -->
+        <div id="tab-medewerkers" class="tab-content" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="font-bold text-lg">👷 Medewerkers Beheer</h2>
+                    <button onclick="showAddMedewerker()" class="btn btn-primary">➕ Nieuwe medewerker</button>
+                </div>
+                <div class="card-body p-0 overflow-x-auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Naam</th>
+                                <th>Type</th>
+                                <th>Telefoon</th>
+                                <th>Uurtarief</th>
+                                <th>Pincode</th>
+                                <th>Status</th>
+                                <th>Uren week</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="medewerkersTabel">
+                            <tr><td colspan="8" class="text-center text-gray-400 py-8">Laden...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Projecten -->
+        <div id="tab-projecten" class="tab-content" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="font-bold text-lg">📋 Projecten</h2>
+                    <button onclick="showAddProject()" class="btn btn-primary">➕ Nieuw project</button>
+                </div>
+                <div class="card-body p-0 overflow-x-auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Project</th>
+                                <th>Klant</th>
+                                <th>Locatie</th>
+                                <th>Start</th>
+                                <th>Uren totaal</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="projectenTabel">
+                            <tr><td colspan="7" class="text-center text-gray-400 py-8">Laden...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Manstaat -->
+        <div id="tab-manstaat" class="tab-content" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="font-bold text-lg">📄 Manstaat Generator</h2>
+                </div>
+                <div class="card-body">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Project *</label>
+                            <select id="manstaatProject" class="input-field">
+                                <option value="">Selecteer project...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Van datum *</label>
+                            <input type="date" id="manstaatVan" class="input-field">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tot datum *</label>
+                            <input type="date" id="manstaatTot" class="input-field">
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="generateManstaat()" class="btn btn-primary w-full">📄 Genereer Manstaat</button>
+                        </div>
+                    </div>
+
+                    <div id="manstaatResult" style="display: none;">
+                        <div class="manstaat-preview" id="manstaatContent">
+                            <div class="manstaat-header">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <img src="/logo-stucologie.jpg" alt="Logo" style="height: 50px;">
+                                        <h2 class="text-xl font-bold mt-2">MANSTAAT</h2>
+                                    </div>
+                                    <div class="text-right text-sm text-gray-600">
+                                        <div><strong>Stucologie B.V.</strong></div>
+                                        <div>info@stucologie.nl</div>
+                                        <div>www.stucologie.nl</div>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4 mt-4 text-sm">
+                                    <div>
+                                        <div class="text-gray-500">Project:</div>
+                                        <div class="font-semibold" id="msProject">-</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-gray-500">Periode:</div>
+                                        <div class="font-semibold" id="msPeriode">-</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-gray-500">Klant:</div>
+                                        <div class="font-semibold" id="msKlant">-</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-gray-500">Locatie:</div>
+                                        <div class="font-semibold" id="msLocatie">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <table class="manstaat-table">
+                                <thead>
+                                    <tr>
+                                        <th>Datum</th>
+                                        <th>Medewerker</th>
+                                        <th>Begintijd</th>
+                                        <th>Eindtijd</th>
+                                        <th>Pauze</th>
+                                        <th>Uren</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="manstaatTabel"></tbody>
+                                <tfoot>
+                                    <tr class="font-bold" style="background: #f1f5f9;">
+                                        <td colspan="5">TOTAAL</td>
+                                        <td id="msTotaal">0</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                            
+                            <div class="manstaat-footer">
+                                <div class="grid grid-cols-2 gap-8">
+                                    <div>
+                                        <div class="text-sm text-gray-500 mb-2">Handtekening opdrachtgever:</div>
+                                        <div class="border-b-2 border-gray-300 h-16"></div>
+                                        <div class="text-sm text-gray-500 mt-2">Datum: ________________</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm text-gray-500 mb-2">Handtekening Stucologie:</div>
+                                        <div class="border-b-2 border-gray-300 h-16"></div>
+                                        <div class="text-sm text-gray-500 mt-2">Datum: ________________</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-3 mt-4 flex-wrap">
+                            <button onclick="printManstaat()" class="btn btn-secondary">🖨️ Print / PDF</button>
+                            <button onclick="showEmailManstaat()" class="btn btn-primary">📧 Email naar klant</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Rapportage -->
+        <div id="tab-rapportage" class="tab-content" style="display: none;">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="font-bold text-lg">📈 Uren per Medewerker</h2>
+                        <select id="rapPeriode" class="input-field" style="width: auto;" onchange="renderRapportage()">
+                            <option value="week">Deze week</option>
+                            <option value="maand">Deze maand</option>
+                            <option value="jaar">Dit jaar</option>
+                        </select>
+                    </div>
+                    <div class="card-body" id="rapMedewerkerChart"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="font-bold text-lg">📊 Uren per Project</h2>
+                    </div>
+                    <div class="card-body" id="rapProjectChart"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal: Medewerker -->
+    <div class="modal-overlay" id="medewerkerModal">
+        <div class="modal">
+            <h3 class="text-lg font-bold mb-4" id="medewerkerModalTitle">Medewerker Toevoegen</h3>
+            <input type="hidden" id="editMedewerkerId">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Naam *</label>
+                    <input type="text" id="mNaam" class="input-field" placeholder="Volledige naam">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                        <select id="mType" class="input-field">
+                            <option value="vast">Vaste medewerker</option>
+                            <option value="zzp">ZZP'er</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Pincode (4 cijfers) *</label>
+                        <input type="text" id="mPincode" class="input-field" placeholder="1234" maxlength="4" pattern="[0-9]{4}">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Telefoon</label>
+                        <input type="tel" id="mTelefoon" class="input-field" placeholder="06-12345678">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Uurtarief (€)</label>
+                        <input type="number" id="mUurtarief" class="input-field" placeholder="0" min="0" step="0.01">
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="saveMedewerker()" class="btn btn-success flex-1">💾 Opslaan</button>
+                <button onclick="closeModal('medewerkerModal')" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Project -->
+    <div class="modal-overlay" id="projectModal">
+        <div class="modal">
+            <h3 class="text-lg font-bold mb-4">📋 Nieuw Project</h3>
+            <input type="hidden" id="editProjectId">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Project titel *</label>
+                    <input type="text" id="pTitel" class="input-field" placeholder="bijv. Stucwerk woonkamer">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Klant</label>
+                    <select id="pKlant" class="input-field">
+                        <option value="">Selecteer klant...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Locatie / Adres</label>
+                    <input type="text" id="pLocatie" class="input-field" placeholder="Straat, Plaats">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Startdatum</label>
+                    <input type="date" id="pStartdatum" class="input-field">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="saveProject()" class="btn btn-success flex-1">💾 Opslaan</button>
+                <button onclick="closeModal('projectModal')" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Email Manstaat -->
+    <div class="modal-overlay" id="emailModal">
+        <div class="modal">
+            <h3 class="text-lg font-bold mb-4">📧 Manstaat Emailen</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Naar (email) *</label>
+                    <input type="email" id="emailTo" class="input-field" placeholder="klant@email.nl">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Onderwerp</label>
+                    <input type="text" id="emailSubject" class="input-field" value="Manstaat - Stucologie B.V.">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Bericht</label>
+                    <textarea id="emailBody" class="input-field" rows="4">Geachte,
+
+Hierbij ontvangt u de manstaat voor de uitgevoerde werkzaamheden.
+
+Met vriendelijke groet,
+Stucologie B.V.</textarea>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="sendManstaatEmail()" class="btn btn-primary flex-1">📧 Versturen</button>
+                <button onclick="closeModal('emailModal')" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Locatie Details -->
+    <div class="modal-overlay" id="locationModal">
+        <div class="modal">
+            <h3 class="text-lg font-bold mb-4">📍 Locatie Details</h3>
+            <div id="locationMap" style="background: #f1f5f9; border-radius: 12px; height: 200px; display: flex; align-items: center; justify-content: center; color: #64748b;">
+                Kaart laden...
+            </div>
+            <div class="mt-4 space-y-2" id="locationDetails"></div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="closeModal('locationModal')" class="btn btn-secondary w-full">Sluiten</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/sidebar.js"></script>
+    <script>
+        // State
+        let medewerkers = [];
+        let uren = [];
+        let projecten = [];
+        let klanten = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadAll();
+            startLiveRefresh();
+            
+            // Set default dates for manstaat
+            const now = new Date();
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay() + 1);
+            document.getElementById('manstaatVan').value = weekStart.toISOString().split('T')[0];
+            document.getElementById('manstaatTot').value = now.toISOString().split('T')[0];
+        });
+
+        async function loadAll() {
+            await Promise.all([
+                loadMedewerkers(),
+                loadUren(),
+                loadProjecten(),
+                loadKlanten()
+            ]);
+            updateStats();
+            renderAll();
+        }
+
+        // Load functions
+        async function loadMedewerkers() {
+            try {
+                const res = await fetch('/api/medewerkers');
+                if (res.ok) {
+                    medewerkers = await res.json();
+                }
+            } catch (e) {
+                console.error('Error loading medewerkers:', e);
+            }
+        }
 
         async function loadUren() {
             try {
                 const res = await fetch('/api/uren');
-                if (res.ok) uren = await res.json();
-            } catch (e) { console.error('Error loading uren:', e); }
+                if (res.ok) {
+                    uren = await res.json();
+                }
+            } catch (e) {
+                console.error('Error loading uren:', e);
+            }
         }
 
         async function loadProjecten() {
             try {
                 const res = await fetch('/api/projecten');
-                if (res.ok) projecten = await res.json();
-            } catch (e) { console.error('Error loading projecten:', e); }
+                if (res.ok) {
+                    projecten = await res.json();
+                }
+            } catch (e) {
+                console.error('Error loading projecten:', e);
+            }
         }
 
         async function loadKlanten() {
             try {
                 const res = await fetch('/api/contacts');
-                if (res.ok) klanten = await res.json();
-            } catch (e) { console.error('Error loading klanten:', e); }
+                if (res.ok) {
+                    klanten = await res.json();
+                }
+            } catch (e) {
+                console.error('Error loading klanten:', e);
+            }
         }
 
         // Stats
@@ -26,22 +580,29 @@
             const todayStr = now.toISOString().split('T')[0];
             const weekStart = new Date(now);
             weekStart.setDate(now.getDate() - now.getDay() + 1);
-            weekStart.setHours(0,0,0,0);
+            weekStart.setHours(0, 0, 0, 0);
 
-            const todayHours = uren.filter(u => u.datum === todayStr).reduce((s, u) => s + (u.totaalUren || 0), 0);
-            const weekHours = uren.filter(u => new Date(u.datum) >= weekStart).reduce((s, u) => s + (u.totaalUren || 0), 0);
+            const todayHours = uren
+                .filter(u => u.datum === todayStr)
+                .reduce((s, u) => s + (u.totaalUren || 0), 0);
+            
+            const weekHours = uren
+                .filter(u => new Date(u.datum) >= weekStart)
+                .reduce((s, u) => s + (u.totaalUren || 0), 0);
+            
             const activeMedewerkers = medewerkers.filter(m => m.actief !== false).length;
+            const activeProjecten = projecten.filter(p => p.status !== 'afgerond').length;
 
             document.getElementById('statUrenVandaag').textContent = todayHours.toFixed(1);
             document.getElementById('statUrenWeek').textContent = weekHours.toFixed(1);
             document.getElementById('statMedewerkers').textContent = activeMedewerkers;
-            document.getElementById('statProjecten').textContent = projecten.filter(p => p.status !== 'afgerond').length;
+            document.getElementById('statProjecten').textContent = activeProjecten;
         }
 
         // Render functions
         function renderAll() {
             renderMedewerkers();
-            renderUren();
+            filterUren();
             renderProjecten();
             renderLive();
             updateFilterDropdowns();
@@ -49,91 +610,102 @@
 
         function renderMedewerkers() {
             const tbody = document.getElementById('medewerkersTabel');
+            
             if (medewerkers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-8">Geen medewerkers gevonden</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-8">Nog geen medewerkers toegevoegd</td></tr>';
                 return;
             }
 
             const now = new Date();
             const weekStart = new Date(now);
             weekStart.setDate(now.getDate() - now.getDay() + 1);
+            weekStart.setHours(0, 0, 0, 0);
 
             tbody.innerHTML = medewerkers.map(m => {
-                const weekUren = uren.filter(u => u.medewerkerId === m.id && new Date(u.datum) >= weekStart)
+                const weekUren = uren
+                    .filter(u => u.medewerkerId === m.id && new Date(u.datum) >= weekStart)
                     .reduce((s, u) => s + (u.totaalUren || 0), 0);
+                
                 return `
                     <tr>
-                        <td class="font-semibold">${m.naam}</td>
+                        <td class="font-semibold">${escapeHtml(m.naam)}</td>
                         <td><span class="badge badge-${m.type}">${m.type === 'zzp' ? 'ZZP' : 'VAST'}</span></td>
-                        <td>${m.telefoon || '-'}</td>
+                        <td>${escapeHtml(m.telefoon || '-')}</td>
                         <td>${m.uurtarief ? '€' + parseFloat(m.uurtarief).toFixed(2) : '-'}</td>
                         <td class="font-mono">${m.pincode}</td>
                         <td><span class="badge ${m.actief !== false ? 'badge-actief' : ''}">${m.actief !== false ? 'Actief' : 'Inactief'}</span></td>
-                        <td class="font-semibold text-indigo-600">${weekUren.toFixed(1)} uur</td>
+                        <td class="font-semibold text-indigo-600">${weekUren.toFixed(1)}u</td>
                         <td>
-                            <button onclick="editMedewerker('${m.id}')" class="text-indigo-600 hover:text-indigo-800 mr-2">✏️</button>
-                            <button onclick="deleteMedewerker('${m.id}')" class="text-red-500 hover:text-red-700">🗑️</button>
+                            <button onclick="editMedewerker('${m.id}')" class="text-indigo-600 hover:text-indigo-800 mr-2" title="Bewerken">✏️</button>
+                            <button onclick="deleteMedewerker('${m.id}')" class="text-red-500 hover:text-red-700" title="Verwijderen">🗑️</button>
                         </td>
                     </tr>
                 `;
             }).join('');
         }
 
-        function renderUren() {
-            filterUren();
-        }
-
         function filterUren() {
-            const medewerkerId = document.getElementById('filterMedewerker')?.value;
-            const periode = document.getElementById('filterPeriode')?.value || 'week';
+            const medewerkerId = document.getElementById('filterMedewerker').value;
+            const periode = document.getElementById('filterPeriode').value;
             
             let filtered = [...uren];
             
+            // Filter by medewerker
             if (medewerkerId) {
                 filtered = filtered.filter(u => u.medewerkerId === medewerkerId);
             }
             
+            // Filter by periode
             const now = new Date();
             if (periode === 'week') {
                 const weekStart = new Date(now);
                 weekStart.setDate(now.getDate() - now.getDay() + 1);
+                weekStart.setHours(0, 0, 0, 0);
                 filtered = filtered.filter(u => new Date(u.datum) >= weekStart);
             } else if (periode === 'maand') {
                 const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
                 filtered = filtered.filter(u => new Date(u.datum) >= monthStart);
             }
             
+            // Sort by date descending
             filtered.sort((a, b) => b.datum.localeCompare(a.datum));
             
+            renderUrenTable(filtered);
+        }
+
+        function renderUrenTable(urenList) {
             const tbody = document.getElementById('urenTabel');
-            if (filtered.length === 0) {
+            
+            if (urenList.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-8">Geen uren gevonden</td></tr>';
                 document.getElementById('totaalUren').textContent = '0 uur';
                 return;
             }
             
-            const totaal = filtered.reduce((s, u) => s + (u.totaalUren || 0), 0);
+            const totaal = urenList.reduce((s, u) => s + (u.totaalUren || 0), 0);
             document.getElementById('totaalUren').textContent = totaal.toFixed(1) + ' uur';
             
-            tbody.innerHTML = filtered.map(u => {
+            tbody.innerHTML = urenList.map(u => {
                 const d = new Date(u.datum);
                 const hasLocation = u.locatie && u.locatie.lat;
+                const locatieJson = hasLocation ? JSON.stringify(u.locatie).replace(/'/g, "\\'") : '';
+                
                 return `
                     <tr>
                         <td>${d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
-                        <td class="font-semibold">${u.medewerkerNaam || '-'}</td>
-                        <td>${u.projectNaam || '-'}</td>
-                        <td>${u.begintijd} - ${u.eindtijd}</td>
+                        <td class="font-semibold">${escapeHtml(u.medewerkerNaam || '-')}</td>
+                        <td>${escapeHtml(u.projectNaam || '-')}</td>
+                        <td>${u.begintijd || '-'} - ${u.eindtijd || '-'}</td>
                         <td class="font-bold text-indigo-600">${(u.totaalUren || 0).toFixed(1)}u</td>
                         <td>
-                            ${hasLocation ? 
-                                `<button onclick="showLocation(${JSON.stringify(u.locatie).replace(/"/g, '&quot;')})" class="text-green-600 hover:text-green-800">📍</button>` : 
-                                '<span class="text-gray-300">-</span>'
+                            ${hasLocation 
+                                ? `<button onclick='showLocation(${locatieJson})' class="text-green-600 hover:text-green-800" title="Bekijk locatie">📍</button>` 
+                                : '<span class="text-gray-300">-</span>'
                             }
                         </td>
-                        <td class="text-sm text-gray-500 max-w-xs truncate">${u.notitie || '-'}</td>
+                        <td class="text-sm text-gray-500 max-w-xs truncate">${escapeHtml(u.notitie || '-')}</td>
                         <td>
-                            <button onclick="deleteUren('${u.id}')" class="text-red-500 hover:text-red-700">🗑️</button>
+                            <button onclick="deleteUren('${u.id}')" class="text-red-500 hover:text-red-700" title="Verwijderen">🗑️</button>
                         </td>
                     </tr>
                 `;
@@ -142,24 +714,28 @@
 
         function renderProjecten() {
             const tbody = document.getElementById('projectenTabel');
+            
             if (projecten.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-8">Geen projecten gevonden</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-8">Nog geen projecten toegevoegd</td></tr>';
                 return;
             }
 
             tbody.innerHTML = projecten.map(p => {
-                const projectUren = uren.filter(u => u.projectId === p.id).reduce((s, u) => s + (u.totaalUren || 0), 0);
+                const projectUren = uren
+                    .filter(u => u.projectId === p.id)
+                    .reduce((s, u) => s + (u.totaalUren || 0), 0);
+                
                 return `
                     <tr>
-                        <td class="font-semibold">${p.titel}</td>
-                        <td>${p.klantNaam || '-'}</td>
-                        <td>${p.locatie || '-'}</td>
+                        <td class="font-semibold">${escapeHtml(p.titel)}</td>
+                        <td>${escapeHtml(p.klantNaam || '-')}</td>
+                        <td>${escapeHtml(p.locatie || '-')}</td>
                         <td>${p.startdatum ? new Date(p.startdatum).toLocaleDateString('nl-NL') : '-'}</td>
-                        <td class="font-bold text-indigo-600">${projectUren.toFixed(1)} uur</td>
-                        <td><span class="badge ${p.status === 'actief' ? 'badge-actief' : ''}">${p.status || 'Actief'}</span></td>
+                        <td class="font-bold text-indigo-600">${projectUren.toFixed(1)}u</td>
+                        <td><span class="badge ${p.status === 'actief' || !p.status ? 'badge-actief' : ''}">${p.status || 'Actief'}</span></td>
                         <td>
-                            <button onclick="editProject('${p.id}')" class="text-indigo-600 hover:text-indigo-800 mr-2">✏️</button>
-                            <button onclick="deleteProject('${p.id}')" class="text-red-500 hover:text-red-700">🗑️</button>
+                            <button onclick="editProject('${p.id}')" class="text-indigo-600 hover:text-indigo-800 mr-2" title="Bewerken">✏️</button>
+                            <button onclick="deleteProject('${p.id}')" class="text-red-500 hover:text-red-700" title="Verwijderen">🗑️</button>
                         </td>
                     </tr>
                 `;
@@ -168,12 +744,12 @@
             // Update manstaat dropdown
             const select = document.getElementById('manstaatProject');
             select.innerHTML = '<option value="">Selecteer project...</option>' +
-                projecten.map(p => `<option value="${p.id}">${p.titel}</option>`).join('');
+                projecten.map(p => `<option value="${p.id}">${escapeHtml(p.titel)}</option>`).join('');
         }
 
         function renderLive() {
-            // Simulate live data - in production this would check active timers
-            const liveWorkers = []; // This would come from server
+            // TODO: In productie komt dit van de server - actieve timers ophalen
+            const liveWorkers = [];
             
             const container = document.getElementById('liveGrid');
             const noLive = document.getElementById('noLive');
@@ -189,50 +765,64 @@
                 document.getElementById('liveCount').textContent = liveWorkers.length;
                 
                 container.innerHTML = liveWorkers.map(w => `
-                    <div class="bg-green-50 border-2 border-green-200 rounded-xl p-4">
+                    <div class="live-card">
                         <div class="flex items-center gap-3 mb-3">
-                            <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                                ${w.naam.charAt(0)}
-                            </div>
+                            <div class="avatar">${w.naam.charAt(0).toUpperCase()}</div>
                             <div>
-                                <div class="font-semibold">${w.naam}</div>
-                                <span class="badge badge-working">Aan het werk</span>
+                                <div class="font-semibold text-gray-800">${escapeHtml(w.naam)}</div>
+                                <span class="badge badge-working">🟢 Aan het werk</span>
                             </div>
                         </div>
-                        <div class="text-sm space-y-1">
-                            <div>🏗️ ${w.project}</div>
-                            <div>📍 ${w.locatie || 'Geen locatie'}</div>
+                        <div class="text-sm space-y-1 text-gray-600">
+                            <div>🏗️ ${escapeHtml(w.project)}</div>
+                            <div>📍 ${escapeHtml(w.locatie || 'Geen locatie')}</div>
                             <div>⏱️ Gestart: ${w.startTijd}</div>
-                            <div class="text-lg font-bold text-green-600">${w.elapsed}</div>
                         </div>
+                        <div class="text-2xl font-bold text-green-600 mt-3">${w.elapsed}</div>
                     </div>
                 `).join('');
             }
         }
 
         function updateFilterDropdowns() {
+            // Medewerkers filter
             const select = document.getElementById('filterMedewerker');
             if (select) {
+                const currentValue = select.value;
                 select.innerHTML = '<option value="">Alle medewerkers</option>' +
-                    medewerkers.map(m => `<option value="${m.id}">${m.naam}</option>`).join('');
+                    medewerkers.map(m => `<option value="${m.id}">${escapeHtml(m.naam)}</option>`).join('');
+                select.value = currentValue;
             }
 
+            // Klanten select in project modal
             const klantSelect = document.getElementById('pKlant');
             if (klantSelect) {
                 klantSelect.innerHTML = '<option value="">Selecteer klant...</option>' +
-                    klanten.map(k => `<option value="${k.id}">${k.company_name || k.firstname + ' ' + k.lastname}</option>`).join('');
+                    klanten.map(k => {
+                        const naam = k.company_name || ((k.firstname || '') + ' ' + (k.lastname || '')).trim() || 'Onbekend';
+                        return `<option value="${k.id}">${escapeHtml(naam)}</option>`;
+                    }).join('');
             }
         }
 
         // Tab switching
-        function showTab(tab) {
-            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        function showTab(tabName, btn) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.style.display = 'none';
+            });
             
-            document.getElementById('tab-' + tab).style.display = 'block';
-            event.target.classList.add('active');
+            // Deactivate all buttons
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('active');
+            });
             
-            if (tab === 'rapportage') {
+            // Show selected tab
+            document.getElementById('tab-' + tabName).style.display = 'block';
+            btn.classList.add('active');
+            
+            // Render rapportage if needed
+            if (tabName === 'rapportage') {
                 renderRapportage();
             }
         }
@@ -255,9 +845,9 @@
             
             document.getElementById('medewerkerModalTitle').textContent = 'Medewerker Bewerken';
             document.getElementById('editMedewerkerId').value = id;
-            document.getElementById('mNaam').value = m.naam;
-            document.getElementById('mType').value = m.type;
-            document.getElementById('mPincode').value = m.pincode;
+            document.getElementById('mNaam').value = m.naam || '';
+            document.getElementById('mType').value = m.type || 'vast';
+            document.getElementById('mPincode').value = m.pincode || '';
             document.getElementById('mTelefoon').value = m.telefoon || '';
             document.getElementById('mUurtarief').value = m.uurtarief || '';
             document.getElementById('medewerkerModal').classList.add('active');
@@ -265,50 +855,73 @@
 
         async function saveMedewerker() {
             const id = document.getElementById('editMedewerkerId').value;
-            const data = {
-                naam: document.getElementById('mNaam').value,
-                type: document.getElementById('mType').value,
-                pincode: document.getElementById('mPincode').value,
-                telefoon: document.getElementById('mTelefoon').value,
-                uurtarief: document.getElementById('mUurtarief').value,
-                actief: true
-            };
+            const naam = document.getElementById('mNaam').value.trim();
+            const pincode = document.getElementById('mPincode').value.trim();
             
-            if (!data.naam || !data.pincode || data.pincode.length !== 4) {
-                alert('Vul naam en 4-cijferige pincode in');
+            if (!naam) {
+                alert('Vul een naam in');
                 return;
             }
             
+            if (!pincode || pincode.length !== 4 || !/^\d{4}$/.test(pincode)) {
+                alert('Vul een geldige 4-cijferige pincode in');
+                return;
+            }
+            
+            const data = {
+                naam: naam,
+                type: document.getElementById('mType').value,
+                pincode: pincode,
+                telefoon: document.getElementById('mTelefoon').value.trim(),
+                uurtarief: document.getElementById('mUurtarief').value || null,
+                actief: true
+            };
+            
             try {
-                const url = id ? `/api/medewerkers/${id}` : '/api/medewerkers';
+                const url = id ? '/api/medewerkers/' + id : '/api/medewerkers';
                 const method = id ? 'PUT' : 'POST';
-                await fetch(url, {
-                    method,
+                
+                const res = await fetch(url, {
+                    method: method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
+                
+                if (!res.ok) throw new Error('Save failed');
+                
                 closeModal('medewerkerModal');
                 await loadMedewerkers();
                 renderMedewerkers();
                 updateStats();
+                updateFilterDropdowns();
             } catch (e) {
+                console.error('Error saving medewerker:', e);
                 alert('Fout bij opslaan');
             }
         }
 
         async function deleteMedewerker(id) {
-            if (!confirm('Medewerker verwijderen?')) return;
+            const m = medewerkers.find(x => x.id === id);
+            if (!confirm('Weet je zeker dat je ' + (m?.naam || 'deze medewerker') + ' wilt verwijderen?')) {
+                return;
+            }
+            
             try {
-                await fetch(`/api/medewerkers/${id}`, { method: 'DELETE' });
+                const res = await fetch('/api/medewerkers/' + id, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Delete failed');
+                
                 await loadMedewerkers();
                 renderMedewerkers();
                 updateStats();
+                updateFilterDropdowns();
             } catch (e) {
+                console.error('Error deleting medewerker:', e);
                 alert('Fout bij verwijderen');
             }
         }
 
         function showAddProject() {
+            document.getElementById('editProjectId').value = '';
             document.getElementById('pTitel').value = '';
             document.getElementById('pKlant').value = '';
             document.getElementById('pLocatie').value = '';
@@ -316,65 +929,113 @@
             document.getElementById('projectModal').classList.add('active');
         }
 
+        function editProject(id) {
+            const p = projecten.find(x => x.id === id);
+            if (!p) return;
+            
+            document.getElementById('editProjectId').value = id;
+            document.getElementById('pTitel').value = p.titel || '';
+            document.getElementById('pKlant').value = p.klantId || '';
+            document.getElementById('pLocatie').value = p.locatie || '';
+            document.getElementById('pStartdatum').value = p.startdatum || '';
+            document.getElementById('projectModal').classList.add('active');
+        }
+
         async function saveProject() {
-            const klantId = document.getElementById('pKlant').value;
-            const klant = klanten.find(k => k.id === klantId);
+            const id = document.getElementById('editProjectId').value;
+            const titel = document.getElementById('pTitel').value.trim();
             
-            const data = {
-                titel: document.getElementById('pTitel').value,
-                klantId,
-                klantNaam: klant ? (klant.company_name || klant.firstname + ' ' + klant.lastname) : '',
-                locatie: document.getElementById('pLocatie').value,
-                startdatum: document.getElementById('pStartdatum').value,
-                status: 'actief'
-            };
-            
-            if (!data.titel) {
+            if (!titel) {
                 alert('Vul een titel in');
                 return;
             }
             
+            const klantId = document.getElementById('pKlant').value;
+            const klant = klanten.find(k => k.id === klantId);
+            const klantNaam = klant 
+                ? (klant.company_name || ((klant.firstname || '') + ' ' + (klant.lastname || '')).trim())
+                : '';
+            
+            const data = {
+                titel: titel,
+                klantId: klantId || null,
+                klantNaam: klantNaam,
+                locatie: document.getElementById('pLocatie').value.trim(),
+                startdatum: document.getElementById('pStartdatum').value,
+                status: 'actief'
+            };
+            
             try {
-                await fetch('/api/projecten', {
-                    method: 'POST',
+                const url = id ? '/api/projecten/' + id : '/api/projecten';
+                const method = id ? 'PUT' : 'POST';
+                
+                const res = await fetch(url, {
+                    method: method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
+                
+                if (!res.ok) throw new Error('Save failed');
+                
                 closeModal('projectModal');
                 await loadProjecten();
                 renderProjecten();
                 updateStats();
             } catch (e) {
+                console.error('Error saving project:', e);
                 alert('Fout bij opslaan');
             }
         }
 
         async function deleteProject(id) {
-            if (!confirm('Project verwijderen?')) return;
+            const p = projecten.find(x => x.id === id);
+            if (!confirm('Weet je zeker dat je project "' + (p?.titel || '') + '" wilt verwijderen?')) {
+                return;
+            }
+            
             try {
-                await fetch(`/api/projecten/${id}`, { method: 'DELETE' });
+                const res = await fetch('/api/projecten/' + id, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Delete failed');
+                
                 await loadProjecten();
                 renderProjecten();
+                updateStats();
             } catch (e) {
+                console.error('Error deleting project:', e);
                 alert('Fout bij verwijderen');
             }
         }
 
         async function deleteUren(id) {
-            if (!confirm('Uren verwijderen?')) return;
+            if (!confirm('Weet je zeker dat je deze uren wilt verwijderen?')) {
+                return;
+            }
+            
             try {
-                await fetch(`/api/uren/${id}`, { method: 'DELETE' });
+                const res = await fetch('/api/uren/' + id, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Delete failed');
+                
                 await loadUren();
                 filterUren();
                 updateStats();
             } catch (e) {
+                console.error('Error deleting uren:', e);
                 alert('Fout bij verwijderen');
             }
         }
 
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
         }
+
+        // Close modal on overlay click
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('active');
+                }
+            });
+        });
 
         // Manstaat
         function generateManstaat() {
@@ -382,39 +1043,48 @@
             const van = document.getElementById('manstaatVan').value;
             const tot = document.getElementById('manstaatTot').value;
             
-            if (!projectId || !van || !tot) {
-                alert('Selecteer project en periode');
+            if (!projectId) {
+                alert('Selecteer een project');
+                return;
+            }
+            if (!van || !tot) {
+                alert('Selecteer een periode');
                 return;
             }
             
             const project = projecten.find(p => p.id === projectId);
-            const filtered = uren.filter(u => 
-                u.projectId === projectId && 
-                u.datum >= van && 
-                u.datum <= tot
-            ).sort((a, b) => a.datum.localeCompare(b.datum));
+            if (!project) {
+                alert('Project niet gevonden');
+                return;
+            }
+            
+            const filtered = uren
+                .filter(u => u.projectId === projectId && u.datum >= van && u.datum <= tot)
+                .sort((a, b) => a.datum.localeCompare(b.datum));
             
             if (filtered.length === 0) {
                 alert('Geen uren gevonden voor deze periode');
                 return;
             }
             
+            // Fill manstaat header
             document.getElementById('msProject').textContent = project.titel;
-            document.getElementById('msPeriode').textContent = `${formatDate(van)} - ${formatDate(tot)}`;
+            document.getElementById('msPeriode').textContent = formatDateNL(van) + ' - ' + formatDateNL(tot);
             document.getElementById('msKlant').textContent = project.klantNaam || '-';
             document.getElementById('msLocatie').textContent = project.locatie || '-';
             
+            // Fill table
             const tbody = document.getElementById('manstaatTabel');
             let totaal = 0;
             
             tbody.innerHTML = filtered.map(u => {
-                totaal += u.totaalUren || 0;
+                totaal += (u.totaalUren || 0);
                 return `
                     <tr>
-                        <td>${formatDate(u.datum)}</td>
-                        <td>${u.medewerkerNaam}</td>
-                        <td>${u.begintijd}</td>
-                        <td>${u.eindtijd}</td>
+                        <td>${formatDateNL(u.datum)}</td>
+                        <td>${escapeHtml(u.medewerkerNaam || '-')}</td>
+                        <td>${u.begintijd || '-'}</td>
+                        <td>${u.eindtijd || '-'}</td>
                         <td>${u.pauze || 0} min</td>
                         <td>${(u.totaalUren || 0).toFixed(2)}</td>
                     </tr>
@@ -427,70 +1097,102 @@
 
         function printManstaat() {
             const content = document.getElementById('manstaatContent').innerHTML;
-            const win = window.open('', '_blank');
-            win.document.write(`
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
                 <html>
                 <head>
                     <title>Manstaat - Stucologie B.V.</title>
                     <style>
-                        body { font-family: Arial, sans-serif; padding: 20px; }
+                        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
                         table { width: 100%; border-collapse: collapse; margin: 20px 0; }
                         th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
-                        th { background: #f5f5f5; }
+                        th { background: #f5f5f5; font-weight: bold; }
                         .manstaat-header { border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 15px; }
                         .manstaat-footer { border-top: 2px solid #333; padding-top: 15px; margin-top: 15px; }
+                        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+                        .text-right { text-align: right; }
+                        .text-sm { font-size: 12px; }
+                        .text-gray-500 { color: #666; }
+                        .text-gray-600 { color: #555; }
+                        .font-semibold { font-weight: 600; }
+                        .font-bold { font-weight: bold; }
+                        .mt-2 { margin-top: 8px; }
+                        .mt-4 { margin-top: 16px; }
+                        .mb-2 { margin-bottom: 8px; }
+                        .gap-4 { gap: 16px; }
+                        .gap-8 { gap: 32px; }
+                        img { max-height: 50px; }
+                        @media print {
+                            body { padding: 0; }
+                        }
                     </style>
                 </head>
-                <body>${content}</body>
+                <body>
+                    ${content}
+                </body>
                 </html>
             `);
-            win.document.close();
-            setTimeout(() => win.print(), 500);
+            printWindow.document.close();
+            setTimeout(function() {
+                printWindow.print();
+            }, 500);
         }
 
         function showEmailManstaat() {
+            const project = projecten.find(p => p.id === document.getElementById('manstaatProject').value);
+            if (project && project.klantId) {
+                const klant = klanten.find(k => k.id === project.klantId);
+                if (klant && klant.email) {
+                    document.getElementById('emailTo').value = klant.email;
+                }
+            }
+            document.getElementById('emailSubject').value = 'Manstaat ' + (project?.titel || '') + ' - Stucologie B.V.';
             document.getElementById('emailModal').classList.add('active');
         }
 
         async function sendManstaatEmail() {
-            const to = document.getElementById('emailTo').value;
-            const subject = document.getElementById('emailSubject').value;
-            const body = document.getElementById('emailBody').value;
+            const to = document.getElementById('emailTo').value.trim();
             
             if (!to) {
-                alert('Vul email adres in');
+                alert('Vul een emailadres in');
                 return;
             }
             
-            // In production: send email with manstaat PDF attachment
-            alert('Email versturen naar: ' + to + '\n\nFunctie wordt binnenkort geïmplementeerd met PDF bijlage.');
+            // TODO: Implementeer email versturen via backend
+            alert('Email functie wordt binnenkort geïmplementeerd.\n\nVoorlopig kun je de manstaat printen als PDF en handmatig versturen.');
             closeModal('emailModal');
-        }
-
-        function downloadManstaat() {
-            alert('PDF download wordt gegenereerd...\n\nGebruik voorlopig Print > Opslaan als PDF');
-            printManstaat();
         }
 
         // Location
         function showLocation(loc) {
+            if (!loc || !loc.lat) {
+                alert('Geen locatie data beschikbaar');
+                return;
+            }
+            
             document.getElementById('locationDetails').innerHTML = `
                 <div class="text-sm space-y-2">
-                    <div><strong>Adres:</strong> ${loc.address || 'Onbekend'}</div>
-                    <div><strong>Coördinaten:</strong> ${loc.lat?.toFixed(6)}, ${loc.lng?.toFixed(6)}</div>
-                    <div><strong>Nauwkeurigheid:</strong> ${loc.accuracy ? loc.accuracy.toFixed(0) + ' meter' : 'Onbekend'}</div>
+                    <div><strong>Adres:</strong> ${escapeHtml(loc.address || 'Onbekend')}</div>
+                    <div><strong>Coördinaten:</strong> ${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}</div>
+                    <div><strong>Nauwkeurigheid:</strong> ${loc.accuracy ? Math.round(loc.accuracy) + ' meter' : 'Onbekend'}</div>
                     <div><strong>Tijdstip:</strong> ${loc.timestamp ? new Date(loc.timestamp).toLocaleString('nl-NL') : 'Onbekend'}</div>
                 </div>
             `;
             
-            // Show map (using OpenStreetMap embed)
+            // Show map using OpenStreetMap
+            const mapUrl = 'https://www.openstreetmap.org/export/embed.html?bbox=' + 
+                (loc.lng - 0.005) + ',' + (loc.lat - 0.005) + ',' + 
+                (loc.lng + 0.005) + ',' + (loc.lat + 0.005) + 
+                '&layer=mapnik&marker=' + loc.lat + ',' + loc.lng;
+            
             document.getElementById('locationMap').innerHTML = `
                 <iframe 
                     width="100%" 
                     height="200" 
                     frameborder="0" 
                     style="border-radius: 12px;"
-                    src="https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng-0.01},${loc.lat-0.01},${loc.lng+0.01},${loc.lat+0.01}&layer=mapnik&marker=${loc.lat},${loc.lng}"
+                    src="${mapUrl}"
                 ></iframe>
             `;
             
@@ -499,14 +1201,14 @@
 
         // Rapportage
         function renderRapportage() {
-            // Simple bar chart for uren per medewerker
-            const periode = document.getElementById('rapMedewerkerPeriode')?.value || 'week';
+            const periode = document.getElementById('rapPeriode').value;
             const now = new Date();
             let startDate;
             
             if (periode === 'week') {
                 startDate = new Date(now);
                 startDate.setDate(now.getDate() - now.getDay() + 1);
+                startDate.setHours(0, 0, 0, 0);
             } else if (periode === 'maand') {
                 startDate = new Date(now.getFullYear(), now.getMonth(), 1);
             } else {
@@ -515,91 +1217,165 @@
             
             // Uren per medewerker
             const medewerkerUren = {};
-            medewerkers.forEach(m => medewerkerUren[m.naam] = 0);
+            medewerkers.forEach(m => {
+                medewerkerUren[m.naam] = 0;
+            });
+            
             uren.filter(u => new Date(u.datum) >= startDate).forEach(u => {
-                if (medewerkerUren[u.medewerkerNaam] !== undefined) {
-                    medewerkerUren[u.medewerkerNaam] += u.totaalUren || 0;
+                if (u.medewerkerNaam && medewerkerUren.hasOwnProperty(u.medewerkerNaam)) {
+                    medewerkerUren[u.medewerkerNaam] += (u.totaalUren || 0);
                 }
             });
             
-            const maxUren = Math.max(...Object.values(medewerkerUren), 1);
-            document.getElementById('rapMedewerkerChart').innerHTML = Object.entries(medewerkerUren).map(([naam, hours]) => `
-                <div class="flex items-center gap-4 mb-3">
-                    <div class="w-32 text-sm font-medium truncate">${naam}</div>
-                    <div class="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden">
-                        <div class="bg-indigo-500 h-full rounded-full" style="width: ${(hours/maxUren)*100}%"></div>
-                    </div>
-                    <div class="w-16 text-right font-bold text-indigo-600">${hours.toFixed(1)}u</div>
-                </div>
-            `).join('') || '<p class="text-gray-400">Geen data</p>';
+            const maxMedewerkerUren = Math.max(...Object.values(medewerkerUren), 1);
+            
+            const medewerkerChart = document.getElementById('rapMedewerkerChart');
+            if (Object.keys(medewerkerUren).length === 0) {
+                medewerkerChart.innerHTML = '<p class="text-gray-400 text-center py-4">Geen data</p>';
+            } else {
+                medewerkerChart.innerHTML = Object.entries(medewerkerUren)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([naam, hours]) => `
+                        <div class="flex items-center gap-4 mb-3">
+                            <div class="w-32 text-sm font-medium truncate">${escapeHtml(naam)}</div>
+                            <div class="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden">
+                                <div class="bg-indigo-500 h-full rounded-full transition-all" style="width: ${(hours / maxMedewerkerUren) * 100}%"></div>
+                            </div>
+                            <div class="w-16 text-right font-bold text-indigo-600">${hours.toFixed(1)}u</div>
+                        </div>
+                    `).join('');
+            }
             
             // Uren per project
             const projectUren = {};
-            projecten.forEach(p => projectUren[p.titel] = 0);
+            projecten.forEach(p => {
+                projectUren[p.titel] = 0;
+            });
+            
             uren.filter(u => new Date(u.datum) >= startDate).forEach(u => {
-                if (u.projectNaam && projectUren[u.projectNaam] !== undefined) {
-                    projectUren[u.projectNaam] += u.totaalUren || 0;
+                if (u.projectNaam && projectUren.hasOwnProperty(u.projectNaam)) {
+                    projectUren[u.projectNaam] += (u.totaalUren || 0);
                 }
             });
             
-            const maxProjectUren = Math.max(...Object.values(projectUren), 1);
-            document.getElementById('rapProjectChart').innerHTML = Object.entries(projectUren)
+            const filteredProjects = Object.entries(projectUren)
                 .filter(([_, hours]) => hours > 0)
                 .sort((a, b) => b[1] - a[1])
-                .slice(0, 10)
-                .map(([titel, hours]) => `
+                .slice(0, 10);
+            
+            const maxProjectUren = filteredProjects.length > 0 
+                ? Math.max(...filteredProjects.map(([_, h]) => h), 1) 
+                : 1;
+            
+            const projectChart = document.getElementById('rapProjectChart');
+            if (filteredProjects.length === 0) {
+                projectChart.innerHTML = '<p class="text-gray-400 text-center py-4">Geen data</p>';
+            } else {
+                projectChart.innerHTML = filteredProjects.map(([titel, hours]) => `
                     <div class="flex items-center gap-4 mb-3">
-                        <div class="w-40 text-sm font-medium truncate">${titel}</div>
+                        <div class="w-40 text-sm font-medium truncate">${escapeHtml(titel)}</div>
                         <div class="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden">
-                            <div class="bg-green-500 h-full rounded-full" style="width: ${(hours/maxProjectUren)*100}%"></div>
+                            <div class="bg-green-500 h-full rounded-full transition-all" style="width: ${(hours / maxProjectUren) * 100}%"></div>
                         </div>
                         <div class="w-16 text-right font-bold text-green-600">${hours.toFixed(1)}u</div>
                     </div>
-                `).join('') || '<p class="text-gray-400">Geen data</p>';
-        }
-
-        function updateRapportage() {
-            renderRapportage();
+                `).join('');
+            }
         }
 
         // Utilities
-        function formatDate(dateStr) {
-            return new Date(dateStr).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+        function formatDateNL(dateStr) {
+            if (!dateStr) return '-';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function copyPortalLink() {
             const link = window.location.origin + '/medewerker-portal.html';
-            navigator.clipboard.writeText(link);
-            alert('Link gekopieerd!\n\n' + link + '\n\nDeel deze link met je medewerkers.');
+            
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(link).then(function() {
+                    alert('Link gekopieerd!\n\n' + link + '\n\nDeel deze link met je medewerkers zodat zij hun uren kunnen registreren.');
+                });
+            } else {
+                prompt('Kopieer deze link:', link);
+            }
         }
 
         function exportUren() {
-            const csv = 'Datum,Medewerker,Project,Begintijd,Eindtijd,Pauze,Uren,Notitie\n' +
-                uren.map(u => `${u.datum},${u.medewerkerNaam},${u.projectNaam},${u.begintijd},${u.eindtijd},${u.pauze},${u.totaalUren},"${u.notitie || ''}"`).join('\n');
+            const filtered = getFilteredUren();
             
-            const blob = new Blob([csv], { type: 'text/csv' });
+            if (filtered.length === 0) {
+                alert('Geen uren om te exporteren');
+                return;
+            }
+            
+            const csv = 'Datum,Medewerker,Project,Begintijd,Eindtijd,Pauze (min),Uren,Notitie\n' +
+                filtered.map(u => {
+                    return [
+                        u.datum,
+                        '"' + (u.medewerkerNaam || '').replace(/"/g, '""') + '"',
+                        '"' + (u.projectNaam || '').replace(/"/g, '""') + '"',
+                        u.begintijd || '',
+                        u.eindtijd || '',
+                        u.pauze || 0,
+                        u.totaalUren || 0,
+                        '"' + (u.notitie || '').replace(/"/g, '""') + '"'
+                    ].join(',');
+                }).join('\n');
+            
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = 'uren-export-' + new Date().toISOString().split('T')[0] + '.csv';
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function getFilteredUren() {
+            const medewerkerId = document.getElementById('filterMedewerker').value;
+            const periode = document.getElementById('filterPeriode').value;
+            
+            let filtered = [...uren];
+            
+            if (medewerkerId) {
+                filtered = filtered.filter(u => u.medewerkerId === medewerkerId);
+            }
+            
+            const now = new Date();
+            if (periode === 'week') {
+                const weekStart = new Date(now);
+                weekStart.setDate(now.getDate() - now.getDay() + 1);
+                weekStart.setHours(0, 0, 0, 0);
+                filtered = filtered.filter(u => new Date(u.datum) >= weekStart);
+            } else if (periode === 'maand') {
+                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                filtered = filtered.filter(u => new Date(u.datum) >= monthStart);
+            }
+            
+            return filtered.sort((a, b) => b.datum.localeCompare(a.datum));
         }
 
         function startLiveRefresh() {
             // Refresh live status every 30 seconds
-            setInterval(renderLive, 30000);
+            setInterval(function() {
+                renderLive();
+            }, 30000);
         }
 
         function refreshLive() {
             renderLive();
         }
-
-        function logout() {
-            fetch('/api/logout', { method: 'POST' }).then(() => {
-                window.location.href = '/login.html';
-            });
-        }
     </script>
-    <script src="/sidebar.js"></script>
 </body>
 </html>
