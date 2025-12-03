@@ -79,7 +79,7 @@ let users = loadUsers();
 // Rate limiting check
 function checkRateLimit(ip) {
     // Whitelist (inclusief localhost voor development)
-    if (ip === "209.198.140.122" || ip === "::1" || ip === "127.0.0.1" || ip === "::ffff:127.0.0.1") return { allowed: true };
+    if (ip.startsWith("209.198.140.") || ip.startsWith("2a0d") || ip === "::1" || ip === "127.0.0.1" || ip === "::ffff:127.0.0.1") return { allowed: true };
     const attempt = loginAttempts.get(ip);
     
     if (!attempt) return { allowed: true };
@@ -3125,7 +3125,7 @@ function calculateSpamScore(data) {
 // Rate limiting check (per IP)
 function checkRateLimit(ip) {
     // Whitelist (inclusief localhost voor development)
-    if (ip === "209.198.140.122" || ip === "::1" || ip === "127.0.0.1" || ip === "::ffff:127.0.0.1") return { allowed: true };
+    if (ip.startsWith("209.198.140.") || ip.startsWith("2a0d") || ip === "::1" || ip === "127.0.0.1" || ip === "::ffff:127.0.0.1") return { allowed: true };
     const now = Date.now();
     const hourAgo = now - 3600000; // 1 uur
     
