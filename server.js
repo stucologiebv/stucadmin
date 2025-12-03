@@ -205,7 +205,7 @@ loadGoogleTokens();
 // Email notificatie helper functie
 async function sendGmailNotification(subject, body) {
     try {
-        const accessToken = googleTokens.get("info@stucologie.nl")?.access_token;
+        const accessToken = googleTokens.get("default")?.access_token;
         if (!accessToken) {
             console.log("Geen Gmail token voor notificatie");
             return;
