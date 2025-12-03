@@ -2,25 +2,43 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Uren Pro+ | StucAdmin</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Uren Pro+ - StucAdmin</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <link rel="apple-touch-icon" href="/logo-stucologie.jpg">
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
     <style>
-        * { font-family: 'Inter', sans-serif; }
-        body { background: #f8fafc; }
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; color: #1a1a2e; }
         
-        .main-content { margin-left: 260px; min-height: 100vh; padding: 24px; }
+        /* Sidebar Styles */
+        .sidebar { background: #ffffff; border-right: 1px solid #e5e7eb; position: fixed; left: 0; top: 0; bottom: 0; width: 256px; display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s ease; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: #64748b; transition: all 0.2s; text-decoration: none; margin-bottom: 4px; position: relative; }
+        .nav-item:hover { background: #f1f5f9; color: #1e293b; }
+        .nav-item.active { background: #6366f1; color: white; }
+        .nav-badge { position: absolute; right: 12px; background: #ef4444; color: white; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 10px; min-width: 20px; text-align: center; }
+        .nav-item.active .nav-badge { background: white; color: #6366f1; }
+        .logout-btn { color: #ef4444; }
+        .logout-btn:hover { background: #fef2f2; color: #dc2626; }
         
-        .card { background: white; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 20px; }
+        /* Mobile Menu */
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        
+        /* Main Content */
+        main { margin-left: 256px; padding: 32px; min-height: 100vh; }
+        
+        /* Cards */
+        .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; margin-bottom: 20px; }
         .card-header { padding: 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
         .card-body { padding: 20px; }
         
-        .tab-bar { display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 12px; margin-bottom: 24px; overflow-x: auto; }
-        .tab-btn { padding: 12px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; background: none; color: #64748b; white-space: nowrap; }
-        .tab-btn.active { background: white; color: #6366f1; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-        .tab-btn:hover:not(.active) { color: #1e293b; }
-        
+        /* Stats Cards */
         .stat-card { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 16px; padding: 24px; color: white; }
         .stat-card.green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
         .stat-card.orange { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
@@ -28,6 +46,13 @@
         .stat-value { font-size: 32px; font-weight: 800; }
         .stat-label { opacity: 0.9; font-size: 14px; margin-top: 4px; }
         
+        /* Tabs */
+        .tab-bar { display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 12px; margin-bottom: 24px; overflow-x: auto; }
+        .tab-btn { padding: 12px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; background: none; color: #64748b; white-space: nowrap; }
+        .tab-btn.active { background: white; color: #6366f1; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .tab-btn:hover:not(.active) { color: #1e293b; }
+        
+        /* Buttons */
         .btn { padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; display: inline-flex; align-items: center; gap: 8px; }
         .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; }
         .btn-primary:hover { box-shadow: 0 4px 12px rgba(99,102,241,0.4); transform: translateY(-1px); }
@@ -36,11 +61,13 @@
         .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
         .btn-danger { background: #ef4444; color: white; }
         
+        /* Tables */
         .data-table { width: 100%; border-collapse: collapse; }
         .data-table th { text-align: left; padding: 14px 16px; font-size: 12px; font-weight: 600; text-transform: uppercase; color: #64748b; background: #f8fafc; }
         .data-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; }
         .data-table tr:hover { background: #f8fafc; }
         
+        /* Badges */
         .badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
         .badge-vast { background: #dbeafe; color: #1d4ed8; }
         .badge-zzp { background: #fef3c7; color: #b45309; }
@@ -49,16 +76,20 @@
         
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
         
+        /* Form Fields */
         .input-field { width: 100%; padding: 12px 16px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; transition: all 0.2s; }
         .input-field:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99,102,241,0.1); }
         
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
+        /* Modals */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
         .modal-overlay.active { display: flex; }
         .modal { background: white; border-radius: 20px; padding: 24px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
         
+        /* Live Indicator */
         .live-indicator { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: #dcfce7; border-radius: 20px; }
         .live-dot { width: 8px; height: 8px; background: #16a34a; border-radius: 50%; animation: pulse 1.5s infinite; }
         
+        /* Manstaat */
         .manstaat-preview { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; }
         .manstaat-header { border-bottom: 2px solid #1e293b; padding-bottom: 16px; margin-bottom: 16px; }
         .manstaat-table { width: 100%; border-collapse: collapse; }
@@ -66,24 +97,54 @@
         .manstaat-table th { background: #f8fafc; font-weight: 600; }
         .manstaat-footer { border-top: 2px solid #1e293b; padding-top: 16px; margin-top: 16px; }
         
+        /* Live Cards */
         .live-card { background: linear-gradient(135deg, #dcfce7, #bbf7d0); border: 2px solid #86efac; border-radius: 16px; padding: 20px; }
         .live-card .avatar { width: 48px; height: 48px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 18px; }
         
+        /* Responsive */
         @media (max-width: 1024px) {
-            .main-content { margin-left: 0; padding: 16px; padding-top: 70px; }
-            .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            main { margin-left: 0; padding: 70px 16px 24px 16px; }
         }
         
         @media (max-width: 640px) {
-            .stats-grid { grid-template-columns: 1fr !important; }
-            .card-header { flex-direction: column; align-items: stretch; }
+            main { padding: 65px 12px 20px 12px; }
+            .stat-value { font-size: 24px; }
         }
     </style>
 </head>
 <body>
-    <div id="sidebarContainer"></div>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
     
-    <main class="main-content">
+    <aside class="sidebar">
+        <div class="p-4 border-b border-gray-100">
+            <img src="/logo-stucologie.jpg" alt="Stucologie B.V." style="max-width: 180px; height: auto;">
+        </div>
+        <nav class="flex-1 p-4 overflow-y-auto">
+            <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+            <a href="omzet.html" class="nav-item">💹 Omzet</a>
+            <a href="crm.html" class="nav-item">👥 Klanten</a>
+            <a href="klanten360.html" class="nav-item">🎯 Klanten 360</a>
+            <a href="planning.html" class="nav-item">📅 Planning</a>
+            <a href="opname.html" class="nav-item">📋 Opname</a>
+            <a href="offerteaanvragen.html" class="nav-item">📩 Offertes</a>
+            <a href="zzp-inhuur.html" class="nav-item">🤝 ZZP Inhuur</a>
+            <a href="uren-pro.html" class="nav-item active">⏱️ Uren Pro+</a>
+            <a href="calculator.html" class="nav-item">🧮 Calculator</a>
+            <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
+            <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
+            <a href="stucie.html" class="nav-item">🤖 Stucie</a>
+        </nav>
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button>
+        </div>
+    </aside>
+
+    <main>
         <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
@@ -101,7 +162,7 @@
         </div>
 
         <!-- Stats -->
-        <div class="grid grid-cols-4 gap-4 mb-6 stats-grid">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div class="stat-card">
                 <div class="stat-value" id="statUrenVandaag">0</div>
                 <div class="stat-label">Uren vandaag</div>
@@ -122,8 +183,8 @@
 
         <!-- Tabs -->
         <div class="tab-bar">
-            <button class="tab-btn active" data-tab="live" onclick="showTab('live', this)">🟢 Live Overzicht</button>
-            <button class="tab-btn" data-tab="uren" onclick="showTab('uren', this)">📊 Alle Uren</button>
+            <button class="tab-btn active" data-tab="live" onclick="showTab('live', this)">🟢 Live</button>
+            <button class="tab-btn" data-tab="uren" onclick="showTab('uren', this)">📊 Uren</button>
             <button class="tab-btn" data-tab="medewerkers" onclick="showTab('medewerkers', this)">👷 Medewerkers</button>
             <button class="tab-btn" data-tab="projecten" onclick="showTab('projecten', this)">📋 Projecten</button>
             <button class="tab-btn" data-tab="manstaat" onclick="showTab('manstaat', this)">📄 Manstaat</button>
@@ -184,7 +245,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="card-body border-t">
+                <div class="card-body border-t border-gray-100">
                     <div class="flex justify-between items-center">
                         <span class="text-gray-600">Totaal gefilterd:</span>
                         <span class="text-2xl font-bold text-indigo-600" id="totaalUren">0 uur</span>
@@ -273,7 +334,7 @@
                             <input type="date" id="manstaatTot" class="input-field">
                         </div>
                         <div class="flex items-end">
-                            <button onclick="generateManstaat()" class="btn btn-primary w-full">📄 Genereer Manstaat</button>
+                            <button onclick="generateManstaat()" class="btn btn-primary w-full">📄 Genereer</button>
                         </div>
                     </div>
 
@@ -292,55 +353,43 @@
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4 mt-4 text-sm">
-                                    <div>
-                                        <div class="text-gray-500">Project:</div>
-                                        <div class="font-semibold" id="msProject">-</div>
-                                    </div>
-                                    <div>
-                                        <div class="text-gray-500">Periode:</div>
-                                        <div class="font-semibold" id="msPeriode">-</div>
-                                    </div>
-                                    <div>
-                                        <div class="text-gray-500">Klant:</div>
-                                        <div class="font-semibold" id="msKlant">-</div>
-                                    </div>
-                                    <div>
-                                        <div class="text-gray-500">Locatie:</div>
-                                        <div class="font-semibold" id="msLocatie">-</div>
-                                    </div>
+                                    <div><span class="text-gray-500">Project:</span> <span class="font-semibold" id="msProject">-</span></div>
+                                    <div><span class="text-gray-500">Periode:</span> <span class="font-semibold" id="msPeriode">-</span></div>
+                                    <div><span class="text-gray-500">Klant:</span> <span class="font-semibold" id="msKlant">-</span></div>
+                                    <div><span class="text-gray-500">Locatie:</span> <span class="font-semibold" id="msLocatie">-</span></div>
                                 </div>
                             </div>
                             
-                            <table class="manstaat-table">
+                            <table class="manstaat-table mt-4">
                                 <thead>
                                     <tr>
                                         <th>Datum</th>
                                         <th>Medewerker</th>
-                                        <th>Begintijd</th>
-                                        <th>Eindtijd</th>
+                                        <th>Begin</th>
+                                        <th>Eind</th>
                                         <th>Pauze</th>
                                         <th>Uren</th>
                                     </tr>
                                 </thead>
                                 <tbody id="manstaatTabel"></tbody>
                                 <tfoot>
-                                    <tr class="font-bold" style="background: #f1f5f9;">
+                                    <tr style="background: #f1f5f9; font-weight: bold;">
                                         <td colspan="5">TOTAAL</td>
                                         <td id="msTotaal">0</td>
                                     </tr>
                                 </tfoot>
                             </table>
                             
-                            <div class="manstaat-footer">
+                            <div class="manstaat-footer mt-6">
                                 <div class="grid grid-cols-2 gap-8">
                                     <div>
                                         <div class="text-sm text-gray-500 mb-2">Handtekening opdrachtgever:</div>
-                                        <div class="border-b-2 border-gray-300 h-16"></div>
+                                        <div style="border-bottom: 2px solid #ccc; height: 60px;"></div>
                                         <div class="text-sm text-gray-500 mt-2">Datum: ________________</div>
                                     </div>
                                     <div>
                                         <div class="text-sm text-gray-500 mb-2">Handtekening Stucologie:</div>
-                                        <div class="border-b-2 border-gray-300 h-16"></div>
+                                        <div style="border-bottom: 2px solid #ccc; height: 60px;"></div>
                                         <div class="text-sm text-gray-500 mt-2">Datum: ________________</div>
                                     </div>
                                 </div>
@@ -365,16 +414,19 @@
                         <select id="rapPeriode" class="input-field" style="width: auto;" onchange="renderRapportage()">
                             <option value="week">Deze week</option>
                             <option value="maand">Deze maand</option>
-                            <option value="jaar">Dit jaar</option>
                         </select>
                     </div>
-                    <div class="card-body" id="rapMedewerkerChart"></div>
+                    <div class="card-body" id="rapMedewerkerChart">
+                        <p class="text-gray-400 text-center py-4">Laden...</p>
+                    </div>
                 </div>
                 <div class="card">
                     <div class="card-header">
                         <h2 class="font-bold text-lg">📊 Uren per Project</h2>
                     </div>
-                    <div class="card-body" id="rapProjectChart"></div>
+                    <div class="card-body" id="rapProjectChart">
+                        <p class="text-gray-400 text-center py-4">Laden...</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -400,7 +452,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Pincode (4 cijfers) *</label>
-                        <input type="text" id="mPincode" class="input-field" placeholder="1234" maxlength="4" pattern="[0-9]{4}">
+                        <input type="text" id="mPincode" class="input-field" placeholder="1234" maxlength="4">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -453,7 +505,7 @@
         </div>
     </div>
 
-    <!-- Modal: Email Manstaat -->
+    <!-- Modal: Email -->
     <div class="modal-overlay" id="emailModal">
         <div class="modal">
             <h3 class="text-lg font-bold mb-4">📧 Manstaat Emailen</h3>
@@ -483,21 +535,18 @@ Stucologie B.V.</textarea>
         </div>
     </div>
 
-    <!-- Modal: Locatie Details -->
+    <!-- Modal: Locatie -->
     <div class="modal-overlay" id="locationModal">
         <div class="modal">
             <h3 class="text-lg font-bold mb-4">📍 Locatie Details</h3>
-            <div id="locationMap" style="background: #f1f5f9; border-radius: 12px; height: 200px; display: flex; align-items: center; justify-content: center; color: #64748b;">
-                Kaart laden...
-            </div>
-            <div class="mt-4 space-y-2" id="locationDetails"></div>
-            <div class="flex gap-3 mt-6">
+            <div id="locationMap" style="background: #f1f5f9; border-radius: 12px; height: 200px; display: flex; align-items: center; justify-content: center; color: #64748b;">Kaart laden...</div>
+            <div class="mt-4" id="locationDetails"></div>
+            <div class="mt-6">
                 <button onclick="closeModal('locationModal')" class="btn btn-secondary w-full">Sluiten</button>
             </div>
         </div>
     </div>
 
-    <script src="/sidebar.js"></script>
     <script>
         // State
         let medewerkers = [];
@@ -505,12 +554,24 @@ Stucologie B.V.</textarea>
         let projecten = [];
         let klanten = [];
 
+        // Toggle mobile menu
+        function toggleMenu() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.querySelector('.sidebar-overlay').classList.toggle('open');
+        }
+
+        // Logout
+        function logout() {
+            fetch('/api/logout', { method: 'POST' }).then(() => {
+                window.location.href = '/login.html';
+            });
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
             await loadAll();
-            startLiveRefresh();
             
-            // Set default dates for manstaat
+            // Set default manstaat dates
             const now = new Date();
             const weekStart = new Date(now);
             weekStart.setDate(now.getDate() - now.getDay() + 1);
@@ -519,62 +580,26 @@ Stucologie B.V.</textarea>
         });
 
         async function loadAll() {
-            await Promise.all([
-                loadMedewerkers(),
-                loadUren(),
-                loadProjecten(),
-                loadKlanten()
-            ]);
+            try {
+                const [medRes, urenRes, projRes, klantRes] = await Promise.all([
+                    fetch('/api/medewerkers'),
+                    fetch('/api/uren'),
+                    fetch('/api/projecten'),
+                    fetch('/api/contacts')
+                ]);
+                
+                if (medRes.ok) medewerkers = await medRes.json();
+                if (urenRes.ok) uren = await urenRes.json();
+                if (projRes.ok) projecten = await projRes.json();
+                if (klantRes.ok) klanten = await klantRes.json();
+            } catch (e) {
+                console.error('Error loading data:', e);
+            }
+            
             updateStats();
             renderAll();
         }
 
-        // Load functions
-        async function loadMedewerkers() {
-            try {
-                const res = await fetch('/api/medewerkers');
-                if (res.ok) {
-                    medewerkers = await res.json();
-                }
-            } catch (e) {
-                console.error('Error loading medewerkers:', e);
-            }
-        }
-
-        async function loadUren() {
-            try {
-                const res = await fetch('/api/uren');
-                if (res.ok) {
-                    uren = await res.json();
-                }
-            } catch (e) {
-                console.error('Error loading uren:', e);
-            }
-        }
-
-        async function loadProjecten() {
-            try {
-                const res = await fetch('/api/projecten');
-                if (res.ok) {
-                    projecten = await res.json();
-                }
-            } catch (e) {
-                console.error('Error loading projecten:', e);
-            }
-        }
-
-        async function loadKlanten() {
-            try {
-                const res = await fetch('/api/contacts');
-                if (res.ok) {
-                    klanten = await res.json();
-                }
-            } catch (e) {
-                console.error('Error loading klanten:', e);
-            }
-        }
-
-        // Stats
         function updateStats() {
             const now = new Date();
             const todayStr = now.toISOString().split('T')[0];
@@ -582,249 +607,152 @@ Stucologie B.V.</textarea>
             weekStart.setDate(now.getDate() - now.getDay() + 1);
             weekStart.setHours(0, 0, 0, 0);
 
-            const todayHours = uren
-                .filter(u => u.datum === todayStr)
-                .reduce((s, u) => s + (u.totaalUren || 0), 0);
+            const todayHours = uren.filter(u => u.datum === todayStr).reduce((s, u) => s + (u.totaalUren || 0), 0);
+            const weekHours = uren.filter(u => new Date(u.datum) >= weekStart).reduce((s, u) => s + (u.totaalUren || 0), 0);
             
-            const weekHours = uren
-                .filter(u => new Date(u.datum) >= weekStart)
-                .reduce((s, u) => s + (u.totaalUren || 0), 0);
-            
-            const activeMedewerkers = medewerkers.filter(m => m.actief !== false).length;
-            const activeProjecten = projecten.filter(p => p.status !== 'afgerond').length;
-
             document.getElementById('statUrenVandaag').textContent = todayHours.toFixed(1);
             document.getElementById('statUrenWeek').textContent = weekHours.toFixed(1);
-            document.getElementById('statMedewerkers').textContent = activeMedewerkers;
-            document.getElementById('statProjecten').textContent = activeProjecten;
+            document.getElementById('statMedewerkers').textContent = medewerkers.filter(m => m.actief !== false).length;
+            document.getElementById('statProjecten').textContent = projecten.filter(p => p.status !== 'afgerond').length;
         }
 
-        // Render functions
         function renderAll() {
             renderMedewerkers();
             filterUren();
             renderProjecten();
             renderLive();
-            updateFilterDropdowns();
+            updateDropdowns();
         }
 
+        // Tab switching
+        function showTab(tabName, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabName).style.display = 'block';
+            btn.classList.add('active');
+            if (tabName === 'rapportage') renderRapportage();
+        }
+
+        // Render Medewerkers
         function renderMedewerkers() {
             const tbody = document.getElementById('medewerkersTabel');
-            
             if (medewerkers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-8">Nog geen medewerkers toegevoegd</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-8">Nog geen medewerkers</td></tr>';
                 return;
             }
-
-            const now = new Date();
-            const weekStart = new Date(now);
-            weekStart.setDate(now.getDate() - now.getDay() + 1);
+            const weekStart = new Date();
+            weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
             weekStart.setHours(0, 0, 0, 0);
 
             tbody.innerHTML = medewerkers.map(m => {
-                const weekUren = uren
-                    .filter(u => u.medewerkerId === m.id && new Date(u.datum) >= weekStart)
-                    .reduce((s, u) => s + (u.totaalUren || 0), 0);
-                
-                return `
-                    <tr>
-                        <td class="font-semibold">${escapeHtml(m.naam)}</td>
-                        <td><span class="badge badge-${m.type}">${m.type === 'zzp' ? 'ZZP' : 'VAST'}</span></td>
-                        <td>${escapeHtml(m.telefoon || '-')}</td>
-                        <td>${m.uurtarief ? '€' + parseFloat(m.uurtarief).toFixed(2) : '-'}</td>
-                        <td class="font-mono">${m.pincode}</td>
-                        <td><span class="badge ${m.actief !== false ? 'badge-actief' : ''}">${m.actief !== false ? 'Actief' : 'Inactief'}</span></td>
-                        <td class="font-semibold text-indigo-600">${weekUren.toFixed(1)}u</td>
-                        <td>
-                            <button onclick="editMedewerker('${m.id}')" class="text-indigo-600 hover:text-indigo-800 mr-2" title="Bewerken">✏️</button>
-                            <button onclick="deleteMedewerker('${m.id}')" class="text-red-500 hover:text-red-700" title="Verwijderen">🗑️</button>
-                        </td>
-                    </tr>
-                `;
+                const weekUren = uren.filter(u => u.medewerkerId === m.id && new Date(u.datum) >= weekStart).reduce((s, u) => s + (u.totaalUren || 0), 0);
+                return `<tr>
+                    <td class="font-semibold">${esc(m.naam)}</td>
+                    <td><span class="badge badge-${m.type}">${m.type === 'zzp' ? 'ZZP' : 'VAST'}</span></td>
+                    <td>${esc(m.telefoon || '-')}</td>
+                    <td>${m.uurtarief ? '€' + parseFloat(m.uurtarief).toFixed(2) : '-'}</td>
+                    <td class="font-mono">${m.pincode}</td>
+                    <td><span class="badge ${m.actief !== false ? 'badge-actief' : ''}">${m.actief !== false ? 'Actief' : 'Inactief'}</span></td>
+                    <td class="font-semibold text-indigo-600">${weekUren.toFixed(1)}u</td>
+                    <td>
+                        <button onclick="editMedewerker('${m.id}')" class="text-indigo-600 mr-2">✏️</button>
+                        <button onclick="deleteMedewerker('${m.id}')" class="text-red-500">🗑️</button>
+                    </td>
+                </tr>`;
             }).join('');
         }
 
+        // Filter & Render Uren
         function filterUren() {
-            const medewerkerId = document.getElementById('filterMedewerker').value;
+            const medId = document.getElementById('filterMedewerker').value;
             const periode = document.getElementById('filterPeriode').value;
-            
             let filtered = [...uren];
             
-            // Filter by medewerker
-            if (medewerkerId) {
-                filtered = filtered.filter(u => u.medewerkerId === medewerkerId);
-            }
+            if (medId) filtered = filtered.filter(u => u.medewerkerId === medId);
             
-            // Filter by periode
             const now = new Date();
             if (periode === 'week') {
-                const weekStart = new Date(now);
-                weekStart.setDate(now.getDate() - now.getDay() + 1);
-                weekStart.setHours(0, 0, 0, 0);
-                filtered = filtered.filter(u => new Date(u.datum) >= weekStart);
+                const ws = new Date(now);
+                ws.setDate(now.getDate() - now.getDay() + 1);
+                ws.setHours(0, 0, 0, 0);
+                filtered = filtered.filter(u => new Date(u.datum) >= ws);
             } else if (periode === 'maand') {
-                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-                filtered = filtered.filter(u => new Date(u.datum) >= monthStart);
+                const ms = new Date(now.getFullYear(), now.getMonth(), 1);
+                filtered = filtered.filter(u => new Date(u.datum) >= ms);
             }
             
-            // Sort by date descending
             filtered.sort((a, b) => b.datum.localeCompare(a.datum));
-            
             renderUrenTable(filtered);
         }
 
-        function renderUrenTable(urenList) {
+        function renderUrenTable(list) {
             const tbody = document.getElementById('urenTabel');
-            
-            if (urenList.length === 0) {
+            if (list.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-8">Geen uren gevonden</td></tr>';
                 document.getElementById('totaalUren').textContent = '0 uur';
                 return;
             }
             
-            const totaal = urenList.reduce((s, u) => s + (u.totaalUren || 0), 0);
+            const totaal = list.reduce((s, u) => s + (u.totaalUren || 0), 0);
             document.getElementById('totaalUren').textContent = totaal.toFixed(1) + ' uur';
             
-            tbody.innerHTML = urenList.map(u => {
+            tbody.innerHTML = list.map(u => {
                 const d = new Date(u.datum);
-                const hasLocation = u.locatie && u.locatie.lat;
-                const locatieJson = hasLocation ? JSON.stringify(u.locatie).replace(/'/g, "\\'") : '';
-                
-                return `
-                    <tr>
-                        <td>${d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
-                        <td class="font-semibold">${escapeHtml(u.medewerkerNaam || '-')}</td>
-                        <td>${escapeHtml(u.projectNaam || '-')}</td>
-                        <td>${u.begintijd || '-'} - ${u.eindtijd || '-'}</td>
-                        <td class="font-bold text-indigo-600">${(u.totaalUren || 0).toFixed(1)}u</td>
-                        <td>
-                            ${hasLocation 
-                                ? `<button onclick='showLocation(${locatieJson})' class="text-green-600 hover:text-green-800" title="Bekijk locatie">📍</button>` 
-                                : '<span class="text-gray-300">-</span>'
-                            }
-                        </td>
-                        <td class="text-sm text-gray-500 max-w-xs truncate">${escapeHtml(u.notitie || '-')}</td>
-                        <td>
-                            <button onclick="deleteUren('${u.id}')" class="text-red-500 hover:text-red-700" title="Verwijderen">🗑️</button>
-                        </td>
-                    </tr>
-                `;
+                const hasLoc = u.locatie && u.locatie.lat;
+                return `<tr>
+                    <td>${d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                    <td class="font-semibold">${esc(u.medewerkerNaam || '-')}</td>
+                    <td>${esc(u.projectNaam || '-')}</td>
+                    <td>${u.begintijd || '-'} - ${u.eindtijd || '-'}</td>
+                    <td class="font-bold text-indigo-600">${(u.totaalUren || 0).toFixed(1)}u</td>
+                    <td>${hasLoc ? `<button onclick='showLocation(${JSON.stringify(u.locatie)})' class="text-green-600">📍</button>` : '-'}</td>
+                    <td class="text-sm text-gray-500">${esc(u.notitie || '-')}</td>
+                    <td><button onclick="deleteUren('${u.id}')" class="text-red-500">🗑️</button></td>
+                </tr>`;
             }).join('');
         }
 
+        // Render Projecten
         function renderProjecten() {
             const tbody = document.getElementById('projectenTabel');
-            
             if (projecten.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-8">Nog geen projecten toegevoegd</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-8">Nog geen projecten</td></tr>';
                 return;
             }
-
             tbody.innerHTML = projecten.map(p => {
-                const projectUren = uren
-                    .filter(u => u.projectId === p.id)
-                    .reduce((s, u) => s + (u.totaalUren || 0), 0);
-                
-                return `
-                    <tr>
-                        <td class="font-semibold">${escapeHtml(p.titel)}</td>
-                        <td>${escapeHtml(p.klantNaam || '-')}</td>
-                        <td>${escapeHtml(p.locatie || '-')}</td>
-                        <td>${p.startdatum ? new Date(p.startdatum).toLocaleDateString('nl-NL') : '-'}</td>
-                        <td class="font-bold text-indigo-600">${projectUren.toFixed(1)}u</td>
-                        <td><span class="badge ${p.status === 'actief' || !p.status ? 'badge-actief' : ''}">${p.status || 'Actief'}</span></td>
-                        <td>
-                            <button onclick="editProject('${p.id}')" class="text-indigo-600 hover:text-indigo-800 mr-2" title="Bewerken">✏️</button>
-                            <button onclick="deleteProject('${p.id}')" class="text-red-500 hover:text-red-700" title="Verwijderen">🗑️</button>
-                        </td>
-                    </tr>
-                `;
+                const pUren = uren.filter(u => u.projectId === p.id).reduce((s, u) => s + (u.totaalUren || 0), 0);
+                return `<tr>
+                    <td class="font-semibold">${esc(p.titel)}</td>
+                    <td>${esc(p.klantNaam || '-')}</td>
+                    <td>${esc(p.locatie || '-')}</td>
+                    <td>${p.startdatum ? new Date(p.startdatum).toLocaleDateString('nl-NL') : '-'}</td>
+                    <td class="font-bold text-indigo-600">${pUren.toFixed(1)}u</td>
+                    <td><span class="badge badge-actief">${p.status || 'Actief'}</span></td>
+                    <td>
+                        <button onclick="editProject('${p.id}')" class="text-indigo-600 mr-2">✏️</button>
+                        <button onclick="deleteProject('${p.id}')" class="text-red-500">🗑️</button>
+                    </td>
+                </tr>`;
             }).join('');
-
+            
             // Update manstaat dropdown
-            const select = document.getElementById('manstaatProject');
-            select.innerHTML = '<option value="">Selecteer project...</option>' +
-                projecten.map(p => `<option value="${p.id}">${escapeHtml(p.titel)}</option>`).join('');
+            document.getElementById('manstaatProject').innerHTML = '<option value="">Selecteer project...</option>' + 
+                projecten.map(p => `<option value="${p.id}">${esc(p.titel)}</option>`).join('');
         }
 
         function renderLive() {
-            // TODO: In productie komt dit van de server - actieve timers ophalen
-            const liveWorkers = [];
-            
-            const container = document.getElementById('liveGrid');
-            const noLive = document.getElementById('noLive');
-            const liveIndicator = document.getElementById('liveWorkers');
-            
-            if (liveWorkers.length === 0) {
-                container.innerHTML = '';
-                noLive.style.display = 'block';
-                liveIndicator.style.display = 'none';
-            } else {
-                noLive.style.display = 'none';
-                liveIndicator.style.display = 'flex';
-                document.getElementById('liveCount').textContent = liveWorkers.length;
-                
-                container.innerHTML = liveWorkers.map(w => `
-                    <div class="live-card">
-                        <div class="flex items-center gap-3 mb-3">
-                            <div class="avatar">${w.naam.charAt(0).toUpperCase()}</div>
-                            <div>
-                                <div class="font-semibold text-gray-800">${escapeHtml(w.naam)}</div>
-                                <span class="badge badge-working">🟢 Aan het werk</span>
-                            </div>
-                        </div>
-                        <div class="text-sm space-y-1 text-gray-600">
-                            <div>🏗️ ${escapeHtml(w.project)}</div>
-                            <div>📍 ${escapeHtml(w.locatie || 'Geen locatie')}</div>
-                            <div>⏱️ Gestart: ${w.startTijd}</div>
-                        </div>
-                        <div class="text-2xl font-bold text-green-600 mt-3">${w.elapsed}</div>
-                    </div>
-                `).join('');
-            }
+            // Placeholder - live workers komen van server
+            document.getElementById('liveGrid').innerHTML = '';
+            document.getElementById('noLive').style.display = 'block';
         }
 
-        function updateFilterDropdowns() {
-            // Medewerkers filter
-            const select = document.getElementById('filterMedewerker');
-            if (select) {
-                const currentValue = select.value;
-                select.innerHTML = '<option value="">Alle medewerkers</option>' +
-                    medewerkers.map(m => `<option value="${m.id}">${escapeHtml(m.naam)}</option>`).join('');
-                select.value = currentValue;
-            }
+        function refreshLive() { renderLive(); }
 
-            // Klanten select in project modal
-            const klantSelect = document.getElementById('pKlant');
-            if (klantSelect) {
-                klantSelect.innerHTML = '<option value="">Selecteer klant...</option>' +
-                    klanten.map(k => {
-                        const naam = k.company_name || ((k.firstname || '') + ' ' + (k.lastname || '')).trim() || 'Onbekend';
-                        return `<option value="${k.id}">${escapeHtml(naam)}</option>`;
-                    }).join('');
-            }
-        }
-
-        // Tab switching
-        function showTab(tabName, btn) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(el => {
-                el.style.display = 'none';
-            });
-            
-            // Deactivate all buttons
-            document.querySelectorAll('.tab-btn').forEach(el => {
-                el.classList.remove('active');
-            });
-            
-            // Show selected tab
-            document.getElementById('tab-' + tabName).style.display = 'block';
-            btn.classList.add('active');
-            
-            // Render rapportage if needed
-            if (tabName === 'rapportage') {
-                renderRapportage();
-            }
+        function updateDropdowns() {
+            document.getElementById('filterMedewerker').innerHTML = '<option value="">Alle medewerkers</option>' + 
+                medewerkers.map(m => `<option value="${m.id}">${esc(m.naam)}</option>`).join('');
+            document.getElementById('pKlant').innerHTML = '<option value="">Selecteer klant...</option>' + 
+                klanten.map(k => `<option value="${k.id}">${esc(k.company_name || (k.firstname + ' ' + k.lastname))}</option>`).join('');
         }
 
         // Modal functions
@@ -842,7 +770,6 @@ Stucologie B.V.</textarea>
         function editMedewerker(id) {
             const m = medewerkers.find(x => x.id === id);
             if (!m) return;
-            
             document.getElementById('medewerkerModalTitle').textContent = 'Medewerker Bewerken';
             document.getElementById('editMedewerkerId').value = id;
             document.getElementById('mNaam').value = m.naam || '';
@@ -857,67 +784,30 @@ Stucologie B.V.</textarea>
             const id = document.getElementById('editMedewerkerId').value;
             const naam = document.getElementById('mNaam').value.trim();
             const pincode = document.getElementById('mPincode').value.trim();
-            
-            if (!naam) {
-                alert('Vul een naam in');
+            if (!naam || !pincode || pincode.length !== 4) {
+                alert('Vul naam en 4-cijferige pincode in');
                 return;
             }
-            
-            if (!pincode || pincode.length !== 4 || !/^\d{4}$/.test(pincode)) {
-                alert('Vul een geldige 4-cijferige pincode in');
-                return;
-            }
-            
             const data = {
-                naam: naam,
-                type: document.getElementById('mType').value,
-                pincode: pincode,
+                naam, type: document.getElementById('mType').value, pincode,
                 telefoon: document.getElementById('mTelefoon').value.trim(),
-                uurtarief: document.getElementById('mUurtarief').value || null,
-                actief: true
+                uurtarief: document.getElementById('mUurtarief').value || null, actief: true
             };
-            
             try {
-                const url = id ? '/api/medewerkers/' + id : '/api/medewerkers';
-                const method = id ? 'PUT' : 'POST';
-                
-                const res = await fetch(url, {
-                    method: method,
+                await fetch(id ? '/api/medewerkers/' + id : '/api/medewerkers', {
+                    method: id ? 'PUT' : 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-                
-                if (!res.ok) throw new Error('Save failed');
-                
                 closeModal('medewerkerModal');
-                await loadMedewerkers();
-                renderMedewerkers();
-                updateStats();
-                updateFilterDropdowns();
-            } catch (e) {
-                console.error('Error saving medewerker:', e);
-                alert('Fout bij opslaan');
-            }
+                await loadAll();
+            } catch (e) { alert('Fout bij opslaan'); }
         }
 
         async function deleteMedewerker(id) {
-            const m = medewerkers.find(x => x.id === id);
-            if (!confirm('Weet je zeker dat je ' + (m?.naam || 'deze medewerker') + ' wilt verwijderen?')) {
-                return;
-            }
-            
-            try {
-                const res = await fetch('/api/medewerkers/' + id, { method: 'DELETE' });
-                if (!res.ok) throw new Error('Delete failed');
-                
-                await loadMedewerkers();
-                renderMedewerkers();
-                updateStats();
-                updateFilterDropdowns();
-            } catch (e) {
-                console.error('Error deleting medewerker:', e);
-                alert('Fout bij verwijderen');
-            }
+            if (!confirm('Medewerker verwijderen?')) return;
+            await fetch('/api/medewerkers/' + id, { method: 'DELETE' });
+            await loadAll();
         }
 
         function showAddProject() {
@@ -932,7 +822,6 @@ Stucologie B.V.</textarea>
         function editProject(id) {
             const p = projecten.find(x => x.id === id);
             if (!p) return;
-            
             document.getElementById('editProjectId').value = id;
             document.getElementById('pTitel').value = p.titel || '';
             document.getElementById('pKlant').value = p.klantId || '';
@@ -944,258 +833,78 @@ Stucologie B.V.</textarea>
         async function saveProject() {
             const id = document.getElementById('editProjectId').value;
             const titel = document.getElementById('pTitel').value.trim();
-            
-            if (!titel) {
-                alert('Vul een titel in');
-                return;
-            }
-            
+            if (!titel) { alert('Vul titel in'); return; }
             const klantId = document.getElementById('pKlant').value;
             const klant = klanten.find(k => k.id === klantId);
-            const klantNaam = klant 
-                ? (klant.company_name || ((klant.firstname || '') + ' ' + (klant.lastname || '')).trim())
-                : '';
-            
             const data = {
-                titel: titel,
-                klantId: klantId || null,
-                klantNaam: klantNaam,
+                titel, klantId: klantId || null,
+                klantNaam: klant ? (klant.company_name || klant.firstname + ' ' + klant.lastname) : '',
                 locatie: document.getElementById('pLocatie').value.trim(),
-                startdatum: document.getElementById('pStartdatum').value,
-                status: 'actief'
+                startdatum: document.getElementById('pStartdatum').value, status: 'actief'
             };
-            
-            try {
-                const url = id ? '/api/projecten/' + id : '/api/projecten';
-                const method = id ? 'PUT' : 'POST';
-                
-                const res = await fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                
-                if (!res.ok) throw new Error('Save failed');
-                
-                closeModal('projectModal');
-                await loadProjecten();
-                renderProjecten();
-                updateStats();
-            } catch (e) {
-                console.error('Error saving project:', e);
-                alert('Fout bij opslaan');
-            }
+            await fetch(id ? '/api/projecten/' + id : '/api/projecten', {
+                method: id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            closeModal('projectModal');
+            await loadAll();
         }
 
         async function deleteProject(id) {
-            const p = projecten.find(x => x.id === id);
-            if (!confirm('Weet je zeker dat je project "' + (p?.titel || '') + '" wilt verwijderen?')) {
-                return;
-            }
-            
-            try {
-                const res = await fetch('/api/projecten/' + id, { method: 'DELETE' });
-                if (!res.ok) throw new Error('Delete failed');
-                
-                await loadProjecten();
-                renderProjecten();
-                updateStats();
-            } catch (e) {
-                console.error('Error deleting project:', e);
-                alert('Fout bij verwijderen');
-            }
+            if (!confirm('Project verwijderen?')) return;
+            await fetch('/api/projecten/' + id, { method: 'DELETE' });
+            await loadAll();
         }
 
         async function deleteUren(id) {
-            if (!confirm('Weet je zeker dat je deze uren wilt verwijderen?')) {
-                return;
-            }
-            
-            try {
-                const res = await fetch('/api/uren/' + id, { method: 'DELETE' });
-                if (!res.ok) throw new Error('Delete failed');
-                
-                await loadUren();
-                filterUren();
-                updateStats();
-            } catch (e) {
-                console.error('Error deleting uren:', e);
-                alert('Fout bij verwijderen');
-            }
+            if (!confirm('Uren verwijderen?')) return;
+            await fetch('/api/uren/' + id, { method: 'DELETE' });
+            await loadAll();
         }
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
-        }
-
-        // Close modal on overlay click
-        document.querySelectorAll('.modal-overlay').forEach(overlay => {
-            overlay.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    this.classList.remove('active');
-                }
-            });
-        });
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
         // Manstaat
         function generateManstaat() {
             const projectId = document.getElementById('manstaatProject').value;
             const van = document.getElementById('manstaatVan').value;
             const tot = document.getElementById('manstaatTot').value;
-            
-            if (!projectId) {
-                alert('Selecteer een project');
-                return;
-            }
-            if (!van || !tot) {
-                alert('Selecteer een periode');
-                return;
-            }
+            if (!projectId || !van || !tot) { alert('Selecteer project en periode'); return; }
             
             const project = projecten.find(p => p.id === projectId);
-            if (!project) {
-                alert('Project niet gevonden');
-                return;
-            }
+            const filtered = uren.filter(u => u.projectId === projectId && u.datum >= van && u.datum <= tot).sort((a, b) => a.datum.localeCompare(b.datum));
+            if (filtered.length === 0) { alert('Geen uren gevonden'); return; }
             
-            const filtered = uren
-                .filter(u => u.projectId === projectId && u.datum >= van && u.datum <= tot)
-                .sort((a, b) => a.datum.localeCompare(b.datum));
-            
-            if (filtered.length === 0) {
-                alert('Geen uren gevonden voor deze periode');
-                return;
-            }
-            
-            // Fill manstaat header
             document.getElementById('msProject').textContent = project.titel;
-            document.getElementById('msPeriode').textContent = formatDateNL(van) + ' - ' + formatDateNL(tot);
+            document.getElementById('msPeriode').textContent = formatNL(van) + ' - ' + formatNL(tot);
             document.getElementById('msKlant').textContent = project.klantNaam || '-';
             document.getElementById('msLocatie').textContent = project.locatie || '-';
             
-            // Fill table
-            const tbody = document.getElementById('manstaatTabel');
             let totaal = 0;
-            
-            tbody.innerHTML = filtered.map(u => {
+            document.getElementById('manstaatTabel').innerHTML = filtered.map(u => {
                 totaal += (u.totaalUren || 0);
-                return `
-                    <tr>
-                        <td>${formatDateNL(u.datum)}</td>
-                        <td>${escapeHtml(u.medewerkerNaam || '-')}</td>
-                        <td>${u.begintijd || '-'}</td>
-                        <td>${u.eindtijd || '-'}</td>
-                        <td>${u.pauze || 0} min</td>
-                        <td>${(u.totaalUren || 0).toFixed(2)}</td>
-                    </tr>
-                `;
+                return `<tr><td>${formatNL(u.datum)}</td><td>${esc(u.medewerkerNaam)}</td><td>${u.begintijd}</td><td>${u.eindtijd}</td><td>${u.pauze || 0}m</td><td>${(u.totaalUren || 0).toFixed(2)}</td></tr>`;
             }).join('');
-            
             document.getElementById('msTotaal').textContent = totaal.toFixed(2) + ' uur';
             document.getElementById('manstaatResult').style.display = 'block';
         }
 
         function printManstaat() {
             const content = document.getElementById('manstaatContent').innerHTML;
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Manstaat - Stucologie B.V.</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
-                        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
-                        th { background: #f5f5f5; font-weight: bold; }
-                        .manstaat-header { border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 15px; }
-                        .manstaat-footer { border-top: 2px solid #333; padding-top: 15px; margin-top: 15px; }
-                        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-                        .text-right { text-align: right; }
-                        .text-sm { font-size: 12px; }
-                        .text-gray-500 { color: #666; }
-                        .text-gray-600 { color: #555; }
-                        .font-semibold { font-weight: 600; }
-                        .font-bold { font-weight: bold; }
-                        .mt-2 { margin-top: 8px; }
-                        .mt-4 { margin-top: 16px; }
-                        .mb-2 { margin-bottom: 8px; }
-                        .gap-4 { gap: 16px; }
-                        .gap-8 { gap: 32px; }
-                        img { max-height: 50px; }
-                        @media print {
-                            body { padding: 0; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    ${content}
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
-            setTimeout(function() {
-                printWindow.print();
-            }, 500);
+            const win = window.open('', '_blank');
+            win.document.write('<html><head><title>Manstaat</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{padding:8px;border:1px solid #ddd;text-align:left}th{background:#f5f5f5}</style></head><body>' + content + '</body></html>');
+            win.document.close();
+            setTimeout(() => win.print(), 300);
         }
 
-        function showEmailManstaat() {
-            const project = projecten.find(p => p.id === document.getElementById('manstaatProject').value);
-            if (project && project.klantId) {
-                const klant = klanten.find(k => k.id === project.klantId);
-                if (klant && klant.email) {
-                    document.getElementById('emailTo').value = klant.email;
-                }
-            }
-            document.getElementById('emailSubject').value = 'Manstaat ' + (project?.titel || '') + ' - Stucologie B.V.';
-            document.getElementById('emailModal').classList.add('active');
-        }
+        function showEmailManstaat() { document.getElementById('emailModal').classList.add('active'); }
+        function sendManstaatEmail() { alert('Email functie komt binnenkort'); closeModal('emailModal'); }
 
-        async function sendManstaatEmail() {
-            const to = document.getElementById('emailTo').value.trim();
-            
-            if (!to) {
-                alert('Vul een emailadres in');
-                return;
-            }
-            
-            // TODO: Implementeer email versturen via backend
-            alert('Email functie wordt binnenkort geïmplementeerd.\n\nVoorlopig kun je de manstaat printen als PDF en handmatig versturen.');
-            closeModal('emailModal');
-        }
-
-        // Location
         function showLocation(loc) {
-            if (!loc || !loc.lat) {
-                alert('Geen locatie data beschikbaar');
-                return;
-            }
-            
-            document.getElementById('locationDetails').innerHTML = `
-                <div class="text-sm space-y-2">
-                    <div><strong>Adres:</strong> ${escapeHtml(loc.address || 'Onbekend')}</div>
-                    <div><strong>Coördinaten:</strong> ${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}</div>
-                    <div><strong>Nauwkeurigheid:</strong> ${loc.accuracy ? Math.round(loc.accuracy) + ' meter' : 'Onbekend'}</div>
-                    <div><strong>Tijdstip:</strong> ${loc.timestamp ? new Date(loc.timestamp).toLocaleString('nl-NL') : 'Onbekend'}</div>
-                </div>
-            `;
-            
-            // Show map using OpenStreetMap
-            const mapUrl = 'https://www.openstreetmap.org/export/embed.html?bbox=' + 
-                (loc.lng - 0.005) + ',' + (loc.lat - 0.005) + ',' + 
-                (loc.lng + 0.005) + ',' + (loc.lat + 0.005) + 
-                '&layer=mapnik&marker=' + loc.lat + ',' + loc.lng;
-            
-            document.getElementById('locationMap').innerHTML = `
-                <iframe 
-                    width="100%" 
-                    height="200" 
-                    frameborder="0" 
-                    style="border-radius: 12px;"
-                    src="${mapUrl}"
-                ></iframe>
-            `;
-            
+            if (!loc) return;
+            document.getElementById('locationDetails').innerHTML = `<p><strong>Adres:</strong> ${esc(loc.address || 'Onbekend')}</p><p><strong>Coördinaten:</strong> ${loc.lat?.toFixed(5)}, ${loc.lng?.toFixed(5)}</p>`;
+            document.getElementById('locationMap').innerHTML = `<iframe width="100%" height="200" frameborder="0" style="border-radius:12px" src="https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng-0.005},${loc.lat-0.005},${loc.lng+0.005},${loc.lat+0.005}&layer=mapnik&marker=${loc.lat},${loc.lng}"></iframe>`;
             document.getElementById('locationModal').classList.add('active');
         }
 
@@ -1203,179 +912,42 @@ Stucologie B.V.</textarea>
         function renderRapportage() {
             const periode = document.getElementById('rapPeriode').value;
             const now = new Date();
-            let startDate;
-            
-            if (periode === 'week') {
-                startDate = new Date(now);
-                startDate.setDate(now.getDate() - now.getDay() + 1);
-                startDate.setHours(0, 0, 0, 0);
-            } else if (periode === 'maand') {
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-            } else {
-                startDate = new Date(now.getFullYear(), 0, 1);
-            }
-            
-            // Uren per medewerker
-            const medewerkerUren = {};
-            medewerkers.forEach(m => {
-                medewerkerUren[m.naam] = 0;
-            });
-            
-            uren.filter(u => new Date(u.datum) >= startDate).forEach(u => {
-                if (u.medewerkerNaam && medewerkerUren.hasOwnProperty(u.medewerkerNaam)) {
-                    medewerkerUren[u.medewerkerNaam] += (u.totaalUren || 0);
-                }
-            });
-            
-            const maxMedewerkerUren = Math.max(...Object.values(medewerkerUren), 1);
-            
-            const medewerkerChart = document.getElementById('rapMedewerkerChart');
-            if (Object.keys(medewerkerUren).length === 0) {
-                medewerkerChart.innerHTML = '<p class="text-gray-400 text-center py-4">Geen data</p>';
-            } else {
-                medewerkerChart.innerHTML = Object.entries(medewerkerUren)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([naam, hours]) => `
-                        <div class="flex items-center gap-4 mb-3">
-                            <div class="w-32 text-sm font-medium truncate">${escapeHtml(naam)}</div>
-                            <div class="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden">
-                                <div class="bg-indigo-500 h-full rounded-full transition-all" style="width: ${(hours / maxMedewerkerUren) * 100}%"></div>
-                            </div>
-                            <div class="w-16 text-right font-bold text-indigo-600">${hours.toFixed(1)}u</div>
-                        </div>
-                    `).join('');
-            }
-            
-            // Uren per project
-            const projectUren = {};
-            projecten.forEach(p => {
-                projectUren[p.titel] = 0;
-            });
-            
-            uren.filter(u => new Date(u.datum) >= startDate).forEach(u => {
-                if (u.projectNaam && projectUren.hasOwnProperty(u.projectNaam)) {
-                    projectUren[u.projectNaam] += (u.totaalUren || 0);
-                }
-            });
-            
-            const filteredProjects = Object.entries(projectUren)
-                .filter(([_, hours]) => hours > 0)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 10);
-            
-            const maxProjectUren = filteredProjects.length > 0 
-                ? Math.max(...filteredProjects.map(([_, h]) => h), 1) 
-                : 1;
-            
-            const projectChart = document.getElementById('rapProjectChart');
-            if (filteredProjects.length === 0) {
-                projectChart.innerHTML = '<p class="text-gray-400 text-center py-4">Geen data</p>';
-            } else {
-                projectChart.innerHTML = filteredProjects.map(([titel, hours]) => `
-                    <div class="flex items-center gap-4 mb-3">
-                        <div class="w-40 text-sm font-medium truncate">${escapeHtml(titel)}</div>
-                        <div class="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden">
-                            <div class="bg-green-500 h-full rounded-full transition-all" style="width: ${(hours / maxProjectUren) * 100}%"></div>
-                        </div>
-                        <div class="w-16 text-right font-bold text-green-600">${hours.toFixed(1)}u</div>
-                    </div>
-                `).join('');
-            }
+            let start = new Date(now);
+            if (periode === 'week') { start.setDate(now.getDate() - now.getDay() + 1); }
+            else { start = new Date(now.getFullYear(), now.getMonth(), 1); }
+            start.setHours(0, 0, 0, 0);
+
+            // Per medewerker
+            const mUren = {};
+            medewerkers.forEach(m => mUren[m.naam] = 0);
+            uren.filter(u => new Date(u.datum) >= start).forEach(u => { if (mUren[u.medewerkerNaam] !== undefined) mUren[u.medewerkerNaam] += (u.totaalUren || 0); });
+            const maxM = Math.max(...Object.values(mUren), 1);
+            document.getElementById('rapMedewerkerChart').innerHTML = Object.entries(mUren).map(([n, h]) => `<div class="flex items-center gap-4 mb-3"><div class="w-28 text-sm truncate">${esc(n)}</div><div class="flex-1 bg-gray-100 rounded-full h-5"><div class="bg-indigo-500 h-full rounded-full" style="width:${(h/maxM)*100}%"></div></div><div class="w-14 text-right font-bold text-indigo-600">${h.toFixed(1)}u</div></div>`).join('') || '<p class="text-gray-400">Geen data</p>';
+
+            // Per project
+            const pUren = {};
+            projecten.forEach(p => pUren[p.titel] = 0);
+            uren.filter(u => new Date(u.datum) >= start).forEach(u => { if (pUren[u.projectNaam] !== undefined) pUren[u.projectNaam] += (u.totaalUren || 0); });
+            const filtered = Object.entries(pUren).filter(([_, h]) => h > 0).sort((a, b) => b[1] - a[1]).slice(0, 10);
+            const maxP = filtered.length ? Math.max(...filtered.map(([_, h]) => h), 1) : 1;
+            document.getElementById('rapProjectChart').innerHTML = filtered.map(([t, h]) => `<div class="flex items-center gap-4 mb-3"><div class="w-36 text-sm truncate">${esc(t)}</div><div class="flex-1 bg-gray-100 rounded-full h-5"><div class="bg-green-500 h-full rounded-full" style="width:${(h/maxP)*100}%"></div></div><div class="w-14 text-right font-bold text-green-600">${h.toFixed(1)}u</div></div>`).join('') || '<p class="text-gray-400">Geen data</p>';
         }
 
-        // Utilities
-        function formatDateNL(dateStr) {
-            if (!dateStr) return '-';
-            const d = new Date(dateStr);
-            return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
-        }
-
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
+        // Utils
+        function formatNL(d) { return new Date(d).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }); }
+        function esc(t) { if (!t) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
         function copyPortalLink() {
-            const link = window.location.origin + '/medewerker-portal.html';
-            
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(link).then(function() {
-                    alert('Link gekopieerd!\n\n' + link + '\n\nDeel deze link met je medewerkers zodat zij hun uren kunnen registreren.');
-                });
-            } else {
-                prompt('Kopieer deze link:', link);
-            }
+            const link = location.origin + '/medewerker-portal.html';
+            navigator.clipboard?.writeText(link).then(() => alert('Link gekopieerd!\n\n' + link));
         }
-
         function exportUren() {
-            const filtered = getFilteredUren();
-            
-            if (filtered.length === 0) {
-                alert('Geen uren om te exporteren');
-                return;
-            }
-            
-            const csv = 'Datum,Medewerker,Project,Begintijd,Eindtijd,Pauze (min),Uren,Notitie\n' +
-                filtered.map(u => {
-                    return [
-                        u.datum,
-                        '"' + (u.medewerkerNaam || '').replace(/"/g, '""') + '"',
-                        '"' + (u.projectNaam || '').replace(/"/g, '""') + '"',
-                        u.begintijd || '',
-                        u.eindtijd || '',
-                        u.pauze || 0,
-                        u.totaalUren || 0,
-                        '"' + (u.notitie || '').replace(/"/g, '""') + '"'
-                    ].join(',');
-                }).join('\n');
-            
-            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'uren-export-' + new Date().toISOString().split('T')[0] + '.csv';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            const csv = 'Datum,Medewerker,Project,Begin,Eind,Pauze,Uren,Notitie\n' + uren.map(u => `${u.datum},"${u.medewerkerNaam}","${u.projectNaam}",${u.begintijd},${u.eindtijd},${u.pauze},${u.totaalUren},"${u.notitie || ''}"`).join('\n');
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'uren-' + new Date().toISOString().split('T')[0] + '.csv'; a.click();
         }
 
-        function getFilteredUren() {
-            const medewerkerId = document.getElementById('filterMedewerker').value;
-            const periode = document.getElementById('filterPeriode').value;
-            
-            let filtered = [...uren];
-            
-            if (medewerkerId) {
-                filtered = filtered.filter(u => u.medewerkerId === medewerkerId);
-            }
-            
-            const now = new Date();
-            if (periode === 'week') {
-                const weekStart = new Date(now);
-                weekStart.setDate(now.getDate() - now.getDay() + 1);
-                weekStart.setHours(0, 0, 0, 0);
-                filtered = filtered.filter(u => new Date(u.datum) >= weekStart);
-            } else if (periode === 'maand') {
-                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-                filtered = filtered.filter(u => new Date(u.datum) >= monthStart);
-            }
-            
-            return filtered.sort((a, b) => b.datum.localeCompare(a.datum));
-        }
-
-        function startLiveRefresh() {
-            // Refresh live status every 30 seconds
-            setInterval(function() {
-                renderLive();
-            }, 30000);
-        }
-
-        function refreshLive() {
-            renderLive();
-        }
+        // Close modal on backdrop click
+        document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); }));
     </script>
 </body>
 </html>
