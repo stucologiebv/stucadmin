@@ -202,6 +202,36 @@ function saveGoogleTokens() {
 // Load tokens on startup
 loadGoogleTokens();
 
+// Email notificatie helper functie
+async function sendGmailNotification(subject, body) {
+    try {
+        const accessToken = googleTokens.get("info@stucologie.nl")?.access_token;
+        if (!accessToken) {
+            console.log("Geen Gmail token voor notificatie");
+            return;
+        }
+        const emailContent = [
+            "From: info@stucologie.nl",
+            "To: info@stucologie.nl",
+            "Subject: " + subject,
+            "Content-Type: text/plain; charset=utf-8",
+            "",
+            body
+        ].join("\r\n");
+        const encodedEmail = Buffer.from(emailContent).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+        const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + accessToken, "Content-Type": "application/json" },
+            body: JSON.stringify({ raw: encodedEmail })
+        });
+        if (response.ok) {
+            console.log("📧 Notificatie email verzonden: " + subject);
+        }
+    } catch (e) {
+        console.error("Email notificatie error:", e.message);
+    }
+}
+
 // ============================================
 // CACHING SYSTEM - Moneybird data cachen
 // ============================================
@@ -3347,6 +3377,22 @@ app.post('/api/offerteaanvragen/website', async (req, res) => {
         await fs.promises.writeFile(filePath, JSON.stringify(aanvragen, null, 2));
         
         console.log('Nieuwe website aanvraag: ' + aanvraag.naam);
+
+        // Email notificatie versturen
+        try {
+            const emailBody = `Nieuwe offerteaanvraag via website:
+
+Naam: ${aanvraag.naam}
+Email: ${aanvraag.email}
+Telefoon: ${aanvraag.telefoon}
+Adres: ${aanvraag.adres}
+Bericht: ${aanvraag.bericht}
+
+Bekijk in StucAdmin: https://stucadmin.stucologie.nl/offerteaanvragen.html`;
+            await sendGmailNotification('Nieuwe offerteaanvraag: ' + aanvraag.naam, emailBody);
+        } catch (emailError) {
+            console.error('Email notificatie mislukt:', emailError);
+        }
         res.json({ success: true, id: aanvraag.id });
         
     } catch (error) {
