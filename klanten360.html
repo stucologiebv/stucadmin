@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Klanten 360 Pro | StucAdmin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', system-ui, sans-serif; }
+        .sidebar { width: 260px; background: white; border-right: 1px solid #e5e7eb; height: 100vh; position: fixed; display: flex; flex-direction: column; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; color: #64748b; text-decoration: none; border-radius: 8px; margin: 2px 8px; transition: all 0.2s; font-size: 14px; }
+        .nav-item:hover { background: #f1f5f9; color: #1e293b; }
+        .nav-item.active { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; }
+        .main-content { margin-left: 260px; min-height: 100vh; background: #f8fafc; }
+        
+        /* Customer List */
+        .customer-list { width: 320px; background: white; border-right: 1px solid #e5e7eb; height: calc(100vh - 73px); overflow-y: auto; }
+        .customer-item { padding: 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: all 0.2s; }
+        .customer-item:hover { background: #f8fafc; }
+        .customer-item.active { background: #f0f9ff; border-left: 3px solid #6366f1; }
+        
+        /* Cards */
+        .card { background: white; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden; }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+        .card-body { padding: 20px; }
+        
+        /* Status badges */
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .badge-vip { background: #fef3c7; color: #d97706; }
+        .badge-actief { background: #dcfce7; color: #16a34a; }
+        .badge-lead { background: #e0e7ff; color: #4f46e5; }
+        .badge-inactief { background: #f1f5f9; color: #64748b; }
+        
+        /* Timeline */
+        .timeline-item { position: relative; padding-left: 24px; padding-bottom: 20px; border-left: 2px solid #e5e7eb; margin-left: 8px; }
+        .timeline-item:last-child { border-left: 2px solid transparent; }
+        .timeline-dot { position: absolute; left: -8px; top: 0; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; }
+        .timeline-dot.offerte { background: #8b5cf6; }
+        .timeline-dot.factuur { background: #10b981; }
+        .timeline-dot.afspraak { background: #3b82f6; }
+        .timeline-dot.notitie { background: #f59e0b; }
+        .timeline-dot.email { background: #ec4899; }
+        
+        /* Stars */
+        .stars { color: #fbbf24; letter-spacing: 2px; }
+        
+        /* Quick action buttons */
+        .action-btn { padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+        .action-btn:hover { transform: translateY(-1px); }
+        .action-btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; }
+        .action-btn-secondary { background: white; border: 1px solid #e5e7eb; color: #374151; }
+        
+        /* Tabs */
+        .tab { padding: 12px 20px; cursor: pointer; border-bottom: 2px solid transparent; color: #64748b; font-weight: 500; transition: all 0.2s; }
+        .tab:hover { color: #1e293b; }
+        .tab.active { color: #6366f1; border-bottom-color: #6366f1; }
+        
+        /* Stats */
+        .stat-card { background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius: 12px; padding: 16px; }
+        .stat-value { font-size: 24px; font-weight: 700; color: #1e293b; }
+        .stat-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+        
+        /* AI Insight */
+        .ai-insight { background: linear-gradient(135deg, #faf5ff, #f3e8ff); border: 1px solid #e9d5ff; border-radius: 12px; padding: 16px; }
+        .ai-insight-icon { width: 32px; height: 32px; background: linear-gradient(135deg, #8b5cf6, #a855f7); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+        
+        /* Search */
+        .search-box { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+        .search-box input { border: none; background: none; outline: none; flex: 1; font-size: 14px; }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .customer-list { width: 280px; }
+        }
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; }
+            .customer-list { width: 100%; position: absolute; z-index: 10; }
+            .customer-detail { display: none; }
+            .customer-detail.active { display: block; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="p-4 border-b border-gray-100">
+            <img src="/logo-stucologie.jpg" alt="Stucologie B.V." style="max-width: 180px; height: auto;">
+        </div>
+        <nav class="flex-1 p-2 overflow-y-auto">
+            <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+            <a href="omzet.html" class="nav-item">💹 Omzet</a>
+            <a href="crm.html" class="nav-item">👥 Klanten</a>
+            <a href="klanten360.html" class="nav-item active">🎯 Klanten 360</a>
+            <a href="planning.html" class="nav-item">📅 Planning</a>
+            <a href="opname.html" class="nav-item">📋 Opname</a>
+            <a href="offerteaanvragen.html" class="nav-item">📩 Offertes</a>
+            <a href="zzp-inhuur.html" class="nav-item">🤝 ZZP Inhuur</a>
+            <a href="uren.html" class="nav-item">⏱️ Uren</a>
+            <a href="calculator.html" class="nav-item">🧮 Calculator</a>
+            <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
+            <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
+            <a href="stucie.html" class="nav-item">🤖 Stucie</a>
+        </nav>
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="logout()" class="nav-item w-full text-left">🚪 Uitloggen</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">🎯 Klanten 360 Pro</h1>
+                <p class="text-gray-500 text-sm">Compleet klantoverzicht op één scherm</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="exportKlant()" class="action-btn action-btn-secondary">📥 Export</button>
+                <button onclick="nieuweKlant()" class="action-btn action-btn-primary">➕ Nieuwe klant</button>
+            </div>
+        </header>
+
+        <div class="flex">
+            <!-- Customer List -->
+            <div class="customer-list" id="customerList">
+                <div class="p-4 border-b border-gray-100">
+                    <div class="search-box">
+                        <span>🔍</span>
+                        <input type="text" id="searchInput" placeholder="Zoek klant..." oninput="filterKlanten()">
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <button class="badge badge-actief cursor-pointer" onclick="filterStatus('all')">Alle</button>
+                        <button class="badge badge-vip cursor-pointer" onclick="filterStatus('vip')">VIP</button>
+                        <button class="badge badge-lead cursor-pointer" onclick="filterStatus('lead')">Leads</button>
+                    </div>
+                </div>
+                <div id="klantLijst">
+                    <!-- Dynamisch gevuld -->
+                </div>
+            </div>
+
+            <!-- Customer Detail -->
+            <div class="flex-1 p-6 overflow-y-auto" style="height: calc(100vh - 73px);" id="customerDetail">
+                <!-- Placeholder when no customer selected -->
+                <div id="noCustomer" class="flex flex-col items-center justify-center h-full text-gray-400">
+                    <div class="text-6xl mb-4">👥</div>
+                    <p class="text-lg">Selecteer een klant om details te bekijken</p>
+                </div>
+
+                <!-- Customer Detail Content (hidden initially) -->
+                <div id="customerContent" style="display: none;">
+                    <!-- Top Section: Customer Header -->
+                    <div class="card mb-6">
+                        <div class="card-body">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl text-white font-bold" id="klantInitials">JD</div>
+                                    <div>
+                                        <div class="flex items-center gap-3">
+                                            <h2 class="text-2xl font-bold text-gray-800" id="klantNaam">Jan de Vries</h2>
+                                            <span class="badge badge-vip" id="klantStatus">VIP</span>
+                                        </div>
+                                        <p class="text-gray-500" id="klantAdres">Hoofdstraat 123, Amsterdam</p>
+                                        <div class="flex items-center gap-4 mt-2">
+                                            <span class="text-sm text-gray-500">📧 <span id="klantEmail">jan@email.nl</span></span>
+                                            <span class="text-sm text-gray-500">📱 <span id="klantTelefoon">06-12345678</span></span>
+                                        </div>
+                                        <div class="stars mt-2" id="klantScore">★★★★★</div>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="belKlant()" class="action-btn action-btn-secondary">📞 Bellen</button>
+                                    <button onclick="emailKlant()" class="action-btn action-btn-secondary">✉️ Email</button>
+                                    <button onclick="whatsappKlant()" class="action-btn action-btn-secondary">💬 WhatsApp</button>
+                                    <button onclick="bewerkKlant()" class="action-btn action-btn-primary">✏️ Bewerk</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stats Row -->
+                    <div class="grid grid-cols-4 gap-4 mb-6">
+                        <div class="stat-card">
+                            <div class="stat-value" id="statOmzet">€12.450</div>
+                            <div class="stat-label">Totale omzet</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statProjecten">5</div>
+                            <div class="stat-label">Projecten</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statOpenstaand">€0</div>
+                            <div class="stat-label">Openstaand</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="statBetaaltermijn">14 dagen</div>
+                            <div class="stat-label">Gem. betaaltermijn</div>
+                        </div>
+                    </div>
+
+                    <!-- AI Insights -->
+                    <div class="ai-insight mb-6">
+                        <div class="flex items-start gap-3">
+                            <div class="ai-insight-icon">🤖</div>
+                            <div>
+                                <div class="font-semibold text-purple-900">AI Inzichten</div>
+                                <div class="text-sm text-purple-800 mt-1" id="aiInsights">
+                                    • Deze klant bestelt vaak in het voorjaar<br>
+                                    • Gemiddeld projectbedrag: €2.490<br>
+                                    • Kans op herhaalopdracht: 85%<br>
+                                    • Suggestie: Bied sierpleister aan
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="flex border-b border-gray-200 mb-6">
+                        <div class="tab active" onclick="showTab('tijdlijn')">📅 Tijdlijn</div>
+                        <div class="tab" onclick="showTab('projecten')">🏗️ Projecten</div>
+                        <div class="tab" onclick="showTab('documenten')">📄 Documenten</div>
+                        <div class="tab" onclick="showTab('notities')">📝 Notities</div>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div class="grid grid-cols-3 gap-6">
+                        <!-- Left Column: Timeline / Main Content -->
+                        <div class="col-span-2">
+                            <!-- Tijdlijn Tab -->
+                            <div id="tabTijdlijn" class="tab-content">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <span>📅 Activiteiten Tijdlijn</span>
+                                        <button class="text-sm text-indigo-600 hover:text-indigo-800">Alles bekijken →</button>
+                                    </div>
+                                    <div class="card-body" id="tijdlijnContent">
+                                        <!-- Dynamisch gevuld -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Projecten Tab -->
+                            <div id="tabProjecten" class="tab-content" style="display: none;">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <span>🏗️ Projecten</span>
+                                        <button onclick="nieuwProject()" class="action-btn action-btn-primary text-sm">➕ Nieuw project</button>
+                                    </div>
+                                    <div class="card-body" id="projectenContent">
+                                        <!-- Dynamisch gevuld -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Documenten Tab -->
+                            <div id="tabDocumenten" class="tab-content" style="display: none;">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <span>📄 Documenten</span>
+                                        <button onclick="uploadDocument()" class="action-btn action-btn-primary text-sm">📤 Upload</button>
+                                    </div>
+                                    <div class="card-body" id="documentenContent">
+                                        <!-- Dynamisch gevuld -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Notities Tab -->
+                            <div id="tabNotities" class="tab-content" style="display: none;">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <span>📝 Notities</span>
+                                        <button onclick="nieuweNotitie()" class="action-btn action-btn-primary text-sm">➕ Nieuwe notitie</button>
+                                    </div>
+                                    <div class="card-body">
+                                        <textarea id="notitieInput" class="w-full p-3 border rounded-lg mb-3" rows="3" placeholder="Schrijf een notitie..."></textarea>
+                                        <button onclick="saveNotitie()" class="action-btn action-btn-primary">💾 Opslaan</button>
+                                        <div id="notitiesContent" class="mt-4">
+                                            <!-- Dynamisch gevuld -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Quick Actions & Summary -->
+                        <div class="space-y-6">
+                            <!-- Quick Actions -->
+                            <div class="card">
+                                <div class="card-header">⚡ Snelle acties</div>
+                                <div class="card-body space-y-2">
+                                    <button onclick="nieuweOfferte()" class="action-btn action-btn-secondary w-full justify-center">📄 Nieuwe offerte</button>
+                                    <button onclick="nieuweFactuur()" class="action-btn action-btn-secondary w-full justify-center">🧾 Nieuwe factuur</button>
+                                    <button onclick="planAfspraak()" class="action-btn action-btn-secondary w-full justify-center">📅 Plan afspraak</button>
+                                    <button onclick="stuurHerinnering()" class="action-btn action-btn-secondary w-full justify-center">🔔 Stuur herinnering</button>
+                                    <button onclick="vraagStucie()" class="action-btn action-btn-primary w-full justify-center">🤖 Vraag Stucie</button>
+                                </div>
+                            </div>
+
+                            <!-- Laatste Facturen -->
+                            <div class="card">
+                                <div class="card-header">🧾 Laatste facturen</div>
+                                <div class="card-body" id="facturenContent">
+                                    <!-- Dynamisch gevuld -->
+                                </div>
+                            </div>
+
+                            <!-- Contactpersonen -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <span>👤 Contactpersonen</span>
+                                    <button onclick="addContact()" class="text-indigo-600 hover:text-indigo-800">➕</button>
+                                </div>
+                                <div class="card-body" id="contactenContent">
+                                    <!-- Dynamisch gevuld -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div class="fixed inset-0 bg-black/50 z-50 hidden" id="modal">
+        <div class="flex items-center justify-center h-full">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-lg mx-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold" id="modalTitle">Modal</h3>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+                </div>
+                <div id="modalContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auth check
+        fetch('/api/auth/check').then(r => r.json()).then(d => {
+            if (!d.authenticated) window.location.href = '/login.html';
+        });
+
+        // State
+        let klanten = [];
+        let selectedKlant = null;
+        let currentTab = 'tijdlijn';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadKlanten();
+        });
+
+        // Load klanten from Moneybird
+        async function loadKlanten() {
+            try {
+                const r = await fetch('/api/moneybird/contacts');
+                const data = await r.json();
+                klanten = data.map(k => ({
+                    id: k.id,
+                    naam: k.company_name || `${k.firstname || ''} ${k.lastname || ''}`.trim() || 'Onbekend',
+                    email: k.email || '',
+                    telefoon: k.phone || '',
+                    adres: `${k.address1 || ''} ${k.zipcode || ''} ${k.city || ''}`.trim(),
+                    status: bepaalStatus(k),
+                    score: bepaalScore(k),
+                    moneybird: k
+                }));
+                renderKlantenLijst();
+            } catch (e) {
+                console.error('Error loading klanten:', e);
+            }
+        }
+
+        function bepaalStatus(k) {
+            // Simple logic - can be enhanced
+            if (k.custom_fields?.find(f => f.value === 'VIP')) return 'vip';
+            if (!k.email && !k.phone) return 'lead';
+            return 'actief';
+        }
+
+        function bepaalScore(k) {
+            // Based on completeness of data
+            let score = 3;
+            if (k.email) score++;
+            if (k.phone) score++;
+            return Math.min(score, 5);
+        }
+
+        function renderKlantenLijst() {
+            const container = document.getElementById('klantLijst');
+            container.innerHTML = klanten.map(k => `
+                <div class="customer-item ${selectedKlant?.id === k.id ? 'active' : ''}" onclick="selectKlant('${k.id}')">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold text-sm">
+                            ${getInitials(k.naam)}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-medium text-gray-800 truncate">${k.naam}</div>
+                            <div class="text-sm text-gray-500 truncate">${k.adres || k.email || 'Geen adres'}</div>
+                        </div>
+                        <span class="badge badge-${k.status}">${k.status.toUpperCase()}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getInitials(naam) {
+            return naam.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        }
+
+        function filterKlanten() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const items = document.querySelectorAll('.customer-item');
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(search) ? 'block' : 'none';
+            });
+        }
+
+        function filterStatus(status) {
+            const items = document.querySelectorAll('.customer-item');
+            items.forEach(item => {
+                if (status === 'all') {
+                    item.style.display = 'block';
+                } else {
+                    const badge = item.querySelector('.badge');
+                    item.style.display = badge.classList.contains(`badge-${status}`) ? 'block' : 'none';
+                }
+            });
+        }
+
+        async function selectKlant(id) {
+            selectedKlant = klanten.find(k => k.id === id);
+            if (!selectedKlant) return;
+
+            document.getElementById('noCustomer').style.display = 'none';
+            document.getElementById('customerContent').style.display = 'block';
+
+            // Update header
+            document.getElementById('klantInitials').textContent = getInitials(selectedKlant.naam);
+            document.getElementById('klantNaam').textContent = selectedKlant.naam;
+            document.getElementById('klantAdres').textContent = selectedKlant.adres || 'Geen adres';
+            document.getElementById('klantEmail').textContent = selectedKlant.email || '-';
+            document.getElementById('klantTelefoon').textContent = selectedKlant.telefoon || '-';
+            document.getElementById('klantScore').textContent = '★'.repeat(selectedKlant.score) + '☆'.repeat(5 - selectedKlant.score);
+            
+            const statusBadge = document.getElementById('klantStatus');
+            statusBadge.textContent = selectedKlant.status.toUpperCase();
+            statusBadge.className = `badge badge-${selectedKlant.status}`;
+
+            // Update list highlighting
+            renderKlantenLijst();
+
+            // Load klant data
+            await loadKlantData();
+        }
+
+        async function loadKlantData() {
+            // Load invoices for this customer
+            try {
+                const r = await fetch('/api/moneybird/invoices');
+                const invoices = await r.json();
+                const klantInvoices = invoices.filter(i => i.contact_id === selectedKlant.id);
+                
+                // Calculate stats
+                const totaalOmzet = klantInvoices.reduce((sum, i) => sum + parseFloat(i.total_price_incl_tax || 0), 0);
+                const openstaand = klantInvoices.filter(i => i.state === 'open').reduce((sum, i) => sum + parseFloat(i.total_price_incl_tax || 0), 0);
+                
+                document.getElementById('statOmzet').textContent = '€' + totaalOmzet.toLocaleString('nl-NL', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+                document.getElementById('statProjecten').textContent = klantInvoices.length;
+                document.getElementById('statOpenstaand').textContent = '€' + openstaand.toLocaleString('nl-NL', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+                
+                // Render facturen
+                renderFacturen(klantInvoices.slice(0, 5));
+                
+                // Render tijdlijn
+                renderTijdlijn(klantInvoices);
+
+            } catch (e) {
+                console.error('Error loading klant data:', e);
+            }
+
+            // Generate AI insights
+            generateAIInsights();
+        }
+
+        function renderFacturen(facturen) {
+            const container = document.getElementById('facturenContent');
+            if (facturen.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-sm">Geen facturen</p>';
+                return;
+            }
+            container.innerHTML = facturen.map(f => `
+                <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <div>
+                        <div class="font-medium text-sm">${f.invoice_id || 'Concept'}</div>
+                        <div class="text-xs text-gray-500">${formatDate(f.invoice_date)}</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-semibold text-sm">€${parseFloat(f.total_price_incl_tax || 0).toFixed(0)}</div>
+                        <div class="text-xs ${f.state === 'paid' ? 'text-green-500' : 'text-orange-500'}">${f.state === 'paid' ? 'Betaald' : 'Open'}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderTijdlijn(facturen) {
+            const container = document.getElementById('tijdlijnContent');
+            
+            // Combine facturen into timeline
+            const items = facturen.map(f => ({
+                type: 'factuur',
+                date: f.invoice_date,
+                title: `Factuur ${f.invoice_id || 'Concept'}`,
+                description: `€${parseFloat(f.total_price_incl_tax || 0).toFixed(0)} - ${f.state === 'paid' ? 'Betaald' : 'Open'}`,
+                icon: '🧾'
+            }));
+
+            // Sort by date
+            items.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (items.length === 0) {
+                container.innerHTML = '<p class="text-gray-400">Geen activiteiten gevonden</p>';
+                return;
+            }
+
+            container.innerHTML = items.slice(0, 10).map(item => `
+                <div class="timeline-item">
+                    <div class="timeline-dot ${item.type}"></div>
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <div class="font-medium">${item.icon} ${item.title}</div>
+                            <div class="text-sm text-gray-500">${item.description}</div>
+                        </div>
+                        <div class="text-xs text-gray-400">${formatDate(item.date)}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function generateAIInsights() {
+            // Call Stucie API for insights
+            try {
+                const r = await fetch('/api/stucie/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: `Geef kort 3-4 zakelijke inzichten over klant ${selectedKlant.naam}. Houd het bondig in bullet points.`
+                    })
+                });
+                const data = await r.json();
+                if (data.response) {
+                    document.getElementById('aiInsights').innerHTML = data.response;
+                }
+            } catch (e) {
+                console.error('AI insights error:', e);
+            }
+        }
+
+        function formatDate(date) {
+            if (!date) return '-';
+            return new Date(date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        // Tab switching
+        function showTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+            
+            event.target.classList.add('active');
+            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).style.display = 'block';
+        }
+
+        // Actions
+        function belKlant() {
+            if (selectedKlant?.telefoon) {
+                window.open(`tel:${selectedKlant.telefoon}`);
+            } else {
+                alert('Geen telefoonnummer beschikbaar');
+            }
+        }
+
+        function emailKlant() {
+            if (selectedKlant?.email) {
+                window.open(`mailto:${selectedKlant.email}`);
+            } else {
+                alert('Geen email beschikbaar');
+            }
+        }
+
+        function whatsappKlant() {
+            if (selectedKlant?.telefoon) {
+                const phone = selectedKlant.telefoon.replace(/[^0-9]/g, '');
+                window.open(`https://wa.me/31${phone.startsWith('0') ? phone.slice(1) : phone}`);
+            } else {
+                alert('Geen telefoonnummer beschikbaar');
+            }
+        }
+
+        function nieuweOfferte() {
+            window.location.href = `offerteaanvragen.html?klant=${selectedKlant?.id}`;
+        }
+
+        function nieuweFactuur() {
+            alert('Factuur aanmaken via Moneybird - functie komt binnenkort');
+        }
+
+        function planAfspraak() {
+            window.location.href = `planning.html?klant=${encodeURIComponent(selectedKlant?.naam)}`;
+        }
+
+        function vraagStucie() {
+            window.location.href = `stucie.html?vraag=${encodeURIComponent('Vertel me meer over klant ' + selectedKlant?.naam)}`;
+        }
+
+        function bewerkKlant() {
+            window.location.href = `crm.html?edit=${selectedKlant?.id}`;
+        }
+
+        function nieuweKlant() {
+            window.location.href = 'crm.html?new=1';
+        }
+
+        function saveNotitie() {
+            const text = document.getElementById('notitieInput').value;
+            if (!text.trim()) return;
+            
+            // Save to localStorage for now
+            const notities = JSON.parse(localStorage.getItem(`notities_${selectedKlant.id}`) || '[]');
+            notities.unshift({
+                text,
+                date: new Date().toISOString(),
+                author: 'Minas'
+            });
+            localStorage.setItem(`notities_${selectedKlant.id}`, JSON.stringify(notities));
+            
+            document.getElementById('notitieInput').value = '';
+            loadNotities();
+        }
+
+        function loadNotities() {
+            const notities = JSON.parse(localStorage.getItem(`notities_${selectedKlant?.id}`) || '[]');
+            const container = document.getElementById('notitiesContent');
+            
+            if (notities.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-sm">Geen notities</p>';
+                return;
+            }
+            
+            container.innerHTML = notities.map(n => `
+                <div class="p-3 bg-gray-50 rounded-lg mb-2">
+                    <div class="text-sm">${n.text}</div>
+                    <div class="text-xs text-gray-400 mt-1">${formatDate(n.date)} - ${n.author}</div>
+                </div>
+            `).join('');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+
+        function logout() {
+            fetch('/api/logout', { method: 'POST' }).then(() => {
+                window.location.href = '/login.html';
+            });
+        }
+    </script>
+    <script src="/sidebar.js"></script>
+</body>
+</html>
