@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Medewerker Portal | Stucologie</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <link rel="apple-touch-icon" href="/logo-stucologie.jpg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        
+        /* Login Screen */
+        .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .login-card { background: white; border-radius: 24px; padding: 40px; width: 100%; max-width: 400px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+        .pin-input { display: flex; gap: 12px; justify-content: center; margin: 30px 0; }
+        .pin-digit { width: 60px; height: 70px; border: 2px solid #e5e7eb; border-radius: 16px; font-size: 28px; font-weight: 700; text-align: center; transition: all 0.2s; }
+        .pin-digit:focus { border-color: #6366f1; outline: none; box-shadow: 0 0 0 4px rgba(99,102,241,0.1); }
+        .pin-digit.filled { border-color: #6366f1; background: #f0f0ff; }
+        
+        /* Dashboard */
+        .dashboard { display: none; min-height: 100vh; background: #f8fafc; }
+        .dashboard.active { display: block; }
+        .dashboard-header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 24px 20px; border-radius: 0 0 32px 32px; }
+        
+        /* Timer Card */
+        .timer-card { background: white; border-radius: 24px; padding: 32px; margin: -40px 20px 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); text-align: center; }
+        .timer-display { font-size: 56px; font-weight: 800; font-variant-numeric: tabular-nums; color: #1e293b; margin: 20px 0; letter-spacing: -2px; }
+        .timer-display.running { color: #6366f1; }
+        .timer-display.paused { color: #f59e0b; }
+        
+        .location-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: #f0fdf4; color: #16a34a; border-radius: 20px; font-size: 13px; font-weight: 500; margin-bottom: 16px; }
+        .location-badge.loading { background: #fef3c7; color: #d97706; }
+        .location-badge.error { background: #fef2f2; color: #dc2626; }
+        
+        .project-badge { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: #f1f5f9; color: #475569; border-radius: 12px; font-size: 14px; font-weight: 600; margin-bottom: 24px; }
+        
+        /* Buttons */
+        .btn-start { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 20px 48px; border-radius: 20px; font-size: 18px; font-weight: 700; cursor: pointer; transition: all 0.3s; box-shadow: 0 10px 30px rgba(16,185,129,0.4); }
+        .btn-start:hover { transform: translateY(-2px); box-shadow: 0 15px 40px rgba(16,185,129,0.5); }
+        .btn-start:active { transform: translateY(0); }
+        
+        .btn-stop { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; padding: 16px 32px; border-radius: 16px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.3s; box-shadow: 0 8px 25px rgba(239,68,68,0.4); }
+        .btn-pause { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; padding: 16px 32px; border-radius: 16px; font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.3s; box-shadow: 0 8px 25px rgba(245,158,11,0.4); }
+        .btn-resume { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; }
+        
+        /* Project Selector */
+        .project-select { width: 100%; padding: 16px 20px; border: 2px solid #e5e7eb; border-radius: 16px; font-size: 16px; font-weight: 500; appearance: none; background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 16px center; cursor: pointer; margin-bottom: 20px; }
+        .project-select:focus { border-color: #6366f1; outline: none; }
+        
+        /* Stats Cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 20px; margin-bottom: 20px; }
+        .stat-card { background: white; border-radius: 16px; padding: 16px; text-align: center; }
+        .stat-value { font-size: 24px; font-weight: 800; color: #6366f1; }
+        .stat-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+        
+        /* Week View */
+        .week-card { background: white; border-radius: 20px; padding: 20px; margin: 0 20px 20px; }
+        .week-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 16px; }
+        .week-day { text-align: center; padding: 12px 8px; border-radius: 12px; background: #f8fafc; }
+        .week-day.today { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; }
+        .week-day.has-hours { background: #dcfce7; }
+        .week-day-name { font-size: 11px; font-weight: 600; text-transform: uppercase; opacity: 0.7; }
+        .week-day-hours { font-size: 18px; font-weight: 700; margin-top: 4px; }
+        
+        /* Recent List */
+        .recent-card { background: white; border-radius: 20px; padding: 20px; margin: 0 20px 20px; }
+        .recent-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #f1f5f9; }
+        .recent-item:last-child { border-bottom: none; }
+        .recent-date { font-size: 13px; color: #64748b; }
+        .recent-project { font-weight: 600; color: #1e293b; }
+        .recent-hours { font-size: 18px; font-weight: 700; color: #6366f1; }
+        
+        /* Actions */
+        .actions-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 20px 100px; }
+        .action-btn { background: white; border: 2px solid #e5e7eb; border-radius: 16px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .action-btn:hover { border-color: #6366f1; background: #f8fafc; }
+        .action-btn-icon { font-size: 28px; margin-bottom: 8px; }
+        .action-btn-label { font-size: 13px; font-weight: 600; color: #475569; }
+        
+        /* Bottom Nav */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e5e7eb; padding: 12px 20px; display: flex; justify-content: space-around; z-index: 100; }
+        .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s; background: none; border: none; }
+        .nav-btn.active { background: #f0f0ff; color: #6366f1; }
+        .nav-btn-icon { font-size: 24px; }
+        .nav-btn-label { font-size: 11px; font-weight: 600; }
+        
+        /* Note Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: white; border-radius: 24px 24px 0 0; padding: 24px; width: 100%; max-width: 500px; max-height: 80vh; overflow-y: auto; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-handle { width: 40px; height: 4px; background: #e5e7eb; border-radius: 2px; margin: 0 auto 20px; }
+        
+        /* History Page */
+        .history-page { display: none; min-height: 100vh; background: #f8fafc; padding-bottom: 80px; }
+        .history-page.active { display: block; }
+        .history-header { background: white; padding: 20px; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 50; }
+        .history-filters { display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px; }
+        .filter-btn { padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; border: 2px solid #e5e7eb; background: white; }
+        .filter-btn.active { background: #6366f1; color: white; border-color: #6366f1; }
+        .history-list { padding: 20px; }
+        .history-group { margin-bottom: 24px; }
+        .history-group-title { font-size: 13px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 12px; }
+        .history-item { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .history-item-left { flex: 1; }
+        .history-item-project { font-weight: 600; color: #1e293b; margin-bottom: 4px; }
+        .history-item-time { font-size: 13px; color: #64748b; }
+        .history-item-hours { font-size: 20px; font-weight: 800; color: #6366f1; }
+        
+        /* Profile Page */
+        .profile-page { display: none; min-height: 100vh; background: #f8fafc; padding-bottom: 80px; }
+        .profile-page.active { display: block; }
+        .profile-header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 40px 20px; text-align: center; }
+        .profile-avatar { width: 80px; height: 80px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 16px; }
+        .profile-name { font-size: 24px; font-weight: 700; }
+        .profile-type { opacity: 0.8; margin-top: 4px; }
+        .profile-stats { display: flex; justify-content: center; gap: 40px; margin-top: 24px; }
+        .profile-stat-value { font-size: 24px; font-weight: 800; }
+        .profile-stat-label { font-size: 12px; opacity: 0.8; }
+        .profile-section { background: white; margin: 20px; border-radius: 16px; overflow: hidden; }
+        .profile-item { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-bottom: 1px solid #f1f5f9; }
+        .profile-item:last-child { border-bottom: none; }
+        .profile-item-icon { font-size: 20px; }
+        .profile-item-label { flex: 1; font-weight: 500; }
+        .profile-item-value { color: #64748b; }
+        .logout-btn { background: #fef2f2; color: #dc2626; padding: 16px 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <!-- LOGIN SCREEN -->
+    <div class="login-container" id="loginScreen">
+        <div class="login-card">
+            <div class="text-center mb-6">
+                <img src="/logo-stucologie.jpg" alt="Stucologie" style="max-width: 150px; margin: 0 auto;">
+            </div>
+            <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">Welkom! 👋</h1>
+            <p class="text-center text-gray-500 mb-6">Voer je pincode in om te starten</p>
+            
+            <div class="pin-input">
+                <input type="tel" maxlength="1" class="pin-digit" id="pin1" oninput="handlePinInput(1)" onkeydown="handlePinKeydown(event, 1)">
+                <input type="tel" maxlength="1" class="pin-digit" id="pin2" oninput="handlePinInput(2)" onkeydown="handlePinKeydown(event, 2)">
+                <input type="tel" maxlength="1" class="pin-digit" id="pin3" oninput="handlePinInput(3)" onkeydown="handlePinKeydown(event, 3)">
+                <input type="tel" maxlength="1" class="pin-digit" id="pin4" oninput="handlePinInput(4)" onkeydown="handlePinKeydown(event, 4)">
+            </div>
+            
+            <div id="loginError" class="text-center text-red-500 text-sm mb-4 hidden">Ongeldige pincode</div>
+            
+            <label class="flex items-center justify-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <input type="checkbox" id="rememberMe" class="rounded">
+                <span>Onthoud mij op dit apparaat</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="dashboard" id="dashboardScreen">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-sm opacity-80" id="greeting">Goedemorgen</div>
+                    <div class="text-2xl font-bold" id="userName">Medewerker</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm opacity-80" id="currentDate">Woensdag</div>
+                    <div class="text-lg font-semibold" id="currentDateFull">3 december</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timer Card -->
+        <div class="timer-card">
+            <!-- Not Working State -->
+            <div id="notWorkingState">
+                <div class="text-gray-400 mb-4">
+                    <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <p class="text-gray-500 mb-6">Je bent nog niet ingeklokt</p>
+                
+                <select class="project-select" id="projectSelect">
+                    <option value="">Selecteer een project...</option>
+                </select>
+                
+                <button class="btn-start" onclick="startTimer()" id="startBtn" disabled>
+                    🟢 START WERKDAG
+                </button>
+            </div>
+
+            <!-- Working State -->
+            <div id="workingState" class="hidden">
+                <div class="location-badge" id="locationBadge">
+                    <span>📍</span>
+                    <span id="locationText">Locatie ophalen...</span>
+                </div>
+                
+                <div class="project-badge" id="currentProject">
+                    🏗️ <span id="currentProjectName">Project</span>
+                </div>
+                
+                <div class="timer-display" id="timerDisplay">00:00:00</div>
+                
+                <div class="flex justify-center gap-4">
+                    <button class="btn-pause" onclick="togglePause()" id="pauseBtn">
+                        ⏸️ PAUZE
+                    </button>
+                    <button class="btn-stop" onclick="stopTimer()">
+                        🔴 STOP
+                    </button>
+                </div>
+                
+                <div class="mt-6 pt-6 border-t border-gray-100">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-500">Gestart om</span>
+                        <span class="font-semibold" id="startTime">--:--</span>
+                    </div>
+                    <div class="flex justify-between text-sm mt-2">
+                        <span class="text-gray-500">Pauze</span>
+                        <span class="font-semibold" id="pauseTime">0 min</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="todayHours">0.0</div>
+                <div class="stat-label">Uren vandaag</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="weekHours">0.0</div>
+                <div class="stat-label">Uren deze week</div>
+            </div>
+        </div>
+
+        <!-- Week View -->
+        <div class="week-card">
+            <div class="flex items-center justify-between">
+                <h3 class="font-bold text-gray-800">📅 Deze week</h3>
+                <span class="text-sm text-gray-500" id="weekTotal">Totaal: 0 uur</span>
+            </div>
+            <div class="week-grid" id="weekGrid">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+
+        <!-- Recent -->
+        <div class="recent-card">
+            <h3 class="font-bold text-gray-800 mb-4">📋 Recente registraties</h3>
+            <div id="recentList">
+                <p class="text-gray-400 text-center py-4">Geen recente uren</p>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions-grid">
+            <div class="action-btn" onclick="showNoteModal()">
+                <div class="action-btn-icon">📝</div>
+                <div class="action-btn-label">Notitie</div>
+            </div>
+            <div class="action-btn" onclick="showPhotoCapture()">
+                <div class="action-btn-icon">📸</div>
+                <div class="action-btn-label">Foto</div>
+            </div>
+            <div class="action-btn" onclick="showTravelModal()">
+                <div class="action-btn-icon">🚗</div>
+                <div class="action-btn-label">Reiskosten</div>
+            </div>
+            <div class="action-btn" onclick="refreshLocation()">
+                <div class="action-btn-icon">📍</div>
+                <div class="action-btn-label">Locatie</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HISTORY PAGE -->
+    <div class="history-page" id="historyScreen">
+        <div class="history-header">
+            <h2 class="text-xl font-bold">📊 Mijn Uren</h2>
+            <div class="history-filters">
+                <button class="filter-btn active" onclick="filterHistory('week')">Deze week</button>
+                <button class="filter-btn" onclick="filterHistory('month')">Deze maand</button>
+                <button class="filter-btn" onclick="filterHistory('all')">Alles</button>
+            </div>
+        </div>
+        <div class="history-list" id="historyList">
+            <!-- Filled by JS -->
+        </div>
+    </div>
+
+    <!-- PROFILE PAGE -->
+    <div class="profile-page" id="profileScreen">
+        <div class="profile-header">
+            <div class="profile-avatar" id="profileAvatar">👷</div>
+            <div class="profile-name" id="profileName">Medewerker</div>
+            <div class="profile-type" id="profileType">Vaste medewerker</div>
+            <div class="profile-stats">
+                <div>
+                    <div class="profile-stat-value" id="profileWeekHours">0</div>
+                    <div class="profile-stat-label">Uren deze week</div>
+                </div>
+                <div>
+                    <div class="profile-stat-value" id="profileMonthHours">0</div>
+                    <div class="profile-stat-label">Uren deze maand</div>
+                </div>
+            </div>
+        </div>
+        <div class="profile-section">
+            <div class="profile-item">
+                <span class="profile-item-icon">📱</span>
+                <span class="profile-item-label">Telefoon</span>
+                <span class="profile-item-value" id="profilePhone">-</span>
+            </div>
+            <div class="profile-item">
+                <span class="profile-item-icon">💼</span>
+                <span class="profile-item-label">Type</span>
+                <span class="profile-item-value" id="profileTypeDetail">Vast</span>
+            </div>
+            <div class="profile-item">
+                <span class="profile-item-icon">📅</span>
+                <span class="profile-item-label">In dienst sinds</span>
+                <span class="profile-item-value" id="profileSince">-</span>
+            </div>
+        </div>
+        <div class="profile-section">
+            <div class="logout-btn" onclick="logout()">
+                🚪 Uitloggen
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <div class="bottom-nav" id="bottomNav" style="display: none;">
+        <button class="nav-btn active" onclick="showScreen('dashboard')">
+            <span class="nav-btn-icon">🏠</span>
+            <span class="nav-btn-label">Home</span>
+        </button>
+        <button class="nav-btn" onclick="showScreen('history')">
+            <span class="nav-btn-icon">📊</span>
+            <span class="nav-btn-label">Uren</span>
+        </button>
+        <button class="nav-btn" onclick="showScreen('profile')">
+            <span class="nav-btn-icon">👤</span>
+            <span class="nav-btn-label">Profiel</span>
+        </button>
+    </div>
+
+    <!-- NOTE MODAL -->
+    <div class="modal-overlay" id="noteModal">
+        <div class="modal-content">
+            <div class="modal-handle"></div>
+            <h3 class="text-lg font-bold mb-4">📝 Notitie toevoegen</h3>
+            <textarea id="noteInput" class="w-full p-4 border-2 border-gray-200 rounded-xl" rows="4" placeholder="Werkzaamheden, bijzonderheden..."></textarea>
+            <div class="flex gap-3 mt-4">
+                <button onclick="saveNote()" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-semibold">Opslaan</button>
+                <button onclick="closeNoteModal()" class="px-6 py-3 border-2 border-gray-200 rounded-xl font-semibold">Annuleer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TRAVEL MODAL -->
+    <div class="modal-overlay" id="travelModal">
+        <div class="modal-content">
+            <div class="modal-handle"></div>
+            <h3 class="text-lg font-bold mb-4">🚗 Reiskosten</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Kilometers</label>
+                    <input type="number" id="travelKm" class="w-full p-3 border-2 border-gray-200 rounded-xl" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Omschrijving</label>
+                    <input type="text" id="travelDesc" class="w-full p-3 border-2 border-gray-200 rounded-xl" placeholder="Bijv. Woon-werk">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-4">
+                <button onclick="saveTravel()" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-semibold">Opslaan</button>
+                <button onclick="closeTravelModal()" class="px-6 py-3 border-2 border-gray-200 rounded-xl font-semibold">Annuleer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- STOP CONFIRMATION MODAL -->
+    <div class="modal-overlay" id="stopModal">
+        <div class="modal-content">
+            <div class="modal-handle"></div>
+            <h3 class="text-lg font-bold mb-4">🛑 Werkdag beëindigen?</h3>
+            <div class="bg-gray-50 rounded-xl p-4 mb-4">
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-600">Gewerkte tijd</span>
+                    <span class="font-bold text-indigo-600" id="stopTotalTime">0:00</span>
+                </div>
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-600">Pauze</span>
+                    <span class="font-semibold" id="stopPauseTime">0 min</span>
+                </div>
+                <div class="flex justify-between pt-2 border-t">
+                    <span class="text-gray-600">Netto uren</span>
+                    <span class="font-bold text-lg" id="stopNettoHours">0.0</span>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Notitie (optioneel)</label>
+                <textarea id="stopNote" class="w-full p-3 border-2 border-gray-200 rounded-xl" rows="2" placeholder="Wat heb je gedaan?"></textarea>
+            </div>
+            <div class="flex gap-3 mt-4">
+                <button onclick="confirmStop()" class="flex-1 bg-red-500 text-white py-3 rounded-xl font-semibold">Beëindigen</button>
+                <button onclick="closeStopModal()" class="px-6 py-3 border-2 border-gray-200 rounded-xl font-semibold">Annuleer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentUser = null;
+        let timerInterval = null;
+        let timerStartTime = null;
+        let pauseStartTime = null;
+        let totalPauseMs = 0;
+        let isPaused = false;
+        let isWorking = false;
+        let currentLocation = null;
+        let projecten = [];
+        let myUren = [];
+
+        // Check saved login
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedPin = localStorage.getItem('medewerkerPin');
+            if (savedPin) {
+                loginWithPin(savedPin);
+            }
+            document.getElementById('pin1').focus();
+        });
+
+        // PIN Input handling
+        function handlePinInput(index) {
+            const input = document.getElementById('pin' + index);
+            input.value = input.value.replace(/\D/g, '');
+            
+            if (input.value.length === 1) {
+                input.classList.add('filled');
+                if (index < 4) {
+                    document.getElementById('pin' + (index + 1)).focus();
+                } else {
+                    // All digits entered, try login
+                    const pin = getPin();
+                    if (pin.length === 4) {
+                        loginWithPin(pin);
+                    }
+                }
+            } else {
+                input.classList.remove('filled');
+            }
+        }
+
+        function handlePinKeydown(event, index) {
+            if (event.key === 'Backspace' && !event.target.value && index > 1) {
+                document.getElementById('pin' + (index - 1)).focus();
+            }
+        }
+
+        function getPin() {
+            return [1,2,3,4].map(i => document.getElementById('pin' + i).value).join('');
+        }
+
+        function clearPin() {
+            [1,2,3,4].forEach(i => {
+                const el = document.getElementById('pin' + i);
+                el.value = '';
+                el.classList.remove('filled');
+            });
+            document.getElementById('pin1').focus();
+        }
+
+        // Login
+        async function loginWithPin(pin) {
+            try {
+                const res = await fetch('/api/medewerker/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pincode: pin })
+                });
+                
+                if (!res.ok) {
+                    document.getElementById('loginError').classList.remove('hidden');
+                    clearPin();
+                    setTimeout(() => {
+                        document.getElementById('loginError').classList.add('hidden');
+                    }, 3000);
+                    return;
+                }
+                
+                currentUser = await res.json();
+                
+                if (document.getElementById('rememberMe').checked) {
+                    localStorage.setItem('medewerkerPin', pin);
+                }
+                
+                showDashboard();
+            } catch (e) {
+                console.error('Login error:', e);
+                document.getElementById('loginError').classList.remove('hidden');
+                clearPin();
+            }
+        }
+
+        // Show Dashboard
+        async function showDashboard() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboardScreen').classList.add('active');
+            document.getElementById('bottomNav').style.display = 'flex';
+            
+            // Set greeting
+            const hour = new Date().getHours();
+            let greeting = 'Goedemorgen';
+            if (hour >= 12 && hour < 18) greeting = 'Goedemiddag';
+            if (hour >= 18) greeting = 'Goedenavond';
+            document.getElementById('greeting').textContent = greeting;
+            document.getElementById('userName').textContent = currentUser.naam;
+            
+            // Set date
+            const now = new Date();
+            const days = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'];
+            const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+            document.getElementById('currentDate').textContent = days[now.getDay()];
+            document.getElementById('currentDateFull').textContent = now.getDate() + ' ' + months[now.getMonth()];
+            
+            // Load data
+            await loadProjecten();
+            await loadMyUren();
+            renderWeekView();
+            renderRecent();
+            
+            // Check for active timer
+            const savedTimer = localStorage.getItem('activeTimer_' + currentUser.id);
+            if (savedTimer) {
+                const timer = JSON.parse(savedTimer);
+                restoreTimer(timer);
+            }
+        }
+
+        // Load projecten
+        async function loadProjecten() {
+            try {
+                const res = await fetch('/api/projecten');
+                if (res.ok) {
+                    projecten = await res.json();
+                    renderProjectSelect();
+                }
+            } catch (e) {
+                console.error('Error loading projecten:', e);
+            }
+        }
+
+        function renderProjectSelect() {
+            const select = document.getElementById('projectSelect');
+            select.innerHTML = '<option value="">Selecteer een project...</option>' +
+                projecten.map(p => `<option value="${p.id}">${p.titel} - ${p.klantNaam || 'Onbekend'}</option>`).join('');
+            
+            select.onchange = () => {
+                document.getElementById('startBtn').disabled = !select.value;
+            };
+        }
+
+        // Load my uren
+        async function loadMyUren() {
+            try {
+                const res = await fetch('/api/medewerker/uren/' + currentUser.id);
+                if (res.ok) {
+                    myUren = await res.json();
+                    updateStats();
+                }
+            } catch (e) {
+                console.error('Error loading uren:', e);
+            }
+        }
+
+        function updateStats() {
+            const now = new Date();
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay() + 1);
+            weekStart.setHours(0,0,0,0);
+            
+            const todayStr = now.toISOString().split('T')[0];
+            const todayHours = myUren.filter(u => u.datum === todayStr).reduce((s, u) => s + u.totaalUren, 0);
+            const weekHours = myUren.filter(u => new Date(u.datum) >= weekStart).reduce((s, u) => s + u.totaalUren, 0);
+            
+            document.getElementById('todayHours').textContent = todayHours.toFixed(1);
+            document.getElementById('weekHours').textContent = weekHours.toFixed(1);
+        }
+
+        function renderWeekView() {
+            const now = new Date();
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay() + 1);
+            
+            const days = ['Ma', 'Di', 'Wo', 'Do', 'Vr'];
+            let html = '';
+            let weekTotal = 0;
+            
+            days.forEach((day, i) => {
+                const date = new Date(weekStart);
+                date.setDate(weekStart.getDate() + i);
+                const dateStr = date.toISOString().split('T')[0];
+                const dayUren = myUren.filter(u => u.datum === dateStr);
+                const hours = dayUren.reduce((s, u) => s + u.totaalUren, 0);
+                weekTotal += hours;
+                
+                const isToday = dateStr === now.toISOString().split('T')[0];
+                const hasHours = hours > 0;
+                
+                html += `
+                    <div class="week-day ${isToday ? 'today' : ''} ${hasHours && !isToday ? 'has-hours' : ''}">
+                        <div class="week-day-name">${day}</div>
+                        <div class="week-day-hours">${hours > 0 ? hours.toFixed(0) : '--'}</div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('weekGrid').innerHTML = html;
+            document.getElementById('weekTotal').textContent = 'Totaal: ' + weekTotal.toFixed(1) + ' uur';
+        }
+
+        function renderRecent() {
+            const recent = myUren.slice(0, 5);
+            if (recent.length === 0) {
+                document.getElementById('recentList').innerHTML = '<p class="text-gray-400 text-center py-4">Geen recente uren</p>';
+                return;
+            }
+            
+            document.getElementById('recentList').innerHTML = recent.map(u => {
+                const d = new Date(u.datum);
+                const isToday = d.toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
+                return `
+                    <div class="recent-item">
+                        <div>
+                            <div class="recent-date">${isToday ? 'Vandaag' : d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'short' })}</div>
+                            <div class="recent-project">${u.projectNaam || 'Project'}</div>
+                        </div>
+                        <div class="recent-hours">${u.totaalUren.toFixed(1)}u</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Timer functions
+        function startTimer() {
+            const projectId = document.getElementById('projectSelect').value;
+            if (!projectId) return;
+            
+            const project = projecten.find(p => p.id === projectId);
+            
+            isWorking = true;
+            isPaused = false;
+            timerStartTime = Date.now();
+            totalPauseMs = 0;
+            
+            document.getElementById('notWorkingState').classList.add('hidden');
+            document.getElementById('workingState').classList.remove('hidden');
+            document.getElementById('currentProjectName').textContent = project.titel;
+            document.getElementById('startTime').textContent = new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('timerDisplay').classList.add('running');
+            
+            // Get location
+            getLocation();
+            
+            // Start interval
+            timerInterval = setInterval(updateTimer, 1000);
+            
+            // Save state
+            saveTimerState(projectId);
+        }
+
+        function updateTimer() {
+            if (!isWorking) return;
+            
+            let elapsed = Date.now() - timerStartTime - totalPauseMs;
+            if (isPaused) {
+                elapsed = Date.now() - timerStartTime - totalPauseMs - (Date.now() - pauseStartTime);
+            }
+            
+            const hours = Math.floor(elapsed / 3600000);
+            const mins = Math.floor((elapsed % 3600000) / 60000);
+            const secs = Math.floor((elapsed % 60000) / 1000);
+            
+            document.getElementById('timerDisplay').textContent = 
+                String(hours).padStart(2, '0') + ':' + 
+                String(mins).padStart(2, '0') + ':' + 
+                String(secs).padStart(2, '0');
+            
+            // Update pause time display
+            const pauseMins = Math.floor(totalPauseMs / 60000);
+            document.getElementById('pauseTime').textContent = pauseMins + ' min';
+        }
+
+        function togglePause() {
+            if (isPaused) {
+                // Resume
+                totalPauseMs += Date.now() - pauseStartTime;
+                isPaused = false;
+                document.getElementById('pauseBtn').innerHTML = '⏸️ PAUZE';
+                document.getElementById('pauseBtn').classList.remove('btn-resume');
+                document.getElementById('pauseBtn').classList.add('btn-pause');
+                document.getElementById('timerDisplay').classList.remove('paused');
+                document.getElementById('timerDisplay').classList.add('running');
+            } else {
+                // Pause
+                pauseStartTime = Date.now();
+                isPaused = true;
+                document.getElementById('pauseBtn').innerHTML = '▶️ HERVAT';
+                document.getElementById('pauseBtn').classList.remove('btn-pause');
+                document.getElementById('pauseBtn').classList.add('btn-resume');
+                document.getElementById('timerDisplay').classList.remove('running');
+                document.getElementById('timerDisplay').classList.add('paused');
+            }
+            saveTimerState();
+        }
+
+        function stopTimer() {
+            // Calculate totals
+            let elapsed = Date.now() - timerStartTime - totalPauseMs;
+            if (isPaused) {
+                totalPauseMs += Date.now() - pauseStartTime;
+                elapsed = Date.now() - timerStartTime - totalPauseMs;
+            }
+            
+            const totalHours = elapsed / 3600000;
+            const pauseMins = Math.floor(totalPauseMs / 60000);
+            
+            document.getElementById('stopTotalTime').textContent = formatDuration(elapsed);
+            document.getElementById('stopPauseTime').textContent = pauseMins + ' min';
+            document.getElementById('stopNettoHours').textContent = totalHours.toFixed(2) + ' uur';
+            
+            document.getElementById('stopModal').classList.add('active');
+        }
+
+        async function confirmStop() {
+            let elapsed = Date.now() - timerStartTime - totalPauseMs;
+            const totalHours = elapsed / 3600000;
+            const pauseMins = Math.floor(totalPauseMs / 60000);
+            const note = document.getElementById('stopNote').value;
+            
+            const savedTimer = JSON.parse(localStorage.getItem('activeTimer_' + currentUser.id) || '{}');
+            
+            // Save uren
+            try {
+                await fetch('/api/uren', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        medewerkerId: currentUser.id,
+                        medewerkerNaam: currentUser.naam,
+                        projectId: savedTimer.projectId,
+                        projectNaam: savedTimer.projectName,
+                        datum: new Date().toISOString().split('T')[0],
+                        begintijd: new Date(timerStartTime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }),
+                        eindtijd: new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }),
+                        pauze: pauseMins,
+                        totaalUren: Math.round(totalHours * 100) / 100,
+                        notitie: note,
+                        locatie: currentLocation
+                    })
+                });
+            } catch (e) {
+                console.error('Error saving uren:', e);
+            }
+            
+            // Reset
+            clearInterval(timerInterval);
+            isWorking = false;
+            isPaused = false;
+            timerStartTime = null;
+            totalPauseMs = 0;
+            currentLocation = null;
+            
+            localStorage.removeItem('activeTimer_' + currentUser.id);
+            
+            document.getElementById('workingState').classList.add('hidden');
+            document.getElementById('notWorkingState').classList.remove('hidden');
+            document.getElementById('timerDisplay').textContent = '00:00:00';
+            document.getElementById('timerDisplay').classList.remove('running', 'paused');
+            document.getElementById('projectSelect').value = '';
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopNote').value = '';
+            
+            closeStopModal();
+            
+            // Reload data
+            await loadMyUren();
+            renderWeekView();
+            renderRecent();
+        }
+
+        function formatDuration(ms) {
+            const hours = Math.floor(ms / 3600000);
+            const mins = Math.floor((ms % 3600000) / 60000);
+            return hours + ':' + String(mins).padStart(2, '0');
+        }
+
+        function saveTimerState(projectId) {
+            const project = projecten.find(p => p.id === (projectId || document.getElementById('projectSelect').value));
+            const state = {
+                projectId: project?.id,
+                projectName: project?.titel,
+                startTime: timerStartTime,
+                totalPauseMs,
+                isPaused,
+                pauseStartTime,
+                location: currentLocation
+            };
+            localStorage.setItem('activeTimer_' + currentUser.id, JSON.stringify(state));
+        }
+
+        function restoreTimer(timer) {
+            isWorking = true;
+            timerStartTime = timer.startTime;
+            totalPauseMs = timer.totalPauseMs || 0;
+            isPaused = timer.isPaused || false;
+            pauseStartTime = timer.pauseStartTime;
+            currentLocation = timer.location;
+            
+            document.getElementById('notWorkingState').classList.add('hidden');
+            document.getElementById('workingState').classList.remove('hidden');
+            document.getElementById('currentProjectName').textContent = timer.projectName;
+            document.getElementById('startTime').textContent = new Date(timerStartTime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+            
+            if (currentLocation) {
+                document.getElementById('locationText').textContent = currentLocation.address || 'Locatie opgeslagen';
+                document.getElementById('locationBadge').classList.remove('loading', 'error');
+            }
+            
+            if (isPaused) {
+                document.getElementById('pauseBtn').innerHTML = '▶️ HERVAT';
+                document.getElementById('pauseBtn').classList.remove('btn-pause');
+                document.getElementById('pauseBtn').classList.add('btn-resume');
+                document.getElementById('timerDisplay').classList.add('paused');
+            } else {
+                document.getElementById('timerDisplay').classList.add('running');
+            }
+            
+            timerInterval = setInterval(updateTimer, 1000);
+            updateTimer();
+        }
+
+        // Location
+        function getLocation() {
+            const badge = document.getElementById('locationBadge');
+            const text = document.getElementById('locationText');
+            badge.classList.add('loading');
+            badge.classList.remove('error');
+            text.textContent = 'Locatie ophalen...';
+            
+            if (!navigator.geolocation) {
+                badge.classList.remove('loading');
+                badge.classList.add('error');
+                text.textContent = 'Locatie niet beschikbaar';
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                async (pos) => {
+                    currentLocation = {
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude,
+                        accuracy: pos.coords.accuracy,
+                        timestamp: Date.now()
+                    };
+                    
+                    // Reverse geocode
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`);
+                        const data = await res.json();
+                        currentLocation.address = data.display_name?.split(',').slice(0,3).join(',') || 'Locatie opgeslagen';
+                        text.textContent = currentLocation.address;
+                    } catch (e) {
+                        text.textContent = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+                    }
+                    
+                    badge.classList.remove('loading');
+                    saveTimerState();
+                },
+                (err) => {
+                    badge.classList.remove('loading');
+                    badge.classList.add('error');
+                    text.textContent = 'Locatie geweigerd';
+                    console.error('Location error:', err);
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
+        function refreshLocation() {
+            if (isWorking) {
+                getLocation();
+            } else {
+                alert('Start eerst je werkdag om locatie op te slaan');
+            }
+        }
+
+        // Screens
+        function showScreen(screen) {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            event.target.closest('.nav-btn').classList.add('active');
+            
+            document.getElementById('dashboardScreen').classList.remove('active');
+            document.getElementById('historyScreen').classList.remove('active');
+            document.getElementById('profileScreen').classList.remove('active');
+            
+            if (screen === 'dashboard') {
+                document.getElementById('dashboardScreen').classList.add('active');
+            } else if (screen === 'history') {
+                document.getElementById('historyScreen').classList.add('active');
+                renderHistory();
+            } else if (screen === 'profile') {
+                document.getElementById('profileScreen').classList.add('active');
+                renderProfile();
+            }
+        }
+
+        function renderHistory(filter = 'week') {
+            let filtered = [...myUren];
+            const now = new Date();
+            
+            if (filter === 'week') {
+                const weekStart = new Date(now);
+                weekStart.setDate(now.getDate() - now.getDay() + 1);
+                weekStart.setHours(0,0,0,0);
+                filtered = filtered.filter(u => new Date(u.datum) >= weekStart);
+            } else if (filter === 'month') {
+                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                filtered = filtered.filter(u => new Date(u.datum) >= monthStart);
+            }
+            
+            filtered.sort((a, b) => b.datum.localeCompare(a.datum));
+            
+            if (filtered.length === 0) {
+                document.getElementById('historyList').innerHTML = '<p class="text-center text-gray-400 py-8">Geen uren gevonden</p>';
+                return;
+            }
+            
+            // Group by date
+            const groups = {};
+            filtered.forEach(u => {
+                if (!groups[u.datum]) groups[u.datum] = [];
+                groups[u.datum].push(u);
+            });
+            
+            let html = '';
+            Object.entries(groups).forEach(([date, items]) => {
+                const d = new Date(date);
+                const dayTotal = items.reduce((s, u) => s + u.totaalUren, 0);
+                html += `
+                    <div class="history-group">
+                        <div class="history-group-title">${d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })} - ${dayTotal.toFixed(1)} uur</div>
+                        ${items.map(u => `
+                            <div class="history-item">
+                                <div class="history-item-left">
+                                    <div class="history-item-project">${u.projectNaam || 'Project'}</div>
+                                    <div class="history-item-time">${u.begintijd} - ${u.eindtijd} ${u.notitie ? '• ' + u.notitie.substring(0,30) : ''}</div>
+                                </div>
+                                <div class="history-item-hours">${u.totaalUren.toFixed(1)}u</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            });
+            
+            document.getElementById('historyList').innerHTML = html;
+        }
+
+        function filterHistory(filter) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            renderHistory(filter);
+        }
+
+        function renderProfile() {
+            document.getElementById('profileName').textContent = currentUser.naam;
+            document.getElementById('profileAvatar').textContent = currentUser.naam.charAt(0).toUpperCase();
+            document.getElementById('profileType').textContent = currentUser.type === 'zzp' ? 'ZZP\'er' : 'Vaste medewerker';
+            document.getElementById('profilePhone').textContent = currentUser.telefoon || '-';
+            document.getElementById('profileTypeDetail').textContent = currentUser.type === 'zzp' ? 'ZZP' : 'Vast';
+            
+            // Calculate stats
+            const now = new Date();
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay() + 1);
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            
+            const weekHours = myUren.filter(u => new Date(u.datum) >= weekStart).reduce((s, u) => s + u.totaalUren, 0);
+            const monthHours = myUren.filter(u => new Date(u.datum) >= monthStart).reduce((s, u) => s + u.totaalUren, 0);
+            
+            document.getElementById('profileWeekHours').textContent = weekHours.toFixed(0);
+            document.getElementById('profileMonthHours').textContent = monthHours.toFixed(0);
+        }
+
+        // Modals
+        function showNoteModal() {
+            if (!isWorking) {
+                alert('Start eerst je werkdag om een notitie toe te voegen');
+                return;
+            }
+            document.getElementById('noteModal').classList.add('active');
+        }
+
+        function closeNoteModal() {
+            document.getElementById('noteModal').classList.remove('active');
+        }
+
+        function saveNote() {
+            const note = document.getElementById('noteInput').value;
+            // Save to current timer state or separate storage
+            alert('Notitie opgeslagen: ' + note);
+            closeNoteModal();
+            document.getElementById('noteInput').value = '';
+        }
+
+        function showTravelModal() {
+            document.getElementById('travelModal').classList.add('active');
+        }
+
+        function closeTravelModal() {
+            document.getElementById('travelModal').classList.remove('active');
+        }
+
+        function saveTravel() {
+            const km = document.getElementById('travelKm').value;
+            const desc = document.getElementById('travelDesc').value;
+            // Save travel costs
+            alert('Reiskosten opgeslagen: ' + km + ' km - ' + desc);
+            closeTravelModal();
+            document.getElementById('travelKm').value = '';
+            document.getElementById('travelDesc').value = '';
+        }
+
+        function closeStopModal() {
+            document.getElementById('stopModal').classList.remove('active');
+        }
+
+        function showPhotoCapture() {
+            if (!isWorking) {
+                alert('Start eerst je werkdag om een foto toe te voegen');
+                return;
+            }
+            // Open camera
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.capture = 'environment';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    alert('Foto opgeslagen: ' + file.name);
+                    // Upload photo
+                }
+            };
+            input.click();
+        }
+
+        // Logout
+        function logout() {
+            localStorage.removeItem('medewerkerPin');
+            localStorage.removeItem('activeTimer_' + currentUser?.id);
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,605 @@
+
+        async function loadUren() {
+            try {
+                const res = await fetch('/api/uren');
+                if (res.ok) uren = await res.json();
+            } catch (e) { console.error('Error loading uren:', e); }
+        }
+
+        async function loadProjecten() {
+            try {
+                const res = await fetch('/api/projecten');
+                if (res.ok) projecten = await res.json();
+            } catch (e) { console.error('Error loading projecten:', e); }
+        }
+
+        async function loadKlanten() {
+            try {
+                const res = await fetch('/api/contacts');
+                if (res.ok) klanten = await res.json();
+            } catch (e) { console.error('Error loading klanten:', e); }
+        }
+
+        // Stats
+        function updateStats() {
+            const now = new Date();
+            const todayStr = now.toISOString().split('T')[0];
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay() + 1);
+            weekStart.setHours(0,0,0,0);
+
+            const todayHours = uren.filter(u => u.datum === todayStr).reduce((s, u) => s + (u.totaalUren || 0), 0);
+            const weekHours = uren.filter(u => new Date(u.datum) >= weekStart).reduce((s, u) => s + (u.totaalUren || 0), 0);
+            const activeMedewerkers = medewerkers.filter(m => m.actief !== false).length;
+
+            document.getElementById('statUrenVandaag').textContent = todayHours.toFixed(1);
+            document.getElementById('statUrenWeek').textContent = weekHours.toFixed(1);
+            document.getElementById('statMedewerkers').textContent = activeMedewerkers;
+            document.getElementById('statProjecten').textContent = projecten.filter(p => p.status !== 'afgerond').length;
+        }
+
+        // Render functions
+        function renderAll() {
+            renderMedewerkers();
+            renderUren();
+            renderProjecten();
+            renderLive();
+            updateFilterDropdowns();
+        }
+
+        function renderMedewerkers() {
+            const tbody = document.getElementById('medewerkersTabel');
+            if (medewerkers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-8">Geen medewerkers gevonden</td></tr>';
+                return;
+            }
+
+            const now = new Date();
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay() + 1);
+
+            tbody.innerHTML = medewerkers.map(m => {
+                const weekUren = uren.filter(u => u.medewerkerId === m.id && new Date(u.datum) >= weekStart)
+                    .reduce((s, u) => s + (u.totaalUren || 0), 0);
+                return `
+                    <tr>
+                        <td class="font-semibold">${m.naam}</td>
+                        <td><span class="badge badge-${m.type}">${m.type === 'zzp' ? 'ZZP' : 'VAST'}</span></td>
+                        <td>${m.telefoon || '-'}</td>
+                        <td>${m.uurtarief ? '€' + parseFloat(m.uurtarief).toFixed(2) : '-'}</td>
+                        <td class="font-mono">${m.pincode}</td>
+                        <td><span class="badge ${m.actief !== false ? 'badge-actief' : ''}">${m.actief !== false ? 'Actief' : 'Inactief'}</span></td>
+                        <td class="font-semibold text-indigo-600">${weekUren.toFixed(1)} uur</td>
+                        <td>
+                            <button onclick="editMedewerker('${m.id}')" class="text-indigo-600 hover:text-indigo-800 mr-2">✏️</button>
+                            <button onclick="deleteMedewerker('${m.id}')" class="text-red-500 hover:text-red-700">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderUren() {
+            filterUren();
+        }
+
+        function filterUren() {
+            const medewerkerId = document.getElementById('filterMedewerker')?.value;
+            const periode = document.getElementById('filterPeriode')?.value || 'week';
+            
+            let filtered = [...uren];
+            
+            if (medewerkerId) {
+                filtered = filtered.filter(u => u.medewerkerId === medewerkerId);
+            }
+            
+            const now = new Date();
+            if (periode === 'week') {
+                const weekStart = new Date(now);
+                weekStart.setDate(now.getDate() - now.getDay() + 1);
+                filtered = filtered.filter(u => new Date(u.datum) >= weekStart);
+            } else if (periode === 'maand') {
+                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                filtered = filtered.filter(u => new Date(u.datum) >= monthStart);
+            }
+            
+            filtered.sort((a, b) => b.datum.localeCompare(a.datum));
+            
+            const tbody = document.getElementById('urenTabel');
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-8">Geen uren gevonden</td></tr>';
+                document.getElementById('totaalUren').textContent = '0 uur';
+                return;
+            }
+            
+            const totaal = filtered.reduce((s, u) => s + (u.totaalUren || 0), 0);
+            document.getElementById('totaalUren').textContent = totaal.toFixed(1) + ' uur';
+            
+            tbody.innerHTML = filtered.map(u => {
+                const d = new Date(u.datum);
+                const hasLocation = u.locatie && u.locatie.lat;
+                return `
+                    <tr>
+                        <td>${d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                        <td class="font-semibold">${u.medewerkerNaam || '-'}</td>
+                        <td>${u.projectNaam || '-'}</td>
+                        <td>${u.begintijd} - ${u.eindtijd}</td>
+                        <td class="font-bold text-indigo-600">${(u.totaalUren || 0).toFixed(1)}u</td>
+                        <td>
+                            ${hasLocation ? 
+                                `<button onclick="showLocation(${JSON.stringify(u.locatie).replace(/"/g, '&quot;')})" class="text-green-600 hover:text-green-800">📍</button>` : 
+                                '<span class="text-gray-300">-</span>'
+                            }
+                        </td>
+                        <td class="text-sm text-gray-500 max-w-xs truncate">${u.notitie || '-'}</td>
+                        <td>
+                            <button onclick="deleteUren('${u.id}')" class="text-red-500 hover:text-red-700">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderProjecten() {
+            const tbody = document.getElementById('projectenTabel');
+            if (projecten.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-8">Geen projecten gevonden</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = projecten.map(p => {
+                const projectUren = uren.filter(u => u.projectId === p.id).reduce((s, u) => s + (u.totaalUren || 0), 0);
+                return `
+                    <tr>
+                        <td class="font-semibold">${p.titel}</td>
+                        <td>${p.klantNaam || '-'}</td>
+                        <td>${p.locatie || '-'}</td>
+                        <td>${p.startdatum ? new Date(p.startdatum).toLocaleDateString('nl-NL') : '-'}</td>
+                        <td class="font-bold text-indigo-600">${projectUren.toFixed(1)} uur</td>
+                        <td><span class="badge ${p.status === 'actief' ? 'badge-actief' : ''}">${p.status || 'Actief'}</span></td>
+                        <td>
+                            <button onclick="editProject('${p.id}')" class="text-indigo-600 hover:text-indigo-800 mr-2">✏️</button>
+                            <button onclick="deleteProject('${p.id}')" class="text-red-500 hover:text-red-700">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Update manstaat dropdown
+            const select = document.getElementById('manstaatProject');
+            select.innerHTML = '<option value="">Selecteer project...</option>' +
+                projecten.map(p => `<option value="${p.id}">${p.titel}</option>`).join('');
+        }
+
+        function renderLive() {
+            // Simulate live data - in production this would check active timers
+            const liveWorkers = []; // This would come from server
+            
+            const container = document.getElementById('liveGrid');
+            const noLive = document.getElementById('noLive');
+            const liveIndicator = document.getElementById('liveWorkers');
+            
+            if (liveWorkers.length === 0) {
+                container.innerHTML = '';
+                noLive.style.display = 'block';
+                liveIndicator.style.display = 'none';
+            } else {
+                noLive.style.display = 'none';
+                liveIndicator.style.display = 'flex';
+                document.getElementById('liveCount').textContent = liveWorkers.length;
+                
+                container.innerHTML = liveWorkers.map(w => `
+                    <div class="bg-green-50 border-2 border-green-200 rounded-xl p-4">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                                ${w.naam.charAt(0)}
+                            </div>
+                            <div>
+                                <div class="font-semibold">${w.naam}</div>
+                                <span class="badge badge-working">Aan het werk</span>
+                            </div>
+                        </div>
+                        <div class="text-sm space-y-1">
+                            <div>🏗️ ${w.project}</div>
+                            <div>📍 ${w.locatie || 'Geen locatie'}</div>
+                            <div>⏱️ Gestart: ${w.startTijd}</div>
+                            <div class="text-lg font-bold text-green-600">${w.elapsed}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function updateFilterDropdowns() {
+            const select = document.getElementById('filterMedewerker');
+            if (select) {
+                select.innerHTML = '<option value="">Alle medewerkers</option>' +
+                    medewerkers.map(m => `<option value="${m.id}">${m.naam}</option>`).join('');
+            }
+
+            const klantSelect = document.getElementById('pKlant');
+            if (klantSelect) {
+                klantSelect.innerHTML = '<option value="">Selecteer klant...</option>' +
+                    klanten.map(k => `<option value="${k.id}">${k.company_name || k.firstname + ' ' + k.lastname}</option>`).join('');
+            }
+        }
+
+        // Tab switching
+        function showTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById('tab-' + tab).style.display = 'block';
+            event.target.classList.add('active');
+            
+            if (tab === 'rapportage') {
+                renderRapportage();
+            }
+        }
+
+        // Modal functions
+        function showAddMedewerker() {
+            document.getElementById('medewerkerModalTitle').textContent = 'Medewerker Toevoegen';
+            document.getElementById('editMedewerkerId').value = '';
+            document.getElementById('mNaam').value = '';
+            document.getElementById('mType').value = 'vast';
+            document.getElementById('mPincode').value = '';
+            document.getElementById('mTelefoon').value = '';
+            document.getElementById('mUurtarief').value = '';
+            document.getElementById('medewerkerModal').classList.add('active');
+        }
+
+        function editMedewerker(id) {
+            const m = medewerkers.find(x => x.id === id);
+            if (!m) return;
+            
+            document.getElementById('medewerkerModalTitle').textContent = 'Medewerker Bewerken';
+            document.getElementById('editMedewerkerId').value = id;
+            document.getElementById('mNaam').value = m.naam;
+            document.getElementById('mType').value = m.type;
+            document.getElementById('mPincode').value = m.pincode;
+            document.getElementById('mTelefoon').value = m.telefoon || '';
+            document.getElementById('mUurtarief').value = m.uurtarief || '';
+            document.getElementById('medewerkerModal').classList.add('active');
+        }
+
+        async function saveMedewerker() {
+            const id = document.getElementById('editMedewerkerId').value;
+            const data = {
+                naam: document.getElementById('mNaam').value,
+                type: document.getElementById('mType').value,
+                pincode: document.getElementById('mPincode').value,
+                telefoon: document.getElementById('mTelefoon').value,
+                uurtarief: document.getElementById('mUurtarief').value,
+                actief: true
+            };
+            
+            if (!data.naam || !data.pincode || data.pincode.length !== 4) {
+                alert('Vul naam en 4-cijferige pincode in');
+                return;
+            }
+            
+            try {
+                const url = id ? `/api/medewerkers/${id}` : '/api/medewerkers';
+                const method = id ? 'PUT' : 'POST';
+                await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                closeModal('medewerkerModal');
+                await loadMedewerkers();
+                renderMedewerkers();
+                updateStats();
+            } catch (e) {
+                alert('Fout bij opslaan');
+            }
+        }
+
+        async function deleteMedewerker(id) {
+            if (!confirm('Medewerker verwijderen?')) return;
+            try {
+                await fetch(`/api/medewerkers/${id}`, { method: 'DELETE' });
+                await loadMedewerkers();
+                renderMedewerkers();
+                updateStats();
+            } catch (e) {
+                alert('Fout bij verwijderen');
+            }
+        }
+
+        function showAddProject() {
+            document.getElementById('pTitel').value = '';
+            document.getElementById('pKlant').value = '';
+            document.getElementById('pLocatie').value = '';
+            document.getElementById('pStartdatum').value = new Date().toISOString().split('T')[0];
+            document.getElementById('projectModal').classList.add('active');
+        }
+
+        async function saveProject() {
+            const klantId = document.getElementById('pKlant').value;
+            const klant = klanten.find(k => k.id === klantId);
+            
+            const data = {
+                titel: document.getElementById('pTitel').value,
+                klantId,
+                klantNaam: klant ? (klant.company_name || klant.firstname + ' ' + klant.lastname) : '',
+                locatie: document.getElementById('pLocatie').value,
+                startdatum: document.getElementById('pStartdatum').value,
+                status: 'actief'
+            };
+            
+            if (!data.titel) {
+                alert('Vul een titel in');
+                return;
+            }
+            
+            try {
+                await fetch('/api/projecten', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                closeModal('projectModal');
+                await loadProjecten();
+                renderProjecten();
+                updateStats();
+            } catch (e) {
+                alert('Fout bij opslaan');
+            }
+        }
+
+        async function deleteProject(id) {
+            if (!confirm('Project verwijderen?')) return;
+            try {
+                await fetch(`/api/projecten/${id}`, { method: 'DELETE' });
+                await loadProjecten();
+                renderProjecten();
+            } catch (e) {
+                alert('Fout bij verwijderen');
+            }
+        }
+
+        async function deleteUren(id) {
+            if (!confirm('Uren verwijderen?')) return;
+            try {
+                await fetch(`/api/uren/${id}`, { method: 'DELETE' });
+                await loadUren();
+                filterUren();
+                updateStats();
+            } catch (e) {
+                alert('Fout bij verwijderen');
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        // Manstaat
+        function generateManstaat() {
+            const projectId = document.getElementById('manstaatProject').value;
+            const van = document.getElementById('manstaatVan').value;
+            const tot = document.getElementById('manstaatTot').value;
+            
+            if (!projectId || !van || !tot) {
+                alert('Selecteer project en periode');
+                return;
+            }
+            
+            const project = projecten.find(p => p.id === projectId);
+            const filtered = uren.filter(u => 
+                u.projectId === projectId && 
+                u.datum >= van && 
+                u.datum <= tot
+            ).sort((a, b) => a.datum.localeCompare(b.datum));
+            
+            if (filtered.length === 0) {
+                alert('Geen uren gevonden voor deze periode');
+                return;
+            }
+            
+            document.getElementById('msProject').textContent = project.titel;
+            document.getElementById('msPeriode').textContent = `${formatDate(van)} - ${formatDate(tot)}`;
+            document.getElementById('msKlant').textContent = project.klantNaam || '-';
+            document.getElementById('msLocatie').textContent = project.locatie || '-';
+            
+            const tbody = document.getElementById('manstaatTabel');
+            let totaal = 0;
+            
+            tbody.innerHTML = filtered.map(u => {
+                totaal += u.totaalUren || 0;
+                return `
+                    <tr>
+                        <td>${formatDate(u.datum)}</td>
+                        <td>${u.medewerkerNaam}</td>
+                        <td>${u.begintijd}</td>
+                        <td>${u.eindtijd}</td>
+                        <td>${u.pauze || 0} min</td>
+                        <td>${(u.totaalUren || 0).toFixed(2)}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            document.getElementById('msTotaal').textContent = totaal.toFixed(2) + ' uur';
+            document.getElementById('manstaatResult').style.display = 'block';
+        }
+
+        function printManstaat() {
+            const content = document.getElementById('manstaatContent').innerHTML;
+            const win = window.open('', '_blank');
+            win.document.write(`
+                <html>
+                <head>
+                    <title>Manstaat - Stucologie B.V.</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; }
+                        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+                        th { background: #f5f5f5; }
+                        .manstaat-header { border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 15px; }
+                        .manstaat-footer { border-top: 2px solid #333; padding-top: 15px; margin-top: 15px; }
+                    </style>
+                </head>
+                <body>${content}</body>
+                </html>
+            `);
+            win.document.close();
+            setTimeout(() => win.print(), 500);
+        }
+
+        function showEmailManstaat() {
+            document.getElementById('emailModal').classList.add('active');
+        }
+
+        async function sendManstaatEmail() {
+            const to = document.getElementById('emailTo').value;
+            const subject = document.getElementById('emailSubject').value;
+            const body = document.getElementById('emailBody').value;
+            
+            if (!to) {
+                alert('Vul email adres in');
+                return;
+            }
+            
+            // In production: send email with manstaat PDF attachment
+            alert('Email versturen naar: ' + to + '\n\nFunctie wordt binnenkort geïmplementeerd met PDF bijlage.');
+            closeModal('emailModal');
+        }
+
+        function downloadManstaat() {
+            alert('PDF download wordt gegenereerd...\n\nGebruik voorlopig Print > Opslaan als PDF');
+            printManstaat();
+        }
+
+        // Location
+        function showLocation(loc) {
+            document.getElementById('locationDetails').innerHTML = `
+                <div class="text-sm space-y-2">
+                    <div><strong>Adres:</strong> ${loc.address || 'Onbekend'}</div>
+                    <div><strong>Coördinaten:</strong> ${loc.lat?.toFixed(6)}, ${loc.lng?.toFixed(6)}</div>
+                    <div><strong>Nauwkeurigheid:</strong> ${loc.accuracy ? loc.accuracy.toFixed(0) + ' meter' : 'Onbekend'}</div>
+                    <div><strong>Tijdstip:</strong> ${loc.timestamp ? new Date(loc.timestamp).toLocaleString('nl-NL') : 'Onbekend'}</div>
+                </div>
+            `;
+            
+            // Show map (using OpenStreetMap embed)
+            document.getElementById('locationMap').innerHTML = `
+                <iframe 
+                    width="100%" 
+                    height="200" 
+                    frameborder="0" 
+                    style="border-radius: 12px;"
+                    src="https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng-0.01},${loc.lat-0.01},${loc.lng+0.01},${loc.lat+0.01}&layer=mapnik&marker=${loc.lat},${loc.lng}"
+                ></iframe>
+            `;
+            
+            document.getElementById('locationModal').classList.add('active');
+        }
+
+        // Rapportage
+        function renderRapportage() {
+            // Simple bar chart for uren per medewerker
+            const periode = document.getElementById('rapMedewerkerPeriode')?.value || 'week';
+            const now = new Date();
+            let startDate;
+            
+            if (periode === 'week') {
+                startDate = new Date(now);
+                startDate.setDate(now.getDate() - now.getDay() + 1);
+            } else if (periode === 'maand') {
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            } else {
+                startDate = new Date(now.getFullYear(), 0, 1);
+            }
+            
+            // Uren per medewerker
+            const medewerkerUren = {};
+            medewerkers.forEach(m => medewerkerUren[m.naam] = 0);
+            uren.filter(u => new Date(u.datum) >= startDate).forEach(u => {
+                if (medewerkerUren[u.medewerkerNaam] !== undefined) {
+                    medewerkerUren[u.medewerkerNaam] += u.totaalUren || 0;
+                }
+            });
+            
+            const maxUren = Math.max(...Object.values(medewerkerUren), 1);
+            document.getElementById('rapMedewerkerChart').innerHTML = Object.entries(medewerkerUren).map(([naam, hours]) => `
+                <div class="flex items-center gap-4 mb-3">
+                    <div class="w-32 text-sm font-medium truncate">${naam}</div>
+                    <div class="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden">
+                        <div class="bg-indigo-500 h-full rounded-full" style="width: ${(hours/maxUren)*100}%"></div>
+                    </div>
+                    <div class="w-16 text-right font-bold text-indigo-600">${hours.toFixed(1)}u</div>
+                </div>
+            `).join('') || '<p class="text-gray-400">Geen data</p>';
+            
+            // Uren per project
+            const projectUren = {};
+            projecten.forEach(p => projectUren[p.titel] = 0);
+            uren.filter(u => new Date(u.datum) >= startDate).forEach(u => {
+                if (u.projectNaam && projectUren[u.projectNaam] !== undefined) {
+                    projectUren[u.projectNaam] += u.totaalUren || 0;
+                }
+            });
+            
+            const maxProjectUren = Math.max(...Object.values(projectUren), 1);
+            document.getElementById('rapProjectChart').innerHTML = Object.entries(projectUren)
+                .filter(([_, hours]) => hours > 0)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10)
+                .map(([titel, hours]) => `
+                    <div class="flex items-center gap-4 mb-3">
+                        <div class="w-40 text-sm font-medium truncate">${titel}</div>
+                        <div class="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden">
+                            <div class="bg-green-500 h-full rounded-full" style="width: ${(hours/maxProjectUren)*100}%"></div>
+                        </div>
+                        <div class="w-16 text-right font-bold text-green-600">${hours.toFixed(1)}u</div>
+                    </div>
+                `).join('') || '<p class="text-gray-400">Geen data</p>';
+        }
+
+        function updateRapportage() {
+            renderRapportage();
+        }
+
+        // Utilities
+        function formatDate(dateStr) {
+            return new Date(dateStr).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        function copyPortalLink() {
+            const link = window.location.origin + '/medewerker-portal.html';
+            navigator.clipboard.writeText(link);
+            alert('Link gekopieerd!\n\n' + link + '\n\nDeel deze link met je medewerkers.');
+        }
+
+        function exportUren() {
+            const csv = 'Datum,Medewerker,Project,Begintijd,Eindtijd,Pauze,Uren,Notitie\n' +
+                uren.map(u => `${u.datum},${u.medewerkerNaam},${u.projectNaam},${u.begintijd},${u.eindtijd},${u.pauze},${u.totaalUren},"${u.notitie || ''}"`).join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'uren-export-' + new Date().toISOString().split('T')[0] + '.csv';
+            a.click();
+        }
+
+        function startLiveRefresh() {
+            // Refresh live status every 30 seconds
+            setInterval(renderLive, 30000);
+        }
+
+        function refreshLive() {
+            renderLive();
+        }
+
+        function logout() {
+            fetch('/api/logout', { method: 'POST' }).then(() => {
+                window.location.href = '/login.html';
+            });
+        }
+    </script>
+    <script src="/sidebar.js"></script>
+</body>
+</html>

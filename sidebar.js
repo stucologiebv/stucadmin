@@ -11,7 +11,7 @@ function loadSidebar() {
         { href: 'opname.html', icon: '📋', label: 'Opname' },
         { href: 'offerteaanvragen.html', icon: '📩', label: 'Offertes', badge: 'navOffertes' },
         { href: 'zzp-inhuur.html', icon: '🤝', label: 'ZZP Inhuur' },
-        { href: 'uren.html', icon: '⏱️', label: 'Uren' },
+        { href: 'uren-pro.html', icon: '⏱️', label: 'Uren Pro+' },
         { href: 'calculator.html', icon: '🧮', label: 'Calculator' },
         { href: 'materials.html', icon: '📊', label: 'Inkoop Analyse' },
         { href: 'materialen-beheer.html', icon: '📦', label: 'Materialen' },
