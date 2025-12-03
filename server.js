@@ -2795,8 +2795,8 @@ function schatM2(bericht) {
 }
 
 // Get alle offerteaanvragen (admin)
-app.get('/api/offerteaanvragen', requireAuth, (req, res) => {
-    res.json(offerteaanvragen);
+app.get('/api/offerteaanvragen', requireAuth, async (req, res) => {
+    try { const data = await fs.promises.readFile('/home/info/stucadmin-data/offerteaanvragen.json', 'utf8'); res.json(JSON.parse(data)); } catch(e) { res.json([]); }
 });
 
 // Nieuwe offerteaanvraag (admin/webhook)
