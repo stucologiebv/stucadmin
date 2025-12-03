@@ -356,7 +356,7 @@
         // Load klanten from Moneybird
         async function loadKlanten() {
             try {
-                const r = await fetch('/api/moneybird/contacts');
+                const r = await fetch('/api/contacts');
                 const data = await r.json();
                 klanten = data.map(k => ({
                     id: k.id,
@@ -461,7 +461,7 @@
         async function loadKlantData() {
             // Load invoices for this customer
             try {
-                const r = await fetch('/api/moneybird/invoices');
+                const r = await fetch('/api/invoices');
                 const invoices = await r.json();
                 const klantInvoices = invoices.filter(i => i.contact_id === selectedKlant.id);
                 
@@ -476,13 +476,29 @@
                 // Render facturen
                 renderFacturen(klantInvoices.slice(0, 5));
                 
-                // Render tijdlijn
-                renderTijdlijn(klantInvoices);
+                // Load calendar events for this klant
+                let calendarEvents = [];
+                try {
+                    const calR = await fetch('/api/google/events');
+                    const calData = await calR.json();
+                    // Filter events that mention this klant
+                    calendarEvents = (calData.events || calData || []).filter(e => {
+                        const searchText = (e.summary + ' ' + (e.description || '') + ' ' + (e.location || '')).toLowerCase();
+                        return searchText.includes(selectedKlant.naam.toLowerCase()) || 
+                               searchText.includes(selectedKlant.adres.split(' ')[0]?.toLowerCase() || '---');
+                    });
+                } catch(e) { console.log('Calendar error:', e); }
+                
+                // Render tijdlijn with invoices and calendar
+                renderTijdlijn(klantInvoices, calendarEvents);
 
             } catch (e) {
                 console.error('Error loading klant data:', e);
             }
 
+            // Load notities
+            loadNotities();
+            
             // Generate AI insights
             generateAIInsights();
         }
@@ -507,7 +523,7 @@
             `).join('');
         }
 
-        function renderTijdlijn(facturen) {
+        function renderTijdlijn(facturen, calendarEvents = []) {
             const container = document.getElementById('tijdlijnContent');
             
             // Combine facturen into timeline
@@ -518,6 +534,17 @@
                 description: `€${parseFloat(f.total_price_incl_tax || 0).toFixed(0)} - ${f.state === 'paid' ? 'Betaald' : 'Open'}`,
                 icon: '🧾'
             }));
+            
+            // Add calendar events
+            calendarEvents.forEach(e => {
+                items.push({
+                    type: 'afspraak',
+                    date: e.start?.dateTime || e.start?.date,
+                    title: e.summary || 'Afspraak',
+                    description: e.location || '',
+                    icon: '📅'
+                });
+            });
 
             // Sort by date
             items.sort((a, b) => new Date(b.date) - new Date(a.date));
