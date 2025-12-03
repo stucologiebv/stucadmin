@@ -6,6 +6,7 @@ function loadSidebar() {
         { href: 'dashboard.html', icon: '🏠', label: 'Dashboard' },
         { href: 'omzet.html', icon: '💹', label: 'Omzet' },
         { href: 'crm.html', icon: '👥', label: 'Klanten' },
+        { href: 'klanten360.html', icon: '🎯', label: 'Klanten 360' },
         { href: 'planning.html', icon: '📅', label: 'Planning' },
         { href: 'opname.html', icon: '📋', label: 'Opname' },
         { href: 'offerteaanvragen.html', icon: '📩', label: 'Offertes', badge: 'navOffertes' },
