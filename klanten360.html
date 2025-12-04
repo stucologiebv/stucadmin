@@ -388,7 +388,8 @@
                     fetch('/api/estimates').then(r => r.ok ? r.json() : []),
                     googleConnected ? fetch('/api/google/events').then(r => r.ok ? r.json() : []) : Promise.resolve([])
                 ]);
-                customers = c; invoices = i; estimates = e; events = ev;
+                customers = c; invoices = i; estimates = e; 
+                events = Array.isArray(ev) ? ev : (ev?.items || []);
                 
                 // Load reminders from localStorage
                 reminders = JSON.parse(localStorage.getItem('klant360_reminders') || '[]');
