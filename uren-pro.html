@@ -49,6 +49,7 @@
         .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; }
         .btn-secondary { background: #f1f5f9; color: #475569; }
         .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .btn-danger { background: #ef4444; color: white; }
         .btn-sm { padding: 6px 12px; font-size: 13px; }
         
         .data-table { width: 100%; border-collapse: collapse; }
@@ -69,27 +70,24 @@
         
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
         .modal-overlay.active { display: flex; }
-        .modal { background: white; border-radius: 20px; padding: 24px; width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; }
-        .modal-lg { max-width: 800px; }
+        .modal { background: white; border-radius: 20px; padding: 24px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; }
         
-        .doc-status { display: flex; align-items: center; gap: 6px; font-size: 13px; }
-        .doc-dot { width: 8px; height: 8px; border-radius: 50%; }
-        .doc-dot.green { background: #10b981; }
-        .doc-dot.orange { background: #f59e0b; }
-        .doc-dot.red { background: #ef4444; }
-        .doc-dot.gray { background: #9ca3af; }
+        .doc-upload-card { border: 2px dashed #e5e7eb; border-radius: 12px; padding: 16px; text-align: center; transition: all 0.2s; cursor: pointer; }
+        .doc-upload-card:hover { border-color: #6366f1; background: #f8fafc; }
+        .doc-upload-card.has-file { border-style: solid; border-color: #10b981; background: #f0fdf4; }
+        .doc-upload-card.expired { border-color: #ef4444; background: #fef2f2; }
+        .doc-upload-card.warning { border-color: #f59e0b; background: #fffbeb; }
         
-        .doc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
-        .doc-card { border: 2px solid #e5e7eb; border-radius: 12px; padding: 16px; transition: all 0.2s; }
-        .doc-card:hover { border-color: #6366f1; }
-        .doc-card.valid { border-color: #10b981; background: #f0fdf4; }
-        .doc-card.warning { border-color: #f59e0b; background: #fffbeb; }
-        .doc-card.expired { border-color: #ef4444; background: #fef2f2; }
-        .doc-card.missing { border-color: #e5e7eb; background: #f9fafb; }
+        .doc-preview { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; }
+        .doc-preview-pdf { background: #fee2e2; display: flex; align-items: center; justify-content: center; font-size: 40px; }
+        
+        .upload-actions { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
         
         .alert-banner { padding: 16px 20px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
         .alert-banner.warning { background: #fef3c7; border: 1px solid #f59e0b; color: #92400e; }
         .alert-banner.danger { background: #fee2e2; border: 1px solid #ef4444; color: #991b1b; }
+        
+        .camera-preview { width: 100%; max-width: 400px; border-radius: 12px; }
         
         @media (max-width: 1024px) {
             .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
@@ -106,7 +104,7 @@
     
     <aside class="sidebar">
         <div class="p-4 border-b border-gray-100">
-            <img src="/logo-stucologie.jpg" alt="Stucologie B.V." style="max-width: 180px; height: auto;">
+            <img src="/logo-stucologie.jpg" alt="Stucologie B.V." style="max-width: 180px;">
         </div>
         <nav class="flex-1 p-4 overflow-y-auto">
             <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
@@ -129,46 +127,27 @@
     </aside>
 
     <main>
-        <!-- Alert Banner voor verlopende documenten -->
         <div id="alertBanner" style="display: none;"></div>
 
-        <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">⏱️ Uren Pro+</h1>
-                <p class="text-gray-500">Beheer medewerkers, uren, documenten en manstaten</p>
+                <p class="text-gray-500">Medewerkers, documenten, uren en manstaten</p>
             </div>
-            <div class="flex items-center gap-3 flex-wrap">
-                <button onclick="copyPortalLink()" class="btn btn-secondary">🔗 Portal Link</button>
+            <div class="flex items-center gap-3">
+                <button onclick="copyPortalLink()" class="btn btn-secondary btn-sm">🔗 Portal Link</button>
                 <button onclick="showAddMedewerker()" class="btn btn-primary">➕ Medewerker</button>
             </div>
         </div>
 
-        <!-- Stats -->
         <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-            <div class="stat-card purple">
-                <div class="stat-value" id="statUrenVandaag">0</div>
-                <div class="stat-label">Uren vandaag</div>
-            </div>
-            <div class="stat-card green">
-                <div class="stat-value" id="statUrenWeek">0</div>
-                <div class="stat-label">Uren deze week</div>
-            </div>
-            <div class="stat-card blue">
-                <div class="stat-value" id="statMedewerkers">0</div>
-                <div class="stat-label">Medewerkers</div>
-            </div>
-            <div class="stat-card orange">
-                <div class="stat-value" id="statBijna">0</div>
-                <div class="stat-label">⚠️ Bijna verlopen</div>
-            </div>
-            <div class="stat-card red">
-                <div class="stat-value" id="statVerlopen">0</div>
-                <div class="stat-label">❌ Verlopen</div>
-            </div>
+            <div class="stat-card purple"><div class="stat-value" id="statUrenVandaag">0</div><div class="stat-label">Uren vandaag</div></div>
+            <div class="stat-card green"><div class="stat-value" id="statUrenWeek">0</div><div class="stat-label">Uren deze week</div></div>
+            <div class="stat-card blue"><div class="stat-value" id="statMedewerkers">0</div><div class="stat-label">Medewerkers</div></div>
+            <div class="stat-card orange"><div class="stat-value" id="statBijna">0</div><div class="stat-label">⚠️ Bijna verlopen</div></div>
+            <div class="stat-card red"><div class="stat-value" id="statVerlopen">0</div><div class="stat-label">❌ Verlopen</div></div>
         </div>
 
-        <!-- Tabs -->
         <div class="tab-bar">
             <button class="tab-btn active" onclick="showTab('medewerkers', this)">👷 Medewerkers</button>
             <button class="tab-btn" onclick="showTab('documenten', this)">📋 Documenten</button>
@@ -181,55 +160,32 @@
         <div id="tab-medewerkers" class="tab-content">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="font-bold text-lg">👷 Medewerkers Overzicht</h2>
-                    <button onclick="showAddMedewerker()" class="btn btn-primary btn-sm">➕ Toevoegen</button>
+                    <h2 class="font-bold text-lg">👷 Medewerkers</h2>
                 </div>
                 <div class="card-body p-0 overflow-x-auto">
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Naam</th>
-                                <th>Type</th>
-                                <th>Telefoon</th>
-                                <th>Documenten</th>
-                                <th>Uren week</th>
-                                <th>Acties</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Naam</th><th>Type</th><th>Telefoon</th><th>Documenten</th><th>Uren week</th><th>Acties</th></tr></thead>
                         <tbody id="medewerkersTabel"></tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- Tab: Documenten Overzicht -->
+        <!-- Tab: Documenten -->
         <div id="tab-documenten" class="tab-content" style="display: none;">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="font-bold text-lg">📋 Documenten & Certificaten Overzicht</h2>
-                    <div class="flex gap-2">
-                        <select id="docFilter" class="input-field" style="width: auto;" onchange="renderDocumentenOverzicht()">
-                            <option value="all">Alle</option>
-                            <option value="expired">Verlopen</option>
-                            <option value="warning">Bijna verlopen (30 dagen)</option>
-                            <option value="valid">Geldig</option>
-                            <option value="missing">Ontbrekend</option>
-                        </select>
-                    </div>
+                    <h2 class="font-bold text-lg">📋 Documenten Overzicht</h2>
+                    <select id="docFilter" class="input-field" style="width: auto;" onchange="renderDocumentenOverzicht()">
+                        <option value="all">Alle</option>
+                        <option value="expired">Verlopen</option>
+                        <option value="warning">Bijna verlopen</option>
+                        <option value="missing">Ontbrekend</option>
+                    </select>
                 </div>
                 <div class="card-body p-0 overflow-x-auto">
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Medewerker</th>
-                                <th>Kopie ID</th>
-                                <th>Contract</th>
-                                <th>VCA</th>
-                                <th>BHV</th>
-                                <th>Overig</th>
-                                <th>Acties</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Medewerker</th><th>Kopie ID</th><th>Contract</th><th>VCA</th><th>BHV</th><th>Acties</th></tr></thead>
                         <tbody id="documentenTabel"></tbody>
                     </table>
                 </div>
@@ -240,48 +196,32 @@
         <div id="tab-uren" class="tab-content" style="display: none;">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="font-bold text-lg">📊 Uren Registraties</h2>
-                    <div class="flex gap-2 flex-wrap">
-                        <select id="filterMedewerker" class="input-field" style="width: auto;" onchange="filterUren()">
-                            <option value="">Alle medewerkers</option>
-                        </select>
-                        <select id="filterPeriode" class="input-field" style="width: auto;" onchange="filterUren()">
-                            <option value="week">Deze week</option>
-                            <option value="maand">Deze maand</option>
-                            <option value="alles">Alles</option>
+                    <h2 class="font-bold text-lg">📊 Uren</h2>
+                    <div class="flex gap-2">
+                        <select id="filterMedewerker" class="input-field" style="width:auto;" onchange="filterUren()"><option value="">Alle</option></select>
+                        <select id="filterPeriode" class="input-field" style="width:auto;" onchange="filterUren()">
+                            <option value="week">Deze week</option><option value="maand">Deze maand</option><option value="alles">Alles</option>
                         </select>
                         <button onclick="exportUren()" class="btn btn-secondary btn-sm">📥 Export</button>
                     </div>
                 </div>
                 <div class="card-body p-0 overflow-x-auto">
                     <table class="data-table">
-                        <thead>
-                            <tr><th>Datum</th><th>Medewerker</th><th>Project</th><th>Tijd</th><th>Uren</th><th>Locatie</th><th></th></tr>
-                        </thead>
+                        <thead><tr><th>Datum</th><th>Medewerker</th><th>Project</th><th>Tijd</th><th>Uren</th><th></th></tr></thead>
                         <tbody id="urenTabel"></tbody>
                     </table>
                 </div>
-                <div class="card-body border-t">
-                    <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Totaal:</span>
-                        <span class="text-2xl font-bold text-indigo-600" id="totaalUren">0 uur</span>
-                    </div>
-                </div>
+                <div class="card-body border-t"><div class="flex justify-between"><span>Totaal:</span><span class="text-xl font-bold text-indigo-600" id="totaalUren">0u</span></div></div>
             </div>
         </div>
 
         <!-- Tab: Projecten -->
         <div id="tab-projecten" class="tab-content" style="display: none;">
             <div class="card">
-                <div class="card-header">
-                    <h2 class="font-bold text-lg">🏗️ Projecten</h2>
-                    <button onclick="showAddProject()" class="btn btn-primary btn-sm">➕ Nieuw project</button>
-                </div>
+                <div class="card-header"><h2 class="font-bold text-lg">🏗️ Projecten</h2><button onclick="showAddProject()" class="btn btn-primary btn-sm">➕ Nieuw</button></div>
                 <div class="card-body p-0 overflow-x-auto">
                     <table class="data-table">
-                        <thead>
-                            <tr><th>Project</th><th>Klant</th><th>Locatie</th><th>Uren</th><th>Status</th><th></th></tr>
-                        </thead>
+                        <thead><tr><th>Project</th><th>Klant</th><th>Locatie</th><th>Uren</th><th></th></tr></thead>
                         <tbody id="projectenTabel"></tbody>
                     </table>
                 </div>
@@ -291,330 +231,190 @@
         <!-- Tab: Manstaat -->
         <div id="tab-manstaat" class="tab-content" style="display: none;">
             <div class="card">
-                <div class="card-header">
-                    <h2 class="font-bold text-lg">📄 Manstaat Generator</h2>
-                </div>
+                <div class="card-header"><h2 class="font-bold text-lg">📄 Manstaat Generator</h2></div>
                 <div class="card-body">
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Project</label>
-                            <select id="manstaatProject" class="input-field"></select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Van</label>
-                            <input type="date" id="manstaatVan" class="input-field">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Tot</label>
-                            <input type="date" id="manstaatTot" class="input-field">
-                        </div>
-                        <div class="flex items-end">
-                            <button onclick="generateManstaat()" class="btn btn-primary w-full">📄 Genereer</button>
-                        </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                        <select id="manstaatProject" class="input-field"></select>
+                        <input type="date" id="manstaatVan" class="input-field">
+                        <input type="date" id="manstaatTot" class="input-field">
+                        <button onclick="generateManstaat()" class="btn btn-primary">📄 Genereer</button>
                     </div>
-                    <div id="manstaatResult" style="display: none;">
-                        <div id="manstaatContent" class="border rounded-lg p-6 mb-4"></div>
-                        <button onclick="printManstaat()" class="btn btn-secondary">🖨️ Print / PDF</button>
-                    </div>
+                    <div id="manstaatResult" style="display:none;"><div id="manstaatContent" class="border rounded-lg p-6 mb-4"></div><button onclick="printManstaat()" class="btn btn-secondary">🖨️ Print</button></div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Modal: Medewerker -->
+    <!-- Modal: Medewerker met Document Uploads -->
     <div class="modal-overlay" id="medewerkerModal">
-        <div class="modal modal-lg">
+        <div class="modal">
             <h3 class="text-lg font-bold mb-4" id="medewerkerModalTitle">Medewerker</h3>
             <input type="hidden" id="editMedewerkerId">
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Naam *</label>
-                    <input type="text" id="mNaam" class="input-field" placeholder="Volledige naam">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                    <select id="mType" class="input-field">
-                        <option value="vast">Vaste medewerker</option>
-                        <option value="zzp">ZZP'er</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Telefoon</label>
-                    <input type="tel" id="mTelefoon" class="input-field" placeholder="06-12345678">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Pincode (4 cijfers) *</label>
-                    <input type="text" id="mPincode" class="input-field" placeholder="1234" maxlength="4">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" id="mEmail" class="input-field" placeholder="email@voorbeeld.nl">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Uurtarief (€)</label>
-                    <input type="number" id="mUurtarief" class="input-field" placeholder="0" min="0" step="0.01">
-                </div>
+            <!-- Basis Info -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div><label class="block text-sm font-medium mb-1">Naam *</label><input type="text" id="mNaam" class="input-field"></div>
+                <div><label class="block text-sm font-medium mb-1">Type</label><select id="mType" class="input-field"><option value="vast">Vast</option><option value="zzp">ZZP</option></select></div>
+                <div><label class="block text-sm font-medium mb-1">Telefoon</label><input type="tel" id="mTelefoon" class="input-field"></div>
+                <div><label class="block text-sm font-medium mb-1">Pincode (4 cijfers) *</label><input type="text" id="mPincode" class="input-field" maxlength="4"></div>
+                <div><label class="block text-sm font-medium mb-1">Email</label><input type="email" id="mEmail" class="input-field"></div>
+                <div><label class="block text-sm font-medium mb-1">Uurtarief €</label><input type="number" id="mUurtarief" class="input-field" step="0.01"></div>
             </div>
 
-            <h4 class="font-semibold text-gray-700 mb-3 border-t pt-4">📋 Documenten & Certificaten</h4>
-            <div class="doc-grid mb-6">
+            <!-- Documenten Uploads -->
+            <h4 class="font-bold text-gray-700 mb-3 border-t pt-4">📋 Documenten & Certificaten</h4>
+            <div class="grid grid-cols-2 gap-4 mb-6">
                 <!-- Kopie ID -->
-                <div class="doc-card" id="docIdCard">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-lg">🪪</span>
-                        <span class="font-semibold">Kopie ID</span>
-                    </div>
-                    <div class="mb-2">
-                        <label class="block text-xs text-gray-500 mb-1">Verloopdatum</label>
-                        <input type="date" id="mIdVerloop" class="input-field" style="padding: 8px;">
-                    </div>
-                    <div id="mIdStatus" class="doc-status"><span class="doc-dot gray"></span> Niet ingesteld</div>
+                <div class="doc-upload-card" id="docCard-id" onclick="triggerUpload('id')">
+                    <div id="docPreview-id"><span class="text-3xl">🪪</span><p class="font-semibold mt-2">Kopie ID</p><p class="text-sm text-gray-500">Klik om te uploaden</p></div>
+                    <input type="file" id="docFile-id" accept="image/*,.pdf" capture="environment" style="display:none" onchange="handleFileSelect('id', this)">
+                    <div class="mt-2"><label class="text-xs text-gray-500">Verloopdatum</label><input type="date" id="docVerloop-id" class="input-field" style="padding:8px" onclick="event.stopPropagation()"></div>
                 </div>
 
                 <!-- Contract -->
-                <div class="doc-card" id="docContractCard">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-lg">📝</span>
-                        <span class="font-semibold">Contract</span>
-                    </div>
-                    <div class="mb-2">
-                        <label class="block text-xs text-gray-500 mb-1">Type contract</label>
-                        <select id="mContractType" class="input-field" style="padding: 8px;">
-                            <option value="">Geen</option>
-                            <option value="bepaald">Bepaalde tijd</option>
-                            <option value="onbepaald">Onbepaalde tijd</option>
-                            <option value="zzp">ZZP overeenkomst</option>
-                        </select>
-                    </div>
-                    <div class="mb-2">
-                        <label class="block text-xs text-gray-500 mb-1">Einddatum (indien bepaald)</label>
-                        <input type="date" id="mContractEind" class="input-field" style="padding: 8px;">
-                    </div>
+                <div class="doc-upload-card" id="docCard-contract" onclick="triggerUpload('contract')">
+                    <div id="docPreview-contract"><span class="text-3xl">📝</span><p class="font-semibold mt-2">Contract</p><p class="text-sm text-gray-500">Klik om te uploaden</p></div>
+                    <input type="file" id="docFile-contract" accept="image/*,.pdf" capture="environment" style="display:none" onchange="handleFileSelect('contract', this)">
+                    <div class="mt-2"><label class="text-xs text-gray-500">Contract type</label><select id="docType-contract" class="input-field" style="padding:8px" onclick="event.stopPropagation()"><option value="">-</option><option value="bepaald">Bepaald</option><option value="onbepaald">Onbepaald</option><option value="zzp">ZZP</option></select></div>
+                    <div class="mt-2"><label class="text-xs text-gray-500">Einddatum</label><input type="date" id="docVerloop-contract" class="input-field" style="padding:8px" onclick="event.stopPropagation()"></div>
                 </div>
 
                 <!-- VCA -->
-                <div class="doc-card" id="docVcaCard">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-lg">🎓</span>
-                        <span class="font-semibold">VCA Certificaat</span>
-                    </div>
-                    <div class="mb-2">
-                        <label class="block text-xs text-gray-500 mb-1">Type VCA</label>
-                        <select id="mVcaType" class="input-field" style="padding: 8px;">
-                            <option value="">Geen</option>
-                            <option value="basis">VCA Basis</option>
-                            <option value="vol">VCA VOL</option>
-                        </select>
-                    </div>
-                    <div class="mb-2">
-                        <label class="block text-xs text-gray-500 mb-1">Verloopdatum</label>
-                        <input type="date" id="mVcaVerloop" class="input-field" style="padding: 8px;">
-                    </div>
+                <div class="doc-upload-card" id="docCard-vca" onclick="triggerUpload('vca')">
+                    <div id="docPreview-vca"><span class="text-3xl">🎓</span><p class="font-semibold mt-2">VCA Certificaat</p><p class="text-sm text-gray-500">Klik om te uploaden</p></div>
+                    <input type="file" id="docFile-vca" accept="image/*,.pdf" capture="environment" style="display:none" onchange="handleFileSelect('vca', this)">
+                    <div class="mt-2"><label class="text-xs text-gray-500">Type</label><select id="docType-vca" class="input-field" style="padding:8px" onclick="event.stopPropagation()"><option value="">-</option><option value="basis">VCA Basis</option><option value="vol">VCA VOL</option></select></div>
+                    <div class="mt-2"><label class="text-xs text-gray-500">Verloopdatum</label><input type="date" id="docVerloop-vca" class="input-field" style="padding:8px" onclick="event.stopPropagation()"></div>
                 </div>
 
                 <!-- BHV -->
-                <div class="doc-card" id="docBhvCard">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-lg">🚑</span>
-                        <span class="font-semibold">BHV / EHBO</span>
-                    </div>
-                    <div class="mb-2">
-                        <label class="block text-xs text-gray-500 mb-1">Certificaat</label>
-                        <select id="mBhvType" class="input-field" style="padding: 8px;">
-                            <option value="">Geen</option>
-                            <option value="bhv">BHV</option>
-                            <option value="ehbo">EHBO</option>
-                            <option value="beide">BHV + EHBO</option>
-                        </select>
-                    </div>
-                    <div class="mb-2">
-                        <label class="block text-xs text-gray-500 mb-1">Verloopdatum</label>
-                        <input type="date" id="mBhvVerloop" class="input-field" style="padding: 8px;">
-                    </div>
+                <div class="doc-upload-card" id="docCard-bhv" onclick="triggerUpload('bhv')">
+                    <div id="docPreview-bhv"><span class="text-3xl">🚑</span><p class="font-semibold mt-2">BHV / EHBO</p><p class="text-sm text-gray-500">Klik om te uploaden</p></div>
+                    <input type="file" id="docFile-bhv" accept="image/*,.pdf" capture="environment" style="display:none" onchange="handleFileSelect('bhv', this)">
+                    <div class="mt-2"><label class="text-xs text-gray-500">Type</label><select id="docType-bhv" class="input-field" style="padding:8px" onclick="event.stopPropagation()"><option value="">-</option><option value="bhv">BHV</option><option value="ehbo">EHBO</option><option value="beide">Beide</option></select></div>
+                    <div class="mt-2"><label class="text-xs text-gray-500">Verloopdatum</label><input type="date" id="docVerloop-bhv" class="input-field" style="padding:8px" onclick="event.stopPropagation()"></div>
                 </div>
             </div>
 
-            <h4 class="font-semibold text-gray-700 mb-3">📎 Overige certificaten</h4>
-            <div id="overigeCertificaten" class="space-y-2 mb-4"></div>
-            <button type="button" onclick="addOverigCertificaat()" class="btn btn-secondary btn-sm mb-4">➕ Certificaat toevoegen</button>
+            <!-- Overige Certificaten -->
+            <h4 class="font-semibold text-gray-700 mb-2">📎 Overige certificaten</h4>
+            <div id="overigeCerts" class="space-y-2 mb-4"></div>
+            <button type="button" onclick="addOverigCert()" class="btn btn-secondary btn-sm mb-4">➕ Certificaat toevoegen</button>
 
-            <div class="flex gap-3 mt-6 border-t pt-4">
+            <div class="flex gap-3 border-t pt-4">
                 <button onclick="saveMedewerker()" class="btn btn-success flex-1">💾 Opslaan</button>
                 <button onclick="closeModal('medewerkerModal')" class="btn btn-secondary">Annuleren</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Project -->
-    <div class="modal-overlay" id="projectModal">
-        <div class="modal">
-            <h3 class="text-lg font-bold mb-4">🏗️ Project</h3>
-            <input type="hidden" id="editProjectId">
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Titel *</label>
-                    <input type="text" id="pTitel" class="input-field">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Klant</label>
-                    <select id="pKlant" class="input-field"></select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Locatie</label>
-                    <input type="text" id="pLocatie" class="input-field">
-                </div>
+    <!-- Modal: Document Viewer -->
+    <div class="modal-overlay" id="docViewerModal">
+        <div class="modal" style="max-width: 900px;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold" id="docViewerTitle">Document</h3>
+                <button onclick="closeModal('docViewerModal')" class="text-2xl text-gray-400 hover:text-gray-600">&times;</button>
             </div>
-            <div class="flex gap-3 mt-6">
-                <button onclick="saveProject()" class="btn btn-success flex-1">💾 Opslaan</button>
-                <button onclick="closeModal('projectModal')" class="btn btn-secondary">Annuleren</button>
-            </div>
+            <div id="docViewerContent" style="min-height: 400px; display: flex; align-items: center; justify-content: center;"></div>
         </div>
     </div>
 
-    <!-- Modal: Locatie -->
-    <div class="modal-overlay" id="locationModal">
-        <div class="modal">
-            <h3 class="text-lg font-bold mb-4">📍 Locatie</h3>
-            <div id="locationMap" style="height: 200px; background: #f1f5f9; border-radius: 12px; margin-bottom: 16px;"></div>
-            <div id="locationDetails"></div>
-            <button onclick="closeModal('locationModal')" class="btn btn-secondary w-full mt-4">Sluiten</button>
+    <!-- Modal: Project -->
+    <div class="modal-overlay" id="projectModal">
+        <div class="modal" style="max-width: 500px;">
+            <h3 class="text-lg font-bold mb-4">🏗️ Project</h3>
+            <input type="hidden" id="editProjectId">
+            <div class="space-y-4">
+                <div><label class="block text-sm font-medium mb-1">Titel *</label><input type="text" id="pTitel" class="input-field"></div>
+                <div><label class="block text-sm font-medium mb-1">Klant</label><select id="pKlant" class="input-field"></select></div>
+                <div><label class="block text-sm font-medium mb-1">Locatie</label><input type="text" id="pLocatie" class="input-field"></div>
+            </div>
+            <div class="flex gap-3 mt-6"><button onclick="saveProject()" class="btn btn-success flex-1">💾 Opslaan</button><button onclick="closeModal('projectModal')" class="btn btn-secondary">Annuleren</button></div>
         </div>
     </div>
 
     <script>
         let medewerkers = [], uren = [], projecten = [], klanten = [];
+        let pendingUploads = {}; // Store files to upload when saving
+        let overigCertCounter = 0;
 
-        function toggleMenu() {
-            document.querySelector('.sidebar').classList.toggle('open');
-            document.querySelector('.sidebar-overlay').classList.toggle('open');
-        }
-
-        function logout() {
-            fetch('/api/logout', { method: 'POST' }).then(() => location.href = '/login.html');
-        }
+        function toggleMenu() { document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open'); }
+        function logout() { fetch('/api/logout', {method:'POST'}).then(() => location.href='/login.html'); }
 
         document.addEventListener('DOMContentLoaded', async () => {
             await loadAll();
-            const now = new Date(), ws = new Date(now);
-            ws.setDate(now.getDate() - now.getDay() + 1);
+            const now = new Date(), ws = new Date(now); ws.setDate(now.getDate() - now.getDay() + 1);
             document.getElementById('manstaatVan').value = ws.toISOString().split('T')[0];
             document.getElementById('manstaatTot').value = now.toISOString().split('T')[0];
         });
 
         async function loadAll() {
-            try {
-                const [m, u, p, k] = await Promise.all([
-                    fetch('/api/medewerkers').then(r => r.ok ? r.json() : []),
-                    fetch('/api/uren').then(r => r.ok ? r.json() : []),
-                    fetch('/api/projecten').then(r => r.ok ? r.json() : []),
-                    fetch('/api/contacts').then(r => r.ok ? r.json() : [])
-                ]);
-                medewerkers = m; uren = u; projecten = p; klanten = k;
-            } catch(e) { console.error(e); }
-            updateStats();
-            renderAll();
+            const [m, u, p, k] = await Promise.all([
+                fetch('/api/medewerkers').then(r => r.ok ? r.json() : []),
+                fetch('/api/uren').then(r => r.ok ? r.json() : []),
+                fetch('/api/projecten').then(r => r.ok ? r.json() : []),
+                fetch('/api/contacts').then(r => r.ok ? r.json() : [])
+            ]);
+            medewerkers = m; uren = u; projecten = p; klanten = k;
+            updateStats(); renderAll();
         }
 
         function updateStats() {
             const now = new Date(), todayStr = now.toISOString().split('T')[0];
             const ws = new Date(now); ws.setDate(now.getDate() - now.getDay() + 1); ws.setHours(0,0,0,0);
+            const in30 = new Date(now.getTime() + 30*24*60*60*1000);
             
-            document.getElementById('statUrenVandaag').textContent = uren.filter(u => u.datum === todayStr).reduce((s,u) => s + (u.totaalUren||0), 0).toFixed(1);
-            document.getElementById('statUrenWeek').textContent = uren.filter(u => new Date(u.datum) >= ws).reduce((s,u) => s + (u.totaalUren||0), 0).toFixed(1);
+            document.getElementById('statUrenVandaag').textContent = uren.filter(u => u.datum === todayStr).reduce((s,u) => s+(u.totaalUren||0), 0).toFixed(1);
+            document.getElementById('statUrenWeek').textContent = uren.filter(u => new Date(u.datum) >= ws).reduce((s,u) => s+(u.totaalUren||0), 0).toFixed(1);
             document.getElementById('statMedewerkers').textContent = medewerkers.filter(m => m.actief !== false).length;
             
-            // Document stats
             let bijna = 0, verlopen = 0;
-            const in30Days = new Date(now.getTime() + 30*24*60*60*1000);
             medewerkers.forEach(m => {
                 const docs = m.documenten || {};
-                [docs.idVerloop, docs.vcaVerloop, docs.bhvVerloop, docs.contractEind].forEach(d => {
-                    if (d) {
-                        const date = new Date(d);
-                        if (date < now) verlopen++;
-                        else if (date < in30Days) bijna++;
-                    }
-                });
-                (docs.overig || []).forEach(c => {
-                    if (c.verloop) {
-                        const date = new Date(c.verloop);
-                        if (date < now) verlopen++;
-                        else if (date < in30Days) bijna++;
-                    }
+                ['idVerloop', 'vcaVerloop', 'bhvVerloop', 'contractEind'].forEach(k => {
+                    if (docs[k]) { const d = new Date(docs[k]); if (d < now) verlopen++; else if (d < in30) bijna++; }
                 });
             });
             document.getElementById('statBijna').textContent = bijna;
             document.getElementById('statVerlopen').textContent = verlopen;
             
-            // Alert banner
             const banner = document.getElementById('alertBanner');
-            if (verlopen > 0) {
-                banner.className = 'alert-banner danger';
-                banner.innerHTML = `<span class="text-xl">⚠️</span><span><strong>${verlopen} document(en) verlopen!</strong> Controleer de documenten tab.</span>`;
-                banner.style.display = 'flex';
-            } else if (bijna > 0) {
-                banner.className = 'alert-banner warning';
-                banner.innerHTML = `<span class="text-xl">⏰</span><span><strong>${bijna} document(en) verlopen binnen 30 dagen.</strong></span>`;
-                banner.style.display = 'flex';
-            } else {
-                banner.style.display = 'none';
-            }
+            if (verlopen > 0) { banner.className = 'alert-banner danger'; banner.innerHTML = `⚠️ <strong>${verlopen} document(en) verlopen!</strong>`; banner.style.display = 'flex'; }
+            else if (bijna > 0) { banner.className = 'alert-banner warning'; banner.innerHTML = `⏰ <strong>${bijna} document(en) verlopen binnen 30 dagen</strong>`; banner.style.display = 'flex'; }
+            else banner.style.display = 'none';
         }
 
-        function renderAll() {
-            renderMedewerkers();
-            renderDocumentenOverzicht();
-            filterUren();
-            renderProjecten();
-            updateDropdowns();
-        }
+        function renderAll() { renderMedewerkers(); renderDocumentenOverzicht(); filterUren(); renderProjecten(); updateDropdowns(); }
 
         function getDocStatus(dateStr) {
-            if (!dateStr) return { status: 'missing', label: 'Ontbreekt', class: 'gray' };
-            const date = new Date(dateStr), now = new Date();
-            const in30 = new Date(now.getTime() + 30*24*60*60*1000);
-            if (date < now) return { status: 'expired', label: 'Verlopen', class: 'red' };
-            if (date < in30) return { status: 'warning', label: 'Bijna verlopen', class: 'orange' };
-            return { status: 'valid', label: 'Geldig', class: 'green' };
+            if (!dateStr) return { status: 'missing', class: 'gray' };
+            const d = new Date(dateStr), now = new Date(), in30 = new Date(now.getTime() + 30*24*60*60*1000);
+            if (d < now) return { status: 'expired', class: 'red' };
+            if (d < in30) return { status: 'warning', class: 'orange' };
+            return { status: 'valid', class: 'green' };
         }
 
-        function renderDocBadge(dateStr, label) {
+        function renderDocBadge(dateStr, hasFile, label) {
             const s = getDocStatus(dateStr);
-            if (s.status === 'missing') return `<span class="badge badge-gray">${label}: -</span>`;
-            const d = new Date(dateStr).toLocaleDateString('nl-NL', {day:'numeric',month:'short',year:'2-digit'});
-            return `<span class="badge badge-${s.class}" title="${d}">${label}: ${s.status === 'valid' ? '✓' : s.status === 'warning' ? '⚠️' : '❌'}</span>`;
+            const icon = hasFile ? (s.status === 'valid' ? '✅' : s.status === 'warning' ? '⚠️' : '❌') : '⬜';
+            return `<span class="badge badge-${s.class}">${icon} ${label}</span>`;
         }
 
         function renderMedewerkers() {
             const tbody = document.getElementById('medewerkersTabel');
-            if (!medewerkers.length) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-8">Nog geen medewerkers</td></tr>';
-                return;
-            }
+            if (!medewerkers.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-8">Geen medewerkers</td></tr>'; return; }
             const ws = new Date(); ws.setDate(ws.getDate() - ws.getDay() + 1); ws.setHours(0,0,0,0);
             
             tbody.innerHTML = medewerkers.map(m => {
-                const weekUren = uren.filter(u => u.medewerkerId === m.id && new Date(u.datum) >= ws).reduce((s,u) => s + (u.totaalUren||0), 0);
-                const docs = m.documenten || {};
-                
+                const weekU = uren.filter(u => u.medewerkerId === m.id && new Date(u.datum) >= ws).reduce((s,u) => s+(u.totaalUren||0), 0);
+                const docs = m.documenten || {}, files = docs.bestanden || {};
                 return `<tr>
-                    <td><div class="font-semibold">${esc(m.naam)}</div><div class="text-xs text-gray-400">${m.email || ''}</div></td>
-                    <td><span class="badge badge-${m.type}">${m.type === 'zzp' ? 'ZZP' : 'VAST'}</span></td>
-                    <td>${esc(m.telefoon || '-')}</td>
-                    <td>
-                        <div class="flex flex-wrap gap-1">
-                            ${renderDocBadge(docs.idVerloop, 'ID')}
-                            ${renderDocBadge(docs.vcaVerloop, 'VCA')}
-                            ${docs.bhvType ? renderDocBadge(docs.bhvVerloop, 'BHV') : ''}
-                        </div>
-                    </td>
-                    <td class="font-semibold text-indigo-600">${weekUren.toFixed(1)}u</td>
-                    <td>
-                        <button onclick="editMedewerker('${m.id}')" class="text-indigo-600 mr-2" title="Bewerken">✏️</button>
-                        <button onclick="viewMedewerkerDocs('${m.id}')" class="text-green-600 mr-2" title="Documenten">📋</button>
-                        <button onclick="deleteMedewerker('${m.id}')" class="text-red-500" title="Verwijderen">🗑️</button>
-                    </td>
+                    <td><div class="font-semibold">${esc(m.naam)}</div><div class="text-xs text-gray-400">${m.email||''}</div></td>
+                    <td><span class="badge badge-${m.type}">${m.type==='zzp'?'ZZP':'VAST'}</span></td>
+                    <td>${esc(m.telefoon||'-')}</td>
+                    <td class="space-x-1">${renderDocBadge(docs.idVerloop, files.id, 'ID')} ${renderDocBadge(docs.vcaVerloop, files.vca, 'VCA')} ${docs.bhvType ? renderDocBadge(docs.bhvVerloop, files.bhv, 'BHV') : ''}</td>
+                    <td class="font-bold text-indigo-600">${weekU.toFixed(1)}u</td>
+                    <td><button onclick="editMedewerker('${m.id}')" class="text-indigo-600 mr-2">✏️</button><button onclick="deleteMedewerker('${m.id}')" class="text-red-500">🗑️</button></td>
                 </tr>`;
             }).join('');
         }
@@ -622,131 +422,68 @@
         function renderDocumentenOverzicht() {
             const filter = document.getElementById('docFilter').value;
             const tbody = document.getElementById('documentenTabel');
+            let list = medewerkers.filter(m => m.actief !== false);
             
-            let filtered = medewerkers.filter(m => m.actief !== false);
-            
-            if (filter !== 'all') {
-                filtered = filtered.filter(m => {
-                    const docs = m.documenten || {};
-                    const statuses = [
-                        getDocStatus(docs.idVerloop).status,
-                        getDocStatus(docs.vcaVerloop).status,
-                        getDocStatus(docs.bhvVerloop).status,
-                        docs.contractType === 'bepaald' ? getDocStatus(docs.contractEind).status : null
-                    ].filter(Boolean);
-                    
-                    if (filter === 'expired') return statuses.includes('expired');
-                    if (filter === 'warning') return statuses.includes('warning');
-                    if (filter === 'valid') return statuses.every(s => s === 'valid');
-                    if (filter === 'missing') return statuses.includes('missing');
-                    return true;
-                });
-            }
-            
-            if (!filtered.length) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-8">Geen resultaten</td></tr>';
-                return;
-            }
-            
-            tbody.innerHTML = filtered.map(m => {
-                const docs = m.documenten || {};
-                const overigCount = (docs.overig || []).length;
-                
+            tbody.innerHTML = list.map(m => {
+                const docs = m.documenten || {}, files = docs.bestanden || {};
                 return `<tr>
                     <td class="font-semibold">${esc(m.naam)}</td>
-                    <td>${renderDocCell(docs.idVerloop)}</td>
-                    <td>${renderContractCell(docs)}</td>
-                    <td>${docs.vcaType ? renderDocCell(docs.vcaVerloop, docs.vcaType.toUpperCase()) : '<span class="text-gray-300">-</span>'}</td>
-                    <td>${docs.bhvType ? renderDocCell(docs.bhvVerloop, docs.bhvType.toUpperCase()) : '<span class="text-gray-300">-</span>'}</td>
-                    <td>${overigCount > 0 ? `<span class="badge badge-gray">${overigCount} cert.</span>` : '-'}</td>
-                    <td><button onclick="editMedewerker('${m.id}')" class="btn btn-secondary btn-sm">✏️ Bewerken</button></td>
+                    <td>${renderDocCell(docs.idVerloop, files.id, m.id, 'id')}</td>
+                    <td>${renderContractCell(docs, files, m.id)}</td>
+                    <td>${docs.vcaType ? renderDocCell(docs.vcaVerloop, files.vca, m.id, 'vca', docs.vcaType) : '-'}</td>
+                    <td>${docs.bhvType ? renderDocCell(docs.bhvVerloop, files.bhv, m.id, 'bhv', docs.bhvType) : '-'}</td>
+                    <td><button onclick="editMedewerker('${m.id}')" class="btn btn-secondary btn-sm">✏️</button></td>
                 </tr>`;
-            }).join('');
+            }).join('') || '<tr><td colspan="6" class="text-center text-gray-400 py-8">Geen data</td></tr>';
         }
 
-        function renderDocCell(dateStr, extra = '') {
-            if (!dateStr) return '<span class="doc-status"><span class="doc-dot gray"></span> Ontbreekt</span>';
+        function renderDocCell(dateStr, fileInfo, odewerkerId, docType, extra = '') {
             const s = getDocStatus(dateStr);
-            const d = new Date(dateStr).toLocaleDateString('nl-NL');
-            return `<span class="doc-status"><span class="doc-dot ${s.class}"></span> ${extra ? extra + ' - ' : ''}${d}</span>`;
+            const dateLabel = dateStr ? new Date(dateStr).toLocaleDateString('nl-NL') : '-';
+            const hasFile = !!fileInfo;
+            const viewBtn = hasFile ? `<button onclick="viewDocument('${odewerkerId}', '${docType}')" class="text-blue-600 ml-2">👁️</button>` : '';
+            return `<span class="doc-status"><span class="doc-dot ${s.class}"></span> ${extra ? extra + ' ' : ''}${dateLabel}</span>${viewBtn}`;
         }
 
-        function renderContractCell(docs) {
-            if (!docs.contractType) return '<span class="text-gray-300">-</span>';
-            if (docs.contractType === 'onbepaald') return '<span class="doc-status"><span class="doc-dot green"></span> Onbepaald</span>';
-            if (docs.contractType === 'zzp') return '<span class="doc-status"><span class="doc-dot green"></span> ZZP</span>';
-            return renderDocCell(docs.contractEind, 'Bepaald');
+        function renderContractCell(docs, files, odewerkerId) {
+            if (!docs.contractType) return '-';
+            if (docs.contractType === 'onbepaald') return '<span class="badge badge-green">Onbepaald</span>';
+            return renderDocCell(docs.contractEind, files.contract, odewerkerId, 'contract', docs.contractType);
         }
 
         function filterUren() {
             const medId = document.getElementById('filterMedewerker').value;
             const periode = document.getElementById('filterPeriode').value;
             let list = [...uren];
-            
             if (medId) list = list.filter(u => u.medewerkerId === medId);
-            
             const now = new Date();
-            if (periode === 'week') {
-                const ws = new Date(now); ws.setDate(now.getDate() - now.getDay() + 1); ws.setHours(0,0,0,0);
-                list = list.filter(u => new Date(u.datum) >= ws);
-            } else if (periode === 'maand') {
-                const ms = new Date(now.getFullYear(), now.getMonth(), 1);
-                list = list.filter(u => new Date(u.datum) >= ms);
-            }
-            
-            list.sort((a, b) => b.datum.localeCompare(a.datum));
+            if (periode === 'week') { const ws = new Date(now); ws.setDate(now.getDate()-now.getDay()+1); ws.setHours(0,0,0,0); list = list.filter(u => new Date(u.datum) >= ws); }
+            else if (periode === 'maand') { list = list.filter(u => new Date(u.datum) >= new Date(now.getFullYear(), now.getMonth(), 1)); }
+            list.sort((a,b) => b.datum.localeCompare(a.datum));
             
             const tbody = document.getElementById('urenTabel');
-            if (!list.length) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-8">Geen uren</td></tr>';
-                document.getElementById('totaalUren').textContent = '0 uur';
-                return;
-            }
-            
-            const totaal = list.reduce((s, u) => s + (u.totaalUren || 0), 0);
-            document.getElementById('totaalUren').textContent = totaal.toFixed(1) + ' uur';
-            
-            tbody.innerHTML = list.map(u => `<tr>
-                <td>${new Date(u.datum).toLocaleDateString('nl-NL', {weekday:'short', day:'numeric', month:'short'})}</td>
-                <td class="font-semibold">${esc(u.medewerkerNaam || '-')}</td>
-                <td>${esc(u.projectNaam || '-')}</td>
-                <td>${u.begintijd || '-'} - ${u.eindtijd || '-'}</td>
-                <td class="font-bold text-indigo-600">${(u.totaalUren||0).toFixed(1)}u</td>
-                <td>${u.locatie?.lat ? `<button onclick='showLocation(${JSON.stringify(u.locatie)})' class="text-green-600">📍</button>` : '-'}</td>
+            const totaal = list.reduce((s,u) => s+(u.totaalUren||0), 0);
+            document.getElementById('totaalUren').textContent = totaal.toFixed(1) + 'u';
+            tbody.innerHTML = list.length ? list.map(u => `<tr>
+                <td>${new Date(u.datum).toLocaleDateString('nl-NL',{weekday:'short',day:'numeric',month:'short'})}</td>
+                <td class="font-semibold">${esc(u.medewerkerNaam||'-')}</td><td>${esc(u.projectNaam||'-')}</td>
+                <td>${u.begintijd||'-'} - ${u.eindtijd||'-'}</td><td class="font-bold text-indigo-600">${(u.totaalUren||0).toFixed(1)}u</td>
                 <td><button onclick="deleteUren('${u.id}')" class="text-red-500">🗑️</button></td>
-            </tr>`).join('');
+            </tr>`).join('') : '<tr><td colspan="6" class="text-center text-gray-400 py-8">Geen uren</td></tr>';
         }
 
         function renderProjecten() {
             const tbody = document.getElementById('projectenTabel');
-            if (!projecten.length) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-8">Geen projecten</td></tr>';
-                return;
-            }
-            tbody.innerHTML = projecten.map(p => {
-                const pUren = uren.filter(u => u.projectId === p.id).reduce((s,u) => s + (u.totaalUren||0), 0);
-                return `<tr>
-                    <td class="font-semibold">${esc(p.titel)}</td>
-                    <td>${esc(p.klantNaam || '-')}</td>
-                    <td>${esc(p.locatie || '-')}</td>
-                    <td class="font-bold text-indigo-600">${pUren.toFixed(1)}u</td>
-                    <td><span class="badge badge-green">${p.status || 'Actief'}</span></td>
-                    <td>
-                        <button onclick="editProject('${p.id}')" class="text-indigo-600 mr-2">✏️</button>
-                        <button onclick="deleteProject('${p.id}')" class="text-red-500">🗑️</button>
-                    </td>
-                </tr>`;
-            }).join('');
-            
-            document.getElementById('manstaatProject').innerHTML = '<option value="">Selecteer...</option>' + 
-                projecten.map(p => `<option value="${p.id}">${esc(p.titel)}</option>`).join('');
+            document.getElementById('manstaatProject').innerHTML = '<option value="">Selecteer...</option>' + projecten.map(p => `<option value="${p.id}">${esc(p.titel)}</option>`).join('');
+            tbody.innerHTML = projecten.length ? projecten.map(p => {
+                const pU = uren.filter(u => u.projectId === p.id).reduce((s,u) => s+(u.totaalUren||0), 0);
+                return `<tr><td class="font-semibold">${esc(p.titel)}</td><td>${esc(p.klantNaam||'-')}</td><td>${esc(p.locatie||'-')}</td><td class="font-bold text-indigo-600">${pU.toFixed(1)}u</td><td><button onclick="editProject('${p.id}')" class="text-indigo-600 mr-2">✏️</button><button onclick="deleteProject('${p.id}')" class="text-red-500">🗑️</button></td></tr>`;
+            }).join('') : '<tr><td colspan="5" class="text-center text-gray-400 py-8">Geen projecten</td></tr>';
         }
 
         function updateDropdowns() {
-            document.getElementById('filterMedewerker').innerHTML = '<option value="">Alle medewerkers</option>' + 
-                medewerkers.map(m => `<option value="${m.id}">${esc(m.naam)}</option>`).join('');
-            document.getElementById('pKlant').innerHTML = '<option value="">Selecteer...</option>' + 
-                klanten.map(k => `<option value="${k.id}">${esc(k.company_name || (k.firstname + ' ' + k.lastname))}</option>`).join('');
+            document.getElementById('filterMedewerker').innerHTML = '<option value="">Alle</option>' + medewerkers.map(m => `<option value="${m.id}">${esc(m.naam)}</option>`).join('');
+            document.getElementById('pKlant').innerHTML = '<option value="">-</option>' + klanten.map(k => `<option value="${k.id}">${esc(k.company_name||(k.firstname+' '+k.lastname))}</option>`).join('');
         }
 
         function showTab(name, btn) {
@@ -756,16 +493,78 @@
             btn.classList.add('active');
         }
 
-        // Medewerker CRUD
-        let overigCertCounter = 0;
-        
+        // === Document Upload Functions ===
+        function triggerUpload(docType) { document.getElementById('docFile-' + docType).click(); }
+
+        function handleFileSelect(docType, input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            pendingUploads[docType] = file;
+            const card = document.getElementById('docCard-' + docType);
+            const preview = document.getElementById('docPreview-' + docType);
+            
+            card.classList.add('has-file');
+            
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    preview.innerHTML = `<img src="${e.target.result}" class="doc-preview"><p class="text-sm text-green-600 font-semibold">✓ ${file.name}</p>
+                        <button onclick="event.stopPropagation(); removeDoc('${docType}')" class="btn btn-danger btn-sm mt-2">🗑️ Verwijderen</button>`;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.innerHTML = `<div class="doc-preview doc-preview-pdf">📄</div><p class="text-sm text-green-600 font-semibold">✓ ${file.name}</p>
+                    <button onclick="event.stopPropagation(); removeDoc('${docType}')" class="btn btn-danger btn-sm mt-2">🗑️ Verwijderen</button>`;
+            }
+        }
+
+        function removeDoc(docType) {
+            delete pendingUploads[docType];
+            const card = document.getElementById('docCard-' + docType);
+            const preview = document.getElementById('docPreview-' + docType);
+            card.classList.remove('has-file');
+            const icons = { id: '🪪', contract: '📝', vca: '🎓', bhv: '🚑' };
+            const labels = { id: 'Kopie ID', contract: 'Contract', vca: 'VCA Certificaat', bhv: 'BHV / EHBO' };
+            preview.innerHTML = `<span class="text-3xl">${icons[docType]}</span><p class="font-semibold mt-2">${labels[docType]}</p><p class="text-sm text-gray-500">Klik om te uploaden</p>`;
+            document.getElementById('docFile-' + docType).value = '';
+        }
+
+        async function uploadDocument(medewerkerId, docType, file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await fetch(`/api/medewerkers/${medewerkerId}/documenten/${docType}`, { method: 'POST', body: formData });
+            return res.json();
+        }
+
+        function viewDocument(medewerkerId, docType) {
+            const m = medewerkers.find(x => x.id === medewerkerId);
+            if (!m?.documenten?.bestanden?.[docType]) return;
+            const file = m.documenten.bestanden[docType];
+            const url = file.path;
+            
+            document.getElementById('docViewerTitle').textContent = docType.toUpperCase() + ' - ' + m.naam;
+            const content = document.getElementById('docViewerContent');
+            
+            if (file.filename.match(/\.(jpg|jpeg|png|webp)$/i)) {
+                content.innerHTML = `<img src="${url}" style="max-width: 100%; max-height: 70vh; border-radius: 8px;">`;
+            } else {
+                content.innerHTML = `<iframe src="${url}" style="width: 100%; height: 70vh; border: none; border-radius: 8px;"></iframe>`;
+            }
+            document.getElementById('docViewerModal').classList.add('active');
+        }
+
+        // === Medewerker CRUD ===
         function showAddMedewerker() {
             document.getElementById('medewerkerModalTitle').textContent = 'Nieuwe Medewerker';
             document.getElementById('editMedewerkerId').value = '';
-            ['mNaam','mTelefoon','mPincode','mEmail','mUurtarief','mIdVerloop','mContractEind','mVcaVerloop','mBhvVerloop'].forEach(id => document.getElementById(id).value = '');
-            ['mType','mContractType','mVcaType','mBhvType'].forEach(id => document.getElementById(id).value = id === 'mType' ? 'vast' : '');
-            document.getElementById('overigeCertificaten').innerHTML = '';
+            ['mNaam','mTelefoon','mPincode','mEmail','mUurtarief'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('mType').value = 'vast';
+            ['id','contract','vca','bhv'].forEach(t => { removeDoc(t); document.getElementById('docVerloop-'+t).value = ''; });
+            ['contract','vca','bhv'].forEach(t => document.getElementById('docType-'+t).value = '');
+            document.getElementById('overigeCerts').innerHTML = '';
             overigCertCounter = 0;
+            pendingUploads = {};
             document.getElementById('medewerkerModal').classList.add('active');
         }
 
@@ -782,79 +581,107 @@
             document.getElementById('mEmail').value = m.email || '';
             document.getElementById('mUurtarief').value = m.uurtarief || '';
             
-            const docs = m.documenten || {};
-            document.getElementById('mIdVerloop').value = docs.idVerloop || '';
-            document.getElementById('mContractType').value = docs.contractType || '';
-            document.getElementById('mContractEind').value = docs.contractEind || '';
-            document.getElementById('mVcaType').value = docs.vcaType || '';
-            document.getElementById('mVcaVerloop').value = docs.vcaVerloop || '';
-            document.getElementById('mBhvType').value = docs.bhvType || '';
-            document.getElementById('mBhvVerloop').value = docs.bhvVerloop || '';
+            const docs = m.documenten || {}, files = docs.bestanden || {};
+            pendingUploads = {};
             
-            // Overige certificaten
-            document.getElementById('overigeCertificaten').innerHTML = '';
+            // Reset and populate doc cards
+            ['id','contract','vca','bhv'].forEach(t => {
+                removeDoc(t);
+                const verloopKey = t === 'contract' ? 'contractEind' : t + 'Verloop';
+                document.getElementById('docVerloop-' + t).value = docs[verloopKey] || '';
+                
+                if (files[t]) {
+                    const card = document.getElementById('docCard-' + t);
+                    const preview = document.getElementById('docPreview-' + t);
+                    card.classList.add('has-file');
+                    const url = files[t].path;
+                    if (files[t].filename.match(/\.(jpg|jpeg|png|webp)$/i)) {
+                        preview.innerHTML = `<img src="${url}" class="doc-preview"><p class="text-sm text-green-600">✓ Geüpload</p><button onclick="event.stopPropagation(); deleteServerDoc('${id}','${t}')" class="btn btn-danger btn-sm mt-2">🗑️</button>`;
+                    } else {
+                        preview.innerHTML = `<div class="doc-preview doc-preview-pdf">📄</div><p class="text-sm text-green-600">✓ PDF</p><button onclick="event.stopPropagation(); deleteServerDoc('${id}','${t}')" class="btn btn-danger btn-sm mt-2">🗑️</button>`;
+                    }
+                }
+            });
+            
+            document.getElementById('docType-contract').value = docs.contractType || '';
+            document.getElementById('docType-vca').value = docs.vcaType || '';
+            document.getElementById('docType-bhv').value = docs.bhvType || '';
+            
+            document.getElementById('overigeCerts').innerHTML = '';
             overigCertCounter = 0;
-            (docs.overig || []).forEach(c => addOverigCertificaat(c.naam, c.verloop));
+            (docs.overig || []).forEach(c => addOverigCert(c.naam, c.verloop));
             
             document.getElementById('medewerkerModal').classList.add('active');
         }
 
-        function addOverigCertificaat(naam = '', verloop = '') {
+        async function deleteServerDoc(medewerkerId, docType) {
+            if (!confirm('Document verwijderen?')) return;
+            await fetch(`/api/medewerkers/${medewerkerId}/documenten/${docType}`, { method: 'DELETE' });
+            await loadAll();
+            editMedewerker(medewerkerId);
+        }
+
+        function addOverigCert(naam = '', verloop = '') {
             const id = ++overigCertCounter;
-            const html = `<div class="flex gap-2 items-center" id="overig-${id}">
-                <input type="text" class="input-field flex-1" placeholder="Certificaat naam" value="${esc(naam)}" id="overigNaam-${id}">
-                <input type="date" class="input-field" style="width: 160px;" value="${verloop}" id="overigVerloop-${id}">
-                <button type="button" onclick="document.getElementById('overig-${id}').remove()" class="text-red-500 text-xl">&times;</button>
-            </div>`;
-            document.getElementById('overigeCertificaten').insertAdjacentHTML('beforeend', html);
+            document.getElementById('overigeCerts').insertAdjacentHTML('beforeend', `
+                <div class="flex gap-2" id="overig-${id}">
+                    <input type="text" class="input-field flex-1" placeholder="Naam" value="${esc(naam)}" id="overigNaam-${id}">
+                    <input type="date" class="input-field" style="width:150px" value="${verloop}" id="overigVerloop-${id}">
+                    <button onclick="document.getElementById('overig-${id}').remove()" class="text-red-500 text-xl">&times;</button>
+                </div>
+            `);
         }
 
         async function saveMedewerker() {
             const id = document.getElementById('editMedewerkerId').value;
             const naam = document.getElementById('mNaam').value.trim();
             const pincode = document.getElementById('mPincode').value.trim();
+            if (!naam) { alert('Vul naam in'); return; }
+            if (!pincode || pincode.length !== 4) { alert('Vul 4-cijferige pincode in'); return; }
             
-            if (!naam) { alert('Vul een naam in'); return; }
-            if (!pincode || pincode.length !== 4) { alert('Vul een 4-cijferige pincode in'); return; }
-            
-            // Verzamel overige certificaten
             const overig = [];
-            document.querySelectorAll('#overigeCertificaten > div').forEach(div => {
+            document.querySelectorAll('#overigeCerts > div').forEach(div => {
                 const cid = div.id.split('-')[1];
-                const cn = document.getElementById('overigNaam-' + cid)?.value?.trim();
-                const cv = document.getElementById('overigVerloop-' + cid)?.value;
+                const cn = document.getElementById('overigNaam-'+cid)?.value?.trim();
+                const cv = document.getElementById('overigVerloop-'+cid)?.value;
                 if (cn) overig.push({ naam: cn, verloop: cv || null });
             });
             
             const data = {
-                naam,
-                type: document.getElementById('mType').value,
+                naam, type: document.getElementById('mType').value,
                 telefoon: document.getElementById('mTelefoon').value.trim(),
-                pincode,
-                email: document.getElementById('mEmail').value.trim(),
+                pincode, email: document.getElementById('mEmail').value.trim(),
                 uurtarief: document.getElementById('mUurtarief').value || null,
                 actief: true,
                 documenten: {
-                    idVerloop: document.getElementById('mIdVerloop').value || null,
-                    contractType: document.getElementById('mContractType').value || null,
-                    contractEind: document.getElementById('mContractEind').value || null,
-                    vcaType: document.getElementById('mVcaType').value || null,
-                    vcaVerloop: document.getElementById('mVcaVerloop').value || null,
-                    bhvType: document.getElementById('mBhvType').value || null,
-                    bhvVerloop: document.getElementById('mBhvVerloop').value || null,
+                    idVerloop: document.getElementById('docVerloop-id').value || null,
+                    contractType: document.getElementById('docType-contract').value || null,
+                    contractEind: document.getElementById('docVerloop-contract').value || null,
+                    vcaType: document.getElementById('docType-vca').value || null,
+                    vcaVerloop: document.getElementById('docVerloop-vca').value || null,
+                    bhvType: document.getElementById('docType-bhv').value || null,
+                    bhvVerloop: document.getElementById('docVerloop-bhv').value || null,
                     overig
                 }
             };
             
-            try {
-                await fetch(id ? '/api/medewerkers/' + id : '/api/medewerkers', {
-                    method: id ? 'PUT' : 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                closeModal('medewerkerModal');
-                await loadAll();
-            } catch(e) { alert('Fout bij opslaan'); }
+            // Save medewerker first
+            const res = await fetch(id ? '/api/medewerkers/' + id : '/api/medewerkers', {
+                method: id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const saved = await res.json();
+            const odewerkerId = id || saved.id;
+            
+            // Upload pending documents
+            for (const [docType, file] of Object.entries(pendingUploads)) {
+                await uploadDocument(odewerkerId, docType, file);
+            }
+            
+            pendingUploads = {};
+            closeModal('medewerkerModal');
+            await loadAll();
         }
 
         async function deleteMedewerker(id) {
@@ -863,11 +690,7 @@
             await loadAll();
         }
 
-        function viewMedewerkerDocs(id) {
-            editMedewerker(id);
-        }
-
-        // Project CRUD
+        // === Project CRUD ===
         function showAddProject() {
             document.getElementById('editProjectId').value = '';
             document.getElementById('pTitel').value = '';
@@ -890,99 +713,42 @@
             const id = document.getElementById('editProjectId').value;
             const titel = document.getElementById('pTitel').value.trim();
             if (!titel) { alert('Vul titel in'); return; }
-            
             const klantId = document.getElementById('pKlant').value;
             const klant = klanten.find(k => k.id === klantId);
-            
             await fetch(id ? '/api/projecten/' + id : '/api/projecten', {
                 method: id ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    titel,
-                    klantId: klantId || null,
-                    klantNaam: klant ? (klant.company_name || klant.firstname + ' ' + klant.lastname) : '',
-                    locatie: document.getElementById('pLocatie').value.trim(),
-                    status: 'actief'
-                })
+                body: JSON.stringify({ titel, klantId: klantId||null, klantNaam: klant ? (klant.company_name||klant.firstname+' '+klant.lastname) : '', locatie: document.getElementById('pLocatie').value.trim(), status: 'actief' })
             });
-            closeModal('projectModal');
-            await loadAll();
+            closeModal('projectModal'); await loadAll();
         }
 
-        async function deleteProject(id) {
-            if (!confirm('Project verwijderen?')) return;
-            await fetch('/api/projecten/' + id, { method: 'DELETE' });
-            await loadAll();
-        }
+        async function deleteProject(id) { if (!confirm('Verwijderen?')) return; await fetch('/api/projecten/' + id, { method: 'DELETE' }); await loadAll(); }
+        async function deleteUren(id) { if (!confirm('Verwijderen?')) return; await fetch('/api/uren/' + id, { method: 'DELETE' }); await loadAll(); }
 
-        async function deleteUren(id) {
-            if (!confirm('Uren verwijderen?')) return;
-            await fetch('/api/uren/' + id, { method: 'DELETE' });
-            await loadAll();
-        }
-
-        // Manstaat
+        // === Manstaat ===
         function generateManstaat() {
-            const projectId = document.getElementById('manstaatProject').value;
+            const pid = document.getElementById('manstaatProject').value;
             const van = document.getElementById('manstaatVan').value;
             const tot = document.getElementById('manstaatTot').value;
-            if (!projectId || !van || !tot) { alert('Selecteer project en periode'); return; }
-            
-            const project = projecten.find(p => p.id === projectId);
-            const list = uren.filter(u => u.projectId === projectId && u.datum >= van && u.datum <= tot).sort((a,b) => a.datum.localeCompare(b.datum));
-            if (!list.length) { alert('Geen uren gevonden'); return; }
-            
+            if (!pid || !van || !tot) { alert('Selecteer alles'); return; }
+            const project = projecten.find(p => p.id === pid);
+            const list = uren.filter(u => u.projectId === pid && u.datum >= van && u.datum <= tot).sort((a,b) => a.datum.localeCompare(b.datum));
+            if (!list.length) { alert('Geen uren'); return; }
             let totaal = 0;
             const rows = list.map(u => { totaal += (u.totaalUren||0); return `<tr><td>${fmtDate(u.datum)}</td><td>${esc(u.medewerkerNaam)}</td><td>${u.begintijd}</td><td>${u.eindtijd}</td><td>${u.pauze||0}m</td><td>${(u.totaalUren||0).toFixed(2)}</td></tr>`; }).join('');
-            
-            document.getElementById('manstaatContent').innerHTML = `
-                <div style="display:flex;justify-content:space-between;border-bottom:2px solid #333;padding-bottom:16px;margin-bottom:16px;">
-                    <div><img src="/logo-stucologie.jpg" style="height:50px;"><h2 style="font-size:20px;font-weight:bold;margin-top:8px;">MANSTAAT</h2></div>
-                    <div style="text-align:right;font-size:13px;color:#666;"><strong>Stucologie B.V.</strong><br>info@stucologie.nl<br>www.stucologie.nl</div>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:14px;">
-                    <div><span style="color:#666;">Project:</span> <strong>${esc(project.titel)}</strong></div>
-                    <div><span style="color:#666;">Periode:</span> <strong>${fmtDate(van)} - ${fmtDate(tot)}</strong></div>
-                    <div><span style="color:#666;">Klant:</span> <strong>${esc(project.klantNaam || '-')}</strong></div>
-                    <div><span style="color:#666;">Locatie:</span> <strong>${esc(project.locatie || '-')}</strong></div>
-                </div>
-                <table style="width:100%;border-collapse:collapse;font-size:14px;">
-                    <thead><tr style="background:#f5f5f5;"><th style="padding:10px;border:1px solid #ddd;text-align:left;">Datum</th><th style="padding:10px;border:1px solid #ddd;text-align:left;">Medewerker</th><th style="padding:10px;border:1px solid #ddd;">Begin</th><th style="padding:10px;border:1px solid #ddd;">Eind</th><th style="padding:10px;border:1px solid #ddd;">Pauze</th><th style="padding:10px;border:1px solid #ddd;">Uren</th></tr></thead>
-                    <tbody>${rows}</tbody>
-                    <tfoot><tr style="background:#f5f5f5;font-weight:bold;"><td colspan="5" style="padding:10px;border:1px solid #ddd;">TOTAAL</td><td style="padding:10px;border:1px solid #ddd;">${totaal.toFixed(2)} uur</td></tr></tfoot>
-                </table>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:32px;border-top:2px solid #333;padding-top:16px;">
-                    <div><div style="font-size:12px;color:#666;margin-bottom:8px;">Handtekening opdrachtgever:</div><div style="border-bottom:2px solid #ccc;height:50px;"></div><div style="font-size:12px;color:#666;margin-top:8px;">Datum: ____________</div></div>
-                    <div><div style="font-size:12px;color:#666;margin-bottom:8px;">Handtekening Stucologie:</div><div style="border-bottom:2px solid #ccc;height:50px;"></div><div style="font-size:12px;color:#666;margin-top:8px;">Datum: ____________</div></div>
-                </div>
-            `;
+            document.getElementById('manstaatContent').innerHTML = `<div style="display:flex;justify-content:space-between;border-bottom:2px solid #333;padding-bottom:16px;margin-bottom:16px;"><div><img src="/logo-stucologie.jpg" style="height:50px;"><h2 style="font-size:20px;font-weight:bold;margin-top:8px;">MANSTAAT</h2></div><div style="text-align:right;font-size:13px;color:#666;"><strong>Stucologie B.V.</strong><br>info@stucologie.nl</div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:14px;"><div>Project: <strong>${esc(project.titel)}</strong></div><div>Periode: <strong>${fmtDate(van)} - ${fmtDate(tot)}</strong></div><div>Klant: <strong>${esc(project.klantNaam||'-')}</strong></div><div>Locatie: <strong>${esc(project.locatie||'-')}</strong></div></div><table style="width:100%;border-collapse:collapse;font-size:14px;"><thead><tr style="background:#f5f5f5;"><th style="padding:10px;border:1px solid #ddd;">Datum</th><th style="padding:10px;border:1px solid #ddd;">Medewerker</th><th style="padding:10px;border:1px solid #ddd;">Begin</th><th style="padding:10px;border:1px solid #ddd;">Eind</th><th style="padding:10px;border:1px solid #ddd;">Pauze</th><th style="padding:10px;border:1px solid #ddd;">Uren</th></tr></thead><tbody>${rows}</tbody><tfoot><tr style="background:#f5f5f5;font-weight:bold;"><td colspan="5" style="padding:10px;border:1px solid #ddd;">TOTAAL</td><td style="padding:10px;border:1px solid #ddd;">${totaal.toFixed(2)} uur</td></tr></tfoot></table>`;
             document.getElementById('manstaatResult').style.display = 'block';
         }
+        function printManstaat() { const w = window.open('','_blank'); w.document.write('<html><head><title>Manstaat</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{padding:8px;border:1px solid #ddd}th{background:#f5f5f5}</style></head><body>'+document.getElementById('manstaatContent').innerHTML+'</body></html>'); w.document.close(); setTimeout(() => w.print(), 300); }
 
-        function printManstaat() {
-            const w = window.open('', '_blank');
-            w.document.write('<html><head><title>Manstaat</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{padding:8px;border:1px solid #ddd}th{background:#f5f5f5}</style></head><body>' + document.getElementById('manstaatContent').innerHTML + '</body></html>');
-            w.document.close();
-            setTimeout(() => w.print(), 300);
-        }
-
-        function showLocation(loc) {
-            if (!loc) return;
-            document.getElementById('locationDetails').innerHTML = `<p><strong>Adres:</strong> ${esc(loc.address||'Onbekend')}</p><p><strong>Coördinaten:</strong> ${loc.lat?.toFixed(5)}, ${loc.lng?.toFixed(5)}</p>`;
-            document.getElementById('locationMap').innerHTML = `<iframe width="100%" height="200" frameborder="0" style="border-radius:12px" src="https://www.openstreetmap.org/export/embed.html?bbox=${loc.lng-0.005},${loc.lat-0.005},${loc.lng+0.005},${loc.lat+0.005}&layer=mapnik&marker=${loc.lat},${loc.lng}"></iframe>`;
-            document.getElementById('locationModal').classList.add('active');
-        }
-
+        // === Utils ===
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
         document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); }));
-
         function fmtDate(d) { return new Date(d).toLocaleDateString('nl-NL', {day:'numeric',month:'short',year:'numeric'}); }
         function esc(t) { if (!t) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
         function copyPortalLink() { navigator.clipboard?.writeText(location.origin + '/medewerker-portal.html').then(() => alert('Link gekopieerd!')); }
-        function exportUren() {
-            const csv = 'Datum,Medewerker,Project,Begin,Eind,Pauze,Uren\n' + uren.map(u => `${u.datum},"${u.medewerkerNaam}","${u.projectNaam}",${u.begintijd},${u.eindtijd},${u.pauze},${u.totaalUren}`).join('\n');
-            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'})); a.download = 'uren.csv'; a.click();
-        }
+        function exportUren() { const csv = 'Datum,Medewerker,Project,Begin,Eind,Uren\n' + uren.map(u => `${u.datum},"${u.medewerkerNaam}","${u.projectNaam}",${u.begintijd},${u.eindtijd},${u.totaalUren}`).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'})); a.download = 'uren.csv'; a.click(); }
     </script>
 </body>
 </html>
