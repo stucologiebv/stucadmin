@@ -245,16 +245,22 @@
 
         <!-- Tab: Locaties -->
         <div id="tab-locaties" class="tab-content" style="display: none;">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="stat-card blue"><div class="stat-value" id="statLocaties">0</div><div class="stat-label">Unieke locaties</div></div>
+                <div class="stat-card purple"><div class="stat-value" id="statBezoeken">0</div><div class="stat-label">Totaal bezoeken</div></div>
+                <div class="stat-card green"><div class="stat-value" id="statGekoppeld">0</div><div class="stat-label">Gekoppeld aan klant</div></div>
+                <div class="stat-card orange"><div class="stat-value" id="statOngekoppeld">0</div><div class="stat-label">Nog te koppelen</div></div>
+            </div>
             <div class="card">
                 <div class="card-header">
                     <h2 class="font-bold text-lg">📍 Locatie Overzicht</h2>
-                    <div class="flex gap-2">
-                        <select id="filterLocatiePeriode" class="input-field" style="width:auto;" onchange="renderLocaties()">
-                            <option value="week">Deze week</option>
-                            <option value="maand">Deze maand</option>
-                            <option value="alles">Alles</option>
+                    <div class="flex gap-2 flex-wrap">
+                        <select id="filterLocatieStatus" class="input-field" style="width:auto;" onchange="renderLocatiesNew()">
+                            <option value="all">Alle locaties</option>
+                            <option value="gekoppeld">Gekoppeld</option>
+                            <option value="ongekoppeld">Nog te koppelen</option>
                         </select>
-                        <button onclick="exportLocaties()" class="btn btn-secondary btn-sm">📥 Export</button>
+                        <button onclick="refreshLocaties()" class="btn btn-secondary btn-sm">🔄 Ververs</button>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -376,6 +382,7 @@
             ]);
             medewerkers = m; uren = u; projecten = p; klanten = k;
             updateStats(); renderAll();
+            loadLocaties(); // Laad locaties op achtergrond
         }
 
         function updateStats() {
@@ -761,123 +768,213 @@
         }
         function printManstaat() { const w = window.open('','_blank'); w.document.write('<html><head><title>Manstaat</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{padding:8px;border:1px solid #ddd}th{background:#f5f5f5}</style></head><body>'+document.getElementById('manstaatContent').innerHTML+'</body></html>'); w.document.close(); setTimeout(() => w.print(), 300); }
 
-        // === Locaties Overzicht ===
-        function renderLocaties() {
-            const periode = document.getElementById('filterLocatiePeriode')?.value || 'week';
-            const now = new Date(), ws = new Date(now);
+        // === Locaties Overzicht (Nieuw met API) ===
+        let locatiesData = [];
+        
+        async function loadLocaties() {
+            try {
+                const res = await fetch('/api/locaties/overzicht');
+                const data = await res.json();
+                if (data.success) {
+                    locatiesData = data.locaties;
+                    document.getElementById('statLocaties').textContent = data.totaalLocaties;
+                    document.getElementById('statBezoeken').textContent = data.totaalBezoeken;
+                    const gekoppeld = locatiesData.filter(l => l.gekoppeldeKlant).length;
+                    document.getElementById('statGekoppeld').textContent = gekoppeld;
+                    document.getElementById('statOngekoppeld').textContent = data.totaalLocaties - gekoppeld;
+                    renderLocatiesNew();
+                }
+            } catch (e) {
+                console.error('Locaties laden mislukt:', e);
+            }
+        }
+        
+        function renderLocatiesNew() {
+            const filter = document.getElementById('filterLocatieStatus')?.value || 'all';
+            let filtered = locatiesData;
             
-            let filteredUren = uren;
-            if (periode === 'week') {
-                ws.setDate(now.getDate() - now.getDay() + 1); ws.setHours(0,0,0,0);
-                filteredUren = uren.filter(u => new Date(u.datum) >= ws);
-            } else if (periode === 'maand') {
-                const ms = new Date(now.getFullYear(), now.getMonth(), 1);
-                filteredUren = uren.filter(u => new Date(u.datum) >= ms);
+            if (filter === 'gekoppeld') {
+                filtered = locatiesData.filter(l => l.gekoppeldeKlant);
+            } else if (filter === 'ongekoppeld') {
+                filtered = locatiesData.filter(l => !l.gekoppeldeKlant);
             }
             
-            // Groepeer per locatie (adres)
-            const locatieMap = {};
-            filteredUren.forEach(u => {
-                const adres = u.startLocation?.adres?.volledig || u.endLocation?.adres?.volledig || null;
-                if (!adres) return;
-                
-                if (!locatieMap[adres]) {
-                    locatieMap[adres] = {
-                        adres: adres,
-                        straat: u.startLocation?.adres?.straat || '',
-                        plaats: u.startLocation?.adres?.plaats || '',
-                        postcode: u.startLocation?.adres?.postcode || '',
-                        coords: { lat: u.startLocation?.lat, lng: u.startLocation?.lng },
-                        medewerkers: {},
-                        datums: new Set(),
-                        totaalUren: 0
-                    };
-                }
-                
-                const loc = locatieMap[adres];
-                loc.totaalUren += (u.totaalUren || 0);
-                loc.datums.add(u.datum);
-                
-                if (!loc.medewerkers[u.medewerkerId]) {
-                    loc.medewerkers[u.medewerkerId] = {
-                        naam: u.medewerkerNaam,
-                        uren: 0,
-                        datums: new Set()
-                    };
-                }
-                loc.medewerkers[u.medewerkerId].uren += (u.totaalUren || 0);
-                loc.medewerkers[u.medewerkerId].datums.add(u.datum);
-            });
-            
-            const locaties = Object.values(locatieMap).sort((a,b) => b.totaalUren - a.totaalUren);
             const container = document.getElementById('locatiesGrid');
             
-            if (!locaties.length) {
-                container.innerHTML = '<p class="text-center text-gray-400 py-8">Geen locatiedata gevonden voor deze periode</p>';
+            if (!filtered.length) {
+                container.innerHTML = '<p class="text-center text-gray-400 py-8">Geen locaties gevonden</p>';
                 return;
             }
             
-            container.innerHTML = locaties.map(loc => {
-                const medewerkersArr = Object.values(loc.medewerkers);
-                const datumsList = Array.from(loc.datums).sort();
-                const mapsUrl = `https://maps.google.com/?q=${loc.coords.lat},${loc.coords.lng}`;
+            container.innerHTML = filtered.map((loc, idx) => {
+                const mapsUrl = `https://maps.google.com/?q=${loc.lat},${loc.lng}`;
+                const uniqueMedewerkers = [...new Set(loc.bezoeken.map(b => b.medewerker))];
+                const uniqueDatums = [...new Set(loc.bezoeken.map(b => b.datum))].sort().reverse();
+                const totaalUren = loc.bezoeken.reduce((s, b) => s + (b.uren || 0), 0);
+                
+                const klantBadge = loc.gekoppeldeKlant 
+                    ? `<div class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2">
+                        ✅ ${esc(loc.gekoppeldeKlant.klantNaam)}
+                        <button onclick="ontkoppelLocatie(${idx})" class="text-green-500 hover:text-red-500" title="Ontkoppelen">×</button>
+                       </div>`
+                    : `<button onclick="zoekKlantSuggesties(${idx})" class="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-medium hover:bg-orange-200">
+                        🔍 Zoek klant...
+                       </button>`;
                 
                 return `
-                    <div class="border border-gray-200 rounded-xl overflow-hidden">
-                        <div class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white p-4">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <h3 class="font-bold text-lg">${esc(loc.straat || loc.adres)}</h3>
-                                    <p class="text-indigo-100 text-sm">${esc(loc.postcode)} ${esc(loc.plaats)}</p>
+                    <div class="border border-gray-200 rounded-xl overflow-hidden" id="locatie-${idx}">
+                        <div class="bg-gradient-to-r ${loc.gekoppeldeKlant ? 'from-green-500 to-emerald-500' : 'from-indigo-500 to-purple-500'} text-white p-4">
+                            <div class="flex justify-between items-start gap-4 flex-wrap">
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="font-bold text-lg truncate">${esc(loc.adres || 'Onbekend adres')}</h3>
+                                    <p class="text-white/80 text-sm">📍 ${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}</p>
                                 </div>
                                 <div class="text-right">
-                                    <div class="text-2xl font-bold">${loc.totaalUren.toFixed(1)}u</div>
-                                    <a href="${mapsUrl}" target="_blank" class="text-indigo-100 text-xs hover:text-white">📍 Maps</a>
+                                    <div class="text-2xl font-bold">${totaalUren.toFixed(1)}u</div>
+                                    <div class="text-sm text-white/80">${loc.bezoeken.length} bezoeken</div>
                                 </div>
                             </div>
                         </div>
                         <div class="p-4">
-                            <div class="mb-3">
-                                <span class="text-sm text-gray-500">👷 ${medewerkersArr.length} medewerker${medewerkersArr.length !== 1 ? 's' : ''}</span>
-                                <span class="text-sm text-gray-500 ml-4">📅 ${loc.datums.size} dag${loc.datums.size !== 1 ? 'en' : ''}</span>
+                            <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                                ${klantBadge}
+                                <a href="${mapsUrl}" target="_blank" class="text-indigo-600 text-sm hover:underline">🗺️ Open in Maps</a>
                             </div>
-                            <div class="space-y-2">
-                                ${medewerkersArr.map(m => `
-                                    <div class="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                                        <div>
-                                            <span class="font-medium">${esc(m.naam)}</span>
-                                            <span class="text-xs text-gray-400 ml-2">${m.datums.size} dag${m.datums.size !== 1 ? 'en' : ''}</span>
-                                        </div>
-                                        <span class="font-bold text-indigo-600">${m.uren.toFixed(1)}u</span>
+                            
+                            <div id="suggesties-${idx}" class="hidden mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <p class="text-sm font-medium text-yellow-800 mb-2">🔍 Klant suggesties:</p>
+                                <div id="suggesties-list-${idx}" class="space-y-2"></div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">👷 Medewerkers</p>
+                                    <div class="space-y-1">
+                                        ${uniqueMedewerkers.slice(0, 3).map(m => `<span class="badge badge-vast">${esc(m)}</span>`).join(' ')}
+                                        ${uniqueMedewerkers.length > 3 ? `<span class="text-xs text-gray-400">+${uniqueMedewerkers.length - 3} meer</span>` : ''}
                                     </div>
-                                `).join('')}
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">📅 Laatste bezoeken</p>
+                                    <p class="text-sm">${uniqueDatums.slice(0, 3).map(d => fmtDate(d)).join(', ')}</p>
+                                </div>
                             </div>
-                            <div class="mt-3 pt-3 border-t">
-                                <p class="text-xs text-gray-400">Datums: ${datumsList.slice(0,5).map(d => fmtDate(d)).join(', ')}${datumsList.length > 5 ? ' ...' : ''}</p>
-                            </div>
+                            
+                            <details class="text-sm">
+                                <summary class="cursor-pointer text-indigo-600 font-medium">Bekijk alle ${loc.bezoeken.length} registraties</summary>
+                                <div class="mt-2 max-h-48 overflow-y-auto">
+                                    <table class="w-full text-xs">
+                                        <thead><tr class="text-gray-500"><th class="text-left py-1">Datum</th><th class="text-left py-1">Medewerker</th><th class="text-left py-1">Project</th><th class="text-right py-1">Uren</th></tr></thead>
+                                        <tbody>
+                                            ${loc.bezoeken.sort((a,b) => b.datum.localeCompare(a.datum)).map(b => `
+                                                <tr class="border-t border-gray-100">
+                                                    <td class="py-1">${fmtDate(b.datum)}</td>
+                                                    <td class="py-1">${esc(b.medewerker)}</td>
+                                                    <td class="py-1 truncate max-w-32">${esc(b.project)}</td>
+                                                    <td class="py-1 text-right font-medium">${(b.uren||0).toFixed(1)}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </details>
                         </div>
                     </div>
                 `;
             }).join('');
         }
-
-        function exportLocaties() {
-            const periode = document.getElementById('filterLocatiePeriode')?.value || 'alles';
-            let filteredUren = uren;
-            if (periode === 'week') {
-                const ws = new Date(); ws.setDate(ws.getDate() - ws.getDay() + 1); ws.setHours(0,0,0,0);
-                filteredUren = uren.filter(u => new Date(u.datum) >= ws);
-            } else if (periode === 'maand') {
-                const ms = new Date(); ms.setDate(1); ms.setHours(0,0,0,0);
-                filteredUren = uren.filter(u => new Date(u.datum) >= ms);
+        
+        async function zoekKlantSuggesties(idx) {
+            const loc = locatiesData[idx];
+            const suggestiesDiv = document.getElementById(`suggesties-${idx}`);
+            const listDiv = document.getElementById(`suggesties-list-${idx}`);
+            
+            suggestiesDiv.classList.remove('hidden');
+            listDiv.innerHTML = '<p class="text-sm text-gray-500">⏳ Suggesties zoeken...</p>';
+            
+            try {
+                const res = await fetch(`/api/locaties/suggesties/${loc.lat}/${loc.lng}`);
+                const data = await res.json();
+                
+                if (data.success && data.suggesties.length > 0) {
+                    listDiv.innerHTML = data.suggesties.map(s => {
+                        const confidenceColor = s.confidence === 'hoog' ? 'green' : s.confidence === 'medium' ? 'yellow' : 'gray';
+                        return `
+                            <div class="flex items-center justify-between p-2 bg-white rounded border hover:border-indigo-300 cursor-pointer" onclick="koppelKlant(${idx}, '${s.klantId}', '${esc(s.naam).replace(/'/g, "\\'")}', '${esc(s.adres).replace(/'/g, "\\'")}')">
+                                <div>
+                                    <p class="font-medium">${esc(s.naam)}</p>
+                                    <p class="text-xs text-gray-500">${esc(s.adres)}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="badge badge-${confidenceColor === 'green' ? 'green' : confidenceColor === 'yellow' ? 'orange' : 'gray'}">${s.afstand}m</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('') + `
+                        <button onclick="document.getElementById('suggesties-${idx}').classList.add('hidden')" class="text-xs text-gray-400 mt-2">Annuleren</button>
+                    `;
+                } else {
+                    listDiv.innerHTML = `
+                        <p class="text-sm text-gray-500">Geen klanten gevonden binnen 500m</p>
+                        <button onclick="showManualKoppel(${idx})" class="btn btn-sm btn-secondary mt-2">✏️ Handmatig koppelen</button>
+                        <button onclick="document.getElementById('suggesties-${idx}').classList.add('hidden')" class="text-xs text-gray-400 ml-2">Annuleren</button>
+                    `;
+                }
+            } catch (e) {
+                listDiv.innerHTML = '<p class="text-sm text-red-500">Fout bij laden suggesties</p>';
             }
-            
-            const rows = filteredUren.filter(u => u.startLocation?.adres).map(u => {
-                const a = u.startLocation.adres;
-                return `${u.datum},"${u.medewerkerNaam}","${a.volledig}","${a.straat}","${a.postcode}","${a.plaats}",${u.totaalUren}`;
+        }
+        
+        async function koppelKlant(idx, klantId, klantNaam, klantAdres) {
+            const loc = locatiesData[idx];
+            try {
+                await fetch('/api/locaties/koppel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lat: loc.lat,
+                        lng: loc.lng,
+                        klantId,
+                        klantNaam,
+                        klantAdres
+                    })
+                });
+                await loadLocaties();
+            } catch (e) {
+                alert('Koppelen mislukt');
+            }
+        }
+        
+        async function ontkoppelLocatie(idx) {
+            if (!confirm('Koppeling verwijderen?')) return;
+            const loc = locatiesData[idx];
+            try {
+                await fetch(`/api/locaties/koppel/${loc.lat}/${loc.lng}`, { method: 'DELETE' });
+                await loadLocaties();
+            } catch (e) {
+                alert('Ontkoppelen mislukt');
+            }
+        }
+        
+        function showManualKoppel(idx) {
+            const klantNaam = prompt('Voer klantnaam in:');
+            if (!klantNaam) return;
+            const klantAdres = prompt('Voer klantadres in (optioneel):') || '';
+            koppelKlant(idx, 'manual_' + Date.now(), klantNaam, klantAdres);
+        }
+        
+        async function refreshLocaties() {
+            document.getElementById('locatiesGrid').innerHTML = '<p class="text-center text-gray-400 py-8">⏳ Locaties laden...</p>';
+            await loadLocaties();
+        }
+        
+        function exportLocaties() {
+            const rows = locatiesData.map(loc => {
+                const totaalUren = loc.bezoeken.reduce((s, b) => s + (b.uren || 0), 0);
+                const medewerkers = [...new Set(loc.bezoeken.map(b => b.medewerker))].join('; ');
+                return `"${loc.adres || ''}",${loc.lat},${loc.lng},"${loc.gekoppeldeKlant?.klantNaam || ''}",${loc.bezoeken.length},${totaalUren.toFixed(2)},"${medewerkers}"`;
             });
-            
-            const csv = 'Datum,Medewerker,Adres,Straat,Postcode,Plaats,Uren\n' + rows.join('\n');
+            const csv = 'Adres,Lat,Lng,Gekoppelde Klant,Bezoeken,Totaal Uren,Medewerkers\n' + rows.join('\n');
             const a = document.createElement('a'); 
             a.href = URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'})); 
             a.download = 'locaties-export.csv'; 

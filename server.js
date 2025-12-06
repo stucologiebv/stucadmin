@@ -3645,6 +3645,278 @@ app.options('/api/offerteaanvragen/website', (req, res) => {
 
 
 // ============================================
+// LOCATIE ANALYSE & KLANT MATCHING
+// ============================================
+
+// Haal alle unieke locaties uit uren met clustering
+app.get('/api/locaties/overzicht', requireAuth, async (req, res) => {
+    try {
+        const locaties = [];
+        const CLUSTER_RADIUS = 100; // meters - locaties binnen 100m worden geclusterd
+        
+        // Loop door alle uren met locatie
+        for (const u of uren) {
+            const locs = [];
+            if (u.startLocation?.lat) locs.push({ ...u.startLocation, type: 'start' });
+            if (u.endLocation?.lat) locs.push({ ...u.endLocation, type: 'end' });
+            if (u.locatie?.lat) locs.push({ ...u.locatie, type: 'single' });
+            
+            for (const loc of locs) {
+                // Zoek bestaande cluster binnen radius
+                let foundCluster = locaties.find(cluster => {
+                    const dist = haversineDistance(cluster.lat, cluster.lng, loc.lat, loc.lng);
+                    return dist <= CLUSTER_RADIUS;
+                });
+                
+                if (foundCluster) {
+                    // Voeg toe aan bestaande cluster
+                    foundCluster.bezoeken.push({
+                        datum: u.datum,
+                        medewerker: u.medewerkerNaam,
+                        medewerkerId: u.medewerkerId,
+                        project: u.projectNaam,
+                        projectId: u.projectId,
+                        uren: u.totaalUren,
+                        tijd: loc.timestamp
+                    });
+                    // Update gemiddelde locatie
+                    const n = foundCluster.bezoeken.length;
+                    foundCluster.lat = ((foundCluster.lat * (n-1)) + loc.lat) / n;
+                    foundCluster.lng = ((foundCluster.lng * (n-1)) + loc.lng) / n;
+                } else {
+                    // Nieuwe cluster
+                    locaties.push({
+                        id: `loc_${Date.now()}_${Math.random().toString(36).substr(2,5)}`,
+                        lat: loc.lat,
+                        lng: loc.lng,
+                        adres: loc.address || null,
+                        gekoppeldeKlant: null,
+                        bezoeken: [{
+                            datum: u.datum,
+                            medewerker: u.medewerkerNaam,
+                            medewerkerId: u.medewerkerId,
+                            project: u.projectNaam,
+                            projectId: u.projectId,
+                            uren: u.totaalUren,
+                            tijd: loc.timestamp
+                        }]
+                    });
+                }
+            }
+        }
+        
+        // Sorteer op aantal bezoeken (meest bezocht eerst)
+        locaties.sort((a, b) => b.bezoeken.length - a.bezoeken.length);
+        
+        // Laad bestaande koppelingen
+        const koppelingenFile = path.join(__dirname, '.data', 'locatie-klant-koppelingen.json');
+        let koppelingen = {};
+        if (fs.existsSync(koppelingenFile)) {
+            koppelingen = JSON.parse(fs.readFileSync(koppelingenFile, 'utf8'));
+        }
+        
+        // Voeg koppelingen toe aan locaties
+        for (const loc of locaties) {
+            const key = `${loc.lat.toFixed(4)}_${loc.lng.toFixed(4)}`;
+            if (koppelingen[key]) {
+                loc.gekoppeldeKlant = koppelingen[key];
+            }
+        }
+        
+        res.json({
+            success: true,
+            totaalLocaties: locaties.length,
+            totaalBezoeken: locaties.reduce((s, l) => s + l.bezoeken.length, 0),
+            locaties
+        });
+    } catch (error) {
+        console.error('Locatie overzicht error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Haversine formule voor afstand in meters
+function haversineDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371000; // Earth radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+// Zoek klant-suggesties voor een locatie
+app.get('/api/locaties/suggesties/:lat/:lng', requireAuth, async (req, res) => {
+    try {
+        const { lat, lng } = req.params;
+        const targetLat = parseFloat(lat);
+        const targetLng = parseFloat(lng);
+        
+        // Haal klanten op
+        const fetch = (await import('node-fetch')).default;
+        const response = await fetch(`${MONEYBIRD_API_URL}/contacts.json?per_page=100`, {
+            headers: { 'Authorization': `Bearer ${MONEYBIRD_API_TOKEN}` }
+        });
+        
+        if (!response.ok) throw new Error('Moneybird API error');
+        const klanten = await response.json();
+        
+        const suggesties = [];
+        
+        for (const klant of klanten) {
+            // Bouw adres string
+            const adresParts = [
+                klant.address1,
+                klant.address2,
+                klant.zipcode,
+                klant.city
+            ].filter(Boolean);
+            
+            if (adresParts.length < 2) continue; // Skip klanten zonder adres
+            
+            const adres = adresParts.join(', ');
+            
+            // Geocode het adres (met cache)
+            const geoKey = `geo_${klant.id}`;
+            let coords = geocodeCache.get(geoKey);
+            
+            if (!coords) {
+                try {
+                    const geoRes = await fetch(
+                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adres)}&countrycodes=nl&limit=1`,
+                        { headers: { 'User-Agent': 'StucAdmin/1.0' } }
+                    );
+                    const geoData = await geoRes.json();
+                    
+                    if (geoData.length > 0) {
+                        coords = {
+                            lat: parseFloat(geoData[0].lat),
+                            lng: parseFloat(geoData[0].lon)
+                        };
+                        geocodeCache.set(geoKey, coords);
+                    }
+                    
+                    // Rate limiting - wacht 1 seconde tussen requests
+                    await new Promise(r => setTimeout(r, 1000));
+                } catch (e) {
+                    console.error('Geocode error:', e);
+                }
+            }
+            
+            if (coords) {
+                const afstand = haversineDistance(targetLat, targetLng, coords.lat, coords.lng);
+                
+                // Alleen suggesties binnen 500 meter
+                if (afstand <= 500) {
+                    suggesties.push({
+                        klantId: klant.id,
+                        naam: klant.company_name || `${klant.firstname || ''} ${klant.lastname || ''}`.trim(),
+                        adres,
+                        afstand: Math.round(afstand),
+                        confidence: afstand <= 50 ? 'hoog' : afstand <= 150 ? 'medium' : 'laag',
+                        coords
+                    });
+                }
+            }
+        }
+        
+        // Sorteer op afstand
+        suggesties.sort((a, b) => a.afstand - b.afstand);
+        
+        res.json({
+            success: true,
+            suggesties: suggesties.slice(0, 5) // Max 5 suggesties
+        });
+    } catch (error) {
+        console.error('Suggesties error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Geocode cache
+const geocodeCache = new Map();
+
+// Koppel locatie aan klant
+app.post('/api/locaties/koppel', requireAuth, (req, res) => {
+    try {
+        const { lat, lng, klantId, klantNaam, klantAdres } = req.body;
+        
+        const koppelingenFile = path.join(__dirname, '.data', 'locatie-klant-koppelingen.json');
+        let koppelingen = {};
+        if (fs.existsSync(koppelingenFile)) {
+            koppelingen = JSON.parse(fs.readFileSync(koppelingenFile, 'utf8'));
+        }
+        
+        const key = `${parseFloat(lat).toFixed(4)}_${parseFloat(lng).toFixed(4)}`;
+        koppelingen[key] = {
+            klantId,
+            klantNaam,
+            klantAdres,
+            gekoppeldOp: new Date().toISOString()
+        };
+        
+        fs.writeFileSync(koppelingenFile, JSON.stringify(koppelingen, null, 2));
+        
+        console.log(`📍 Locatie gekoppeld aan klant: ${klantNaam}`);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Koppel error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Ontkoppel locatie van klant
+app.delete('/api/locaties/koppel/:lat/:lng', requireAuth, (req, res) => {
+    try {
+        const { lat, lng } = req.params;
+        
+        const koppelingenFile = path.join(__dirname, '.data', 'locatie-klant-koppelingen.json');
+        let koppelingen = {};
+        if (fs.existsSync(koppelingenFile)) {
+            koppelingen = JSON.parse(fs.readFileSync(koppelingenFile, 'utf8'));
+        }
+        
+        const key = `${parseFloat(lat).toFixed(4)}_${parseFloat(lng).toFixed(4)}`;
+        delete koppelingen[key];
+        
+        fs.writeFileSync(koppelingenFile, JSON.stringify(koppelingen, null, 2));
+        
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Reverse geocode een locatie
+app.get('/api/locaties/adres/:lat/:lng', requireAuth, async (req, res) => {
+    try {
+        const { lat, lng } = req.params;
+        const fetch = (await import('node-fetch')).default;
+        
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+            { headers: { 'User-Agent': 'StucAdmin/1.0' } }
+        );
+        
+        const data = await response.json();
+        
+        res.json({
+            success: true,
+            adres: data.display_name,
+            straat: data.address?.road,
+            huisnummer: data.address?.house_number,
+            postcode: data.address?.postcode,
+            plaats: data.address?.city || data.address?.town || data.address?.village
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+// ============================================
 // STUCIE - AI ASSISTENT
 // ============================================
 
