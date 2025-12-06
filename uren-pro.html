@@ -249,7 +249,7 @@
                 <div class="card-header"><h2 class="font-bold text-lg">🏗️ Projecten</h2><button onclick="showAddProject()" class="btn btn-primary btn-sm">➕ Nieuw</button></div>
                 <div class="card-body p-0 overflow-x-auto">
                     <table class="data-table">
-                        <thead><tr><th>Project</th><th>Klant</th><th>Locatie</th><th>Uren</th><th></th></tr></thead>
+                        <thead><tr><th>📍 Locatie</th><th>Klant</th><th>Project</th><th>Uren</th><th></th></tr></thead>
                         <tbody id="projectenTabel"></tbody>
                     </table>
                 </div>
@@ -538,8 +538,13 @@
         function renderProjecten() {
             const tbody = document.getElementById('projectenTabel');
             
-            // Manstaat dropdown vullen
-            document.getElementById('manstaatProject').innerHTML = '<option value="">Selecteer...</option>' + projecten.map(p => `<option value="${p.id}">${esc(p.titel || p.naam || 'Project')}</option>`).join('');
+            // Manstaat dropdown vullen - met locatie
+            document.getElementById('manstaatProject').innerHTML = '<option value="">Selecteer...</option>' + 
+                projecten.map(p => {
+                    const loc = p.locatie || p.adres || '';
+                    const label = loc || p.titel || p.naam || 'Project';
+                    return `<option value="${p.id}">📍 ${esc(label)}</option>`;
+                }).join('');
             
             if (!projecten.length) {
                 tbody.innerHTML = `
@@ -559,16 +564,21 @@
                 return;
             }
             
-            tbody.innerHTML = projecten.map(p => {
-                // Ondersteun beide veldnamen (planning vs uren-pro formaat)
-                const titel = p.titel || p.naam || 'Onbekend project';
-                const klantNaam = p.klantNaam || p.klant || '-';
+            // Sorteer op locatie (primair voor workflow)
+            const sorted = [...projecten].sort((a, b) => {
+                const locA = (a.locatie || a.adres || '').toLowerCase();
+                const locB = (b.locatie || b.adres || '').toLowerCase();
+                return locA.localeCompare(locB);
+            });
+            
+            tbody.innerHTML = sorted.map(p => {
+                const klantNaam = p.klantNaam || (typeof p.klant === 'object' ? p.klant?.naam : p.klant) || '-';
                 const locatie = p.locatie || p.adres || '-';
                 const pU = uren.filter(u => u.projectId === p.id).reduce((s,u) => s+(u.totaalUren||0), 0);
                 return `<tr>
-                    <td class="font-semibold">${esc(titel)}</td>
+                    <td class="font-semibold">📍 ${esc(locatie)}</td>
                     <td>${esc(klantNaam)}</td>
-                    <td>${esc(locatie)}</td>
+                    <td>${esc(p.titel || p.naam || '-')}</td>
                     <td class="font-bold text-indigo-600">${pU.toFixed(1)}u</td>
                     <td>
                         <button onclick="editProject('${p.id}')" class="text-indigo-600 mr-2">✏️</button>
@@ -580,6 +590,7 @@
 
         function updateDropdowns() {
             document.getElementById('filterMedewerker').innerHTML = '<option value="">Alle</option>' + medewerkers.map(m => `<option value="${m.id}">${esc(m.naam)}</option>`).join('');
+            console.log('updateDropdowns - klanten count:', klanten.length);
             initKlantSearch(); // Zoekbare dropdown
         }
         
@@ -591,7 +602,12 @@
             const hiddenInput = document.getElementById('pKlant');
             const selectedBadge = document.getElementById('pKlantSelected');
             
-            if (!searchInput || !dropdown || !list) return;
+            console.log('initKlantSearch - elements:', { searchInput: !!searchInput, dropdown: !!dropdown, list: !!list, klanten: klanten.length });
+            
+            if (!searchInput || !dropdown || !list) {
+                console.warn('initKlantSearch: missing elements');
+                return;
+            }
             
             function renderKlantList(filter = '') {
                 const search = filter.toLowerCase().trim();
@@ -607,6 +623,7 @@
                 }
                 
                 filtered = filtered.slice(0, 50);
+                console.log('renderKlantList - filtered:', filtered.length, 'from', klanten.length);
                 
                 if (filtered.length === 0) {
                     list.innerHTML = '<div class="no-results">Geen klanten gevonden</div>';
@@ -614,7 +631,7 @@
                     list.innerHTML = filtered.map(k => {
                         const name = k.company_name || `${k.firstname || ''} ${k.lastname || ''}`.trim();
                         const address = [k.address1, k.zipcode, k.city].filter(Boolean).join(', ');
-                        return `<div class="dropdown-item" data-id="${k.id}" data-name="${esc(name)}">
+                        return `<div class="dropdown-item" data-id="${k.id}" data-name="${esc(name)}" data-address="${esc(address)}">
                             <span class="item-name">${esc(name)}</span>
                             ${address ? `<span class="item-address">${esc(address)}</span>` : ''}
                         </div>`;
@@ -622,21 +639,39 @@
                 }
             }
             
-            searchInput.addEventListener('focus', () => { dropdown.classList.add('open'); renderKlantList(searchInput.value); });
-            searchInput.addEventListener('input', (e) => { renderKlantList(e.target.value); });
+            // Remove old listeners to prevent duplicates
+            const newSearchInput = searchInput.cloneNode(true);
+            searchInput.parentNode.replaceChild(newSearchInput, searchInput);
             
-            list.addEventListener('click', (e) => {
+            newSearchInput.addEventListener('focus', () => { 
+                console.log('focus - opening dropdown');
+                dropdown.classList.add('open'); 
+                renderKlantList(newSearchInput.value); 
+            });
+            newSearchInput.addEventListener('input', (e) => { renderKlantList(e.target.value); });
+            
+            // Re-get list after clone
+            const newList = document.getElementById('pKlantList');
+            newList.addEventListener('click', (e) => {
                 const item = e.target.closest('.dropdown-item');
                 if (item) {
                     hiddenInput.value = item.dataset.id;
-                    searchInput.value = '';
+                    newSearchInput.value = '';
                     dropdown.classList.remove('open');
                     selectedBadge.innerHTML = `✅ ${item.dataset.name} <button onclick="clearKlantSelection()" title="Verwijder">×</button>`;
                     selectedBadge.style.display = 'inline-flex';
+                    // Auto-fill locatie met klant adres
+                    if (item.dataset.address) {
+                        document.getElementById('pLocatie').value = item.dataset.address;
+                    }
                 }
             });
             
-            document.addEventListener('click', (e) => { if (!dropdown.contains(e.target)) dropdown.classList.remove('open'); });
+            document.addEventListener('click', (e) => { 
+                if (!dropdown.contains(e.target)) dropdown.classList.remove('open'); 
+            });
+            
+            // Initial render
             renderKlantList();
         }
         

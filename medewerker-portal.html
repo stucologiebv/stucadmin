@@ -560,8 +560,34 @@
 
         function renderProjectSelect() {
             const select = document.getElementById('projectSelect');
-            select.innerHTML = '<option value="">Selecteer een project...</option>' +
-                projecten.map(p => `<option value="${p.id}">${p.titel} - ${p.klantNaam || 'Onbekend'}</option>`).join('');
+            
+            if (!projecten.length) {
+                select.innerHTML = '<option value="">⚠️ Geen projecten - vraag admin om toe te voegen</option>';
+                select.disabled = true;
+                return;
+            }
+            
+            select.disabled = false;
+            // Sorteer op locatie/adres (primair) voor makkelijke selectie
+            const sorted = [...projecten].sort((a, b) => {
+                const locA = (a.locatie || a.adres || '').toLowerCase();
+                const locB = (b.locatie || b.adres || '').toLowerCase();
+                return locA.localeCompare(locB);
+            });
+            
+            select.innerHTML = '<option value="">📍 Selecteer project/locatie...</option>' +
+                sorted.map(p => {
+                    // LOCATIE eerst, dan klant naam (workflow focus op adres)
+                    const locatie = p.locatie || p.adres || '';
+                    const klant = p.klantNaam || p.klant?.naam || p.klant || '';
+                    const titel = p.titel || p.naam || '';
+                    
+                    // Toon: "Adres - Klantnaam" of gewoon titel als geen adres
+                    let label = locatie || titel || 'Project';
+                    if (klant && locatie) label = `${locatie} (${klant})`;
+                    
+                    return `<option value="${p.id}">📍 ${label}</option>`;
+                }).join('');
             
             select.onchange = () => {
                 document.getElementById('startBtn').disabled = !select.value;

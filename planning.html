@@ -455,14 +455,29 @@
         // DATA LOADING
         // ============================================
         async function loadData() {
-            // Load from localStorage
+            // Load from localStorage (fallback)
             try {
                 opnames = JSON.parse(localStorage.getItem('stuc_opnames') || '[]');
                 zzpers = JSON.parse(localStorage.getItem('stuc_zzpers') || '[]');
                 zzpOpdrachten = JSON.parse(localStorage.getItem('stuc_zzp_opdrachten') || '[]');
-                projects = JSON.parse(localStorage.getItem('stuc_planning_projecten') || '[]');
             } catch (e) {
                 console.error('Error loading localStorage:', e);
+            }
+
+            // Load projecten van SERVER (primaire bron)
+            try {
+                const res = await fetch('/api/projecten');
+                if (res.ok) {
+                    projects = await res.json();
+                    // Sync naar localStorage voor offline/backup
+                    localStorage.setItem('stuc_planning_projecten', JSON.stringify(projects));
+                } else {
+                    // Fallback naar localStorage als server niet beschikbaar
+                    projects = JSON.parse(localStorage.getItem('stuc_planning_projecten') || '[]');
+                }
+            } catch (e) {
+                console.error('Error loading projecten from server:', e);
+                projects = JSON.parse(localStorage.getItem('stuc_planning_projecten') || '[]');
             }
 
             // Load Moneybird contacts
@@ -492,6 +507,32 @@
                 }
             } catch (e) {
                 console.error('Error loading Google events:', e);
+            }
+        }
+
+        // Sync project naar server EN localStorage
+        async function saveProjectToServer(project, isNew = true) {
+            try {
+                const res = await fetch(isNew ? '/api/projecten' : `/api/projecten/${project.id}`, {
+                    method: isNew ? 'POST' : 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(project)
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    return data.project || project;
+                }
+            } catch (e) {
+                console.error('Error saving project to server:', e);
+            }
+            return project;
+        }
+        
+        async function deleteProjectFromServer(projectId) {
+            try {
+                await fetch(`/api/projecten/${projectId}`, { method: 'DELETE' });
+            } catch (e) {
+                console.error('Error deleting project from server:', e);
             }
         }
 
@@ -1165,7 +1206,9 @@
                 }
             }
             
-            projects.push(project);
+            // Sync naar server (primair) en localStorage (backup)
+            const savedProject = await saveProjectToServer(project, true);
+            projects.push(savedProject);
             saveProjects();
             
             closeModal('newProjectModal');
@@ -1320,7 +1363,11 @@ info@stucologie.nl`;
             if (project.source !== 'google') {
                 project.datum = targetDate;
                 const idx = projects.findIndex(p => p.id === project.id);
-                if (idx >= 0) projects[idx] = project;
+                if (idx >= 0) {
+                    projects[idx] = project;
+                    // Sync naar server
+                    await saveProjectToServer(project, false);
+                }
                 saveProjects();
             }
             
