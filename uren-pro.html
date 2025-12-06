@@ -68,6 +68,35 @@
         .input-field { width: 100%; padding: 12px 16px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; }
         .input-field:focus { outline: none; border-color: #6366f1; }
         
+        /* Searchable Dropdown */
+        .searchable-dropdown { position: relative; }
+        .searchable-dropdown .dropdown-list { 
+            position: absolute; top: 100%; left: 0; right: 0; 
+            background: white; border: 2px solid #e5e7eb; border-radius: 10px; 
+            max-height: 250px; overflow-y: auto; z-index: 300; 
+            display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            margin-top: 4px;
+        }
+        .searchable-dropdown.open .dropdown-list { display: block; }
+        .searchable-dropdown .dropdown-item { 
+            padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9;
+            display: flex; flex-direction: column; gap: 2px;
+        }
+        .searchable-dropdown .dropdown-item:last-child { border-bottom: none; }
+        .searchable-dropdown .dropdown-item:hover { background: #f1f5f9; }
+        .searchable-dropdown .dropdown-item .item-name { font-weight: 500; color: #1f2937; }
+        .searchable-dropdown .dropdown-item .item-address { font-size: 12px; color: #6b7280; }
+        .searchable-dropdown .no-results { padding: 14px; text-align: center; color: #9ca3af; font-size: 14px; }
+        .selected-badge { 
+            display: inline-flex; align-items: center; gap: 8px; 
+            background: #eef2ff; color: #4f46e5; padding: 6px 12px; 
+            border-radius: 8px; font-size: 13px; margin-top: 8px;
+        }
+        .selected-badge button { 
+            background: none; border: none; color: #6366f1; cursor: pointer; font-size: 16px; line-height: 1;
+        }
+        .selected-badge button:hover { color: #ef4444; }
+        
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
         .modal-overlay.active { display: flex; }
         .modal { background: white; border-radius: 20px; padding: 24px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; }
@@ -351,7 +380,15 @@
             <input type="hidden" id="editProjectId">
             <div class="space-y-4">
                 <div><label class="block text-sm font-medium mb-1">Titel *</label><input type="text" id="pTitel" class="input-field"></div>
-                <div><label class="block text-sm font-medium mb-1">Klant</label><select id="pKlant" class="input-field"></select></div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Klant (uit Moneybird)</label>
+                    <div class="searchable-dropdown" id="pKlantDropdown">
+                        <input type="text" class="input-field" id="pKlantSearch" placeholder="🔍 Zoek klant..." autocomplete="off">
+                        <input type="hidden" id="pKlant">
+                        <div class="dropdown-list" id="pKlantList"></div>
+                    </div>
+                    <div id="pKlantSelected" class="selected-badge" style="display:none;"></div>
+                </div>
                 <div><label class="block text-sm font-medium mb-1">Locatie</label><input type="text" id="pLocatie" class="input-field"></div>
             </div>
             <div class="flex gap-3 mt-6"><button onclick="saveProject()" class="btn btn-success flex-1">💾 Opslaan</button><button onclick="closeModal('projectModal')" class="btn btn-secondary">Annuleren</button></div>
@@ -500,16 +537,112 @@
 
         function renderProjecten() {
             const tbody = document.getElementById('projectenTabel');
-            document.getElementById('manstaatProject').innerHTML = '<option value="">Selecteer...</option>' + projecten.map(p => `<option value="${p.id}">${esc(p.titel)}</option>`).join('');
-            tbody.innerHTML = projecten.length ? projecten.map(p => {
+            
+            // Manstaat dropdown vullen
+            document.getElementById('manstaatProject').innerHTML = '<option value="">Selecteer...</option>' + projecten.map(p => `<option value="${p.id}">${esc(p.titel || p.naam || 'Project')}</option>`).join('');
+            
+            if (!projecten.length) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-12">
+                            <div class="text-gray-400 mb-4">
+                                <div class="text-4xl mb-2">📋</div>
+                                <p class="font-medium">Geen projecten gevonden</p>
+                                <p class="text-sm mt-1">Voeg eerst projecten toe in Planning</p>
+                            </div>
+                            <a href="/planning.html" class="btn btn-primary">
+                                📅 Ga naar Planning
+                            </a>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = projecten.map(p => {
+                // Ondersteun beide veldnamen (planning vs uren-pro formaat)
+                const titel = p.titel || p.naam || 'Onbekend project';
+                const klantNaam = p.klantNaam || p.klant || '-';
+                const locatie = p.locatie || p.adres || '-';
                 const pU = uren.filter(u => u.projectId === p.id).reduce((s,u) => s+(u.totaalUren||0), 0);
-                return `<tr><td class="font-semibold">${esc(p.titel)}</td><td>${esc(p.klantNaam||'-')}</td><td>${esc(p.locatie||'-')}</td><td class="font-bold text-indigo-600">${pU.toFixed(1)}u</td><td><button onclick="editProject('${p.id}')" class="text-indigo-600 mr-2">✏️</button><button onclick="deleteProject('${p.id}')" class="text-red-500">🗑️</button></td></tr>`;
-            }).join('') : '<tr><td colspan="5" class="text-center text-gray-400 py-8">Geen projecten</td></tr>';
+                return `<tr>
+                    <td class="font-semibold">${esc(titel)}</td>
+                    <td>${esc(klantNaam)}</td>
+                    <td>${esc(locatie)}</td>
+                    <td class="font-bold text-indigo-600">${pU.toFixed(1)}u</td>
+                    <td>
+                        <button onclick="editProject('${p.id}')" class="text-indigo-600 mr-2">✏️</button>
+                        <button onclick="deleteProject('${p.id}')" class="text-red-500">🗑️</button>
+                    </td>
+                </tr>`;
+            }).join('');
         }
 
         function updateDropdowns() {
             document.getElementById('filterMedewerker').innerHTML = '<option value="">Alle</option>' + medewerkers.map(m => `<option value="${m.id}">${esc(m.naam)}</option>`).join('');
-            document.getElementById('pKlant').innerHTML = '<option value="">-</option>' + klanten.map(k => `<option value="${k.id}">${esc(k.company_name||(k.firstname+' '+k.lastname))}</option>`).join('');
+            initKlantSearch(); // Zoekbare dropdown
+        }
+        
+        // Zoekbare klant dropdown
+        function initKlantSearch() {
+            const searchInput = document.getElementById('pKlantSearch');
+            const dropdown = document.getElementById('pKlantDropdown');
+            const list = document.getElementById('pKlantList');
+            const hiddenInput = document.getElementById('pKlant');
+            const selectedBadge = document.getElementById('pKlantSelected');
+            
+            if (!searchInput || !dropdown || !list) return;
+            
+            function renderKlantList(filter = '') {
+                const search = filter.toLowerCase().trim();
+                let filtered = klanten;
+                
+                if (search) {
+                    filtered = klanten.filter(k => {
+                        const name = (k.company_name || `${k.firstname || ''} ${k.lastname || ''}`).toLowerCase();
+                        const city = (k.city || '').toLowerCase();
+                        const address = (k.address1 || '').toLowerCase();
+                        return name.includes(search) || city.includes(search) || address.includes(search);
+                    });
+                }
+                
+                filtered = filtered.slice(0, 50);
+                
+                if (filtered.length === 0) {
+                    list.innerHTML = '<div class="no-results">Geen klanten gevonden</div>';
+                } else {
+                    list.innerHTML = filtered.map(k => {
+                        const name = k.company_name || `${k.firstname || ''} ${k.lastname || ''}`.trim();
+                        const address = [k.address1, k.zipcode, k.city].filter(Boolean).join(', ');
+                        return `<div class="dropdown-item" data-id="${k.id}" data-name="${esc(name)}">
+                            <span class="item-name">${esc(name)}</span>
+                            ${address ? `<span class="item-address">${esc(address)}</span>` : ''}
+                        </div>`;
+                    }).join('');
+                }
+            }
+            
+            searchInput.addEventListener('focus', () => { dropdown.classList.add('open'); renderKlantList(searchInput.value); });
+            searchInput.addEventListener('input', (e) => { renderKlantList(e.target.value); });
+            
+            list.addEventListener('click', (e) => {
+                const item = e.target.closest('.dropdown-item');
+                if (item) {
+                    hiddenInput.value = item.dataset.id;
+                    searchInput.value = '';
+                    dropdown.classList.remove('open');
+                    selectedBadge.innerHTML = `✅ ${item.dataset.name} <button onclick="clearKlantSelection()" title="Verwijder">×</button>`;
+                    selectedBadge.style.display = 'inline-flex';
+                }
+            });
+            
+            document.addEventListener('click', (e) => { if (!dropdown.contains(e.target)) dropdown.classList.remove('open'); });
+            renderKlantList();
+        }
+        
+        function clearKlantSelection() {
+            document.getElementById('pKlant').value = '';
+            document.getElementById('pKlantSelected').style.display = 'none';
         }
 
         function showTab(name, btn) {
@@ -721,6 +854,8 @@
             document.getElementById('editProjectId').value = '';
             document.getElementById('pTitel').value = '';
             document.getElementById('pKlant').value = '';
+            document.getElementById('pKlantSearch').value = '';
+            document.getElementById('pKlantSelected').style.display = 'none';
             document.getElementById('pLocatie').value = '';
             document.getElementById('projectModal').classList.add('active');
         }
@@ -731,6 +866,15 @@
             document.getElementById('editProjectId').value = id;
             document.getElementById('pTitel').value = p.titel || '';
             document.getElementById('pKlant').value = p.klantId || '';
+            document.getElementById('pKlantSearch').value = '';
+            // Toon klant badge als er een klant is
+            const selectedBadge = document.getElementById('pKlantSelected');
+            if (p.klantId && p.klantNaam) {
+                selectedBadge.innerHTML = `✅ ${esc(p.klantNaam)} <button onclick="clearKlantSelection()" title="Verwijder">×</button>`;
+                selectedBadge.style.display = 'inline-flex';
+            } else {
+                selectedBadge.style.display = 'none';
+            }
             document.getElementById('pLocatie').value = p.locatie || '';
             document.getElementById('projectModal').classList.add('active');
         }

@@ -2391,6 +2391,7 @@ console.log('📧 Gmail API module geladen');
 // Data files
 const MEDEWERKERS_FILE = path.join(__dirname, '.data', 'medewerkers.json');
 const UREN_FILE = path.join(__dirname, '.data', 'uren.json');
+const PROJECTEN_FILE = path.join(__dirname, '.data', 'projecten.json');
 
 // Load/Save medewerkers
 function loadMedewerkers() {
@@ -2436,8 +2437,31 @@ function saveUren(data) {
     }
 }
 
+// Load/Save projecten
+function loadProjecten() {
+    try {
+        if (fs.existsSync(PROJECTEN_FILE)) {
+            return JSON.parse(fs.readFileSync(PROJECTEN_FILE, 'utf8'));
+        }
+    } catch (e) {
+        console.log('Could not load projecten:', e.message);
+    }
+    return [];
+}
+
+function saveProjecten(data) {
+    try {
+        const dir = path.dirname(PROJECTEN_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(PROJECTEN_FILE, JSON.stringify(data, null, 2));
+    } catch (e) {
+        console.error('Could not save projecten:', e.message);
+    }
+}
+
 let medewerkers = loadMedewerkers();
 let uren = loadUren();
+let projecten = loadProjecten();
 
 // Medewerker sessions (apart van admin sessions)
 const medewerkerSessions = new Map();
@@ -2589,6 +2613,89 @@ app.delete('/api/uren/:id', requireAuth, (req, res) => {
     
     uren.splice(index, 1);
     saveUren(uren);
+    res.json({ success: true });
+});
+
+// ============ PROJECTEN ENDPOINTS ============
+
+// Get all projecten
+app.get('/api/projecten', requireAuth, (req, res) => {
+    res.json(projecten);
+});
+
+// Add project
+app.post('/api/projecten', requireAuth, (req, res) => {
+    const { titel, naam, klantId, klantNaam, locatie, adres, type, m2, bedrag, notitie } = req.body;
+    
+    const newProject = {
+        id: 'proj_' + Date.now(),
+        titel: titel || naam || 'Nieuw project',
+        naam: titel || naam || 'Nieuw project',
+        klantId: klantId || null,
+        klantNaam: klantNaam || '',
+        klant: klantNaam || '',
+        locatie: locatie || adres || '',
+        adres: locatie || adres || '',
+        type: type || 'stucwerk',
+        m2: parseFloat(m2) || 0,
+        bedrag: parseFloat(bedrag) || 0,
+        notitie: notitie || '',
+        status: 'actief',
+        created: new Date().toISOString()
+    };
+    
+    projecten.push(newProject);
+    saveProjecten(projecten);
+    
+    console.log(`🏗️ Project aangemaakt: ${newProject.titel}`);
+    res.json({ success: true, project: newProject });
+});
+
+// Update project
+app.put('/api/projecten/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    const index = projecten.findIndex(p => p.id === id);
+    
+    if (index === -1) {
+        return res.status(404).json({ error: 'Project niet gevonden' });
+    }
+    
+    const { titel, naam, klantId, klantNaam, locatie, adres, type, m2, bedrag, notitie, status } = req.body;
+    
+    projecten[index] = {
+        ...projecten[index],
+        titel: titel || naam || projecten[index].titel,
+        naam: titel || naam || projecten[index].naam,
+        klantId: klantId !== undefined ? klantId : projecten[index].klantId,
+        klantNaam: klantNaam !== undefined ? klantNaam : projecten[index].klantNaam,
+        klant: klantNaam !== undefined ? klantNaam : projecten[index].klant,
+        locatie: locatie || adres || projecten[index].locatie,
+        adres: locatie || adres || projecten[index].adres,
+        type: type || projecten[index].type,
+        m2: m2 !== undefined ? parseFloat(m2) : projecten[index].m2,
+        bedrag: bedrag !== undefined ? parseFloat(bedrag) : projecten[index].bedrag,
+        notitie: notitie !== undefined ? notitie : projecten[index].notitie,
+        status: status || projecten[index].status,
+        updated: new Date().toISOString()
+    };
+    
+    saveProjecten(projecten);
+    console.log(`🏗️ Project bijgewerkt: ${projecten[index].titel}`);
+    res.json({ success: true, project: projecten[index] });
+});
+
+// Delete project
+app.delete('/api/projecten/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    const index = projecten.findIndex(p => p.id === id);
+    
+    if (index === -1) {
+        return res.status(404).json({ error: 'Project niet gevonden' });
+    }
+    
+    const removed = projecten.splice(index, 1)[0];
+    saveProjecten(projecten);
+    console.log(`🗑️ Project verwijderd: ${removed.titel}`);
     res.json({ success: true });
 });
 
