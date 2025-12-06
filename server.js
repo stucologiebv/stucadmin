@@ -313,12 +313,35 @@ function requireAuth(req, res, next) {
     next();
 }
 
-// Public paths
-const publicPaths = ['/login.html', '/api/auth/login', '/api/auth/check', '/api/health'];
+// Public paths (geen admin login nodig)
+const publicPaths = [
+    '/login.html', 
+    '/api/auth/login', 
+    '/api/auth/check', 
+    '/api/health',
+    // Medewerker portaal (eigen login systeem)
+    '/medewerker-login.html',
+    '/medewerker-portal.html',
+    '/medewerker-uren.html'
+];
+
+// Medewerker API paths (eigen auth via pincode)
+const medewerkerApiPaths = [
+    '/api/medewerker/login',
+    '/api/medewerker/uren',
+    '/api/medewerker/check',
+    '/api/projecten'  // Projecten lijst voor medewerkers
+];
 
 // Protect HTML routes
 app.use((req, res, next) => {
+    // Skip public paths
     if (publicPaths.some(p => req.path === p)) {
+        return next();
+    }
+    
+    // Skip medewerker API paths (eigen auth via pincode/sessie)
+    if (medewerkerApiPaths.some(p => req.path.startsWith(p))) {
         return next();
     }
     
