@@ -365,7 +365,16 @@ app.use((req, res, next) => {
     next();
 });
 
-// Static files
+// Static files - met no-cache voor HTML bestanden
+app.use((req, res, next) => {
+    // Voorkom caching van HTML bestanden
+    if (req.path.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+    }
+    next();
+});
 app.use(express.static(path.join(__dirname)));
 
 // Root redirect
