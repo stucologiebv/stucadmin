@@ -2650,8 +2650,8 @@ app.delete('/api/uren/:id', requireAuth, (req, res) => {
 
 // ============ PROJECTEN ENDPOINTS ============
 
-// Get all projecten
-app.get('/api/projecten', requireAuth, (req, res) => {
+// Get all projecten (PUBLIEK - voor medewerker portal)
+app.get('/api/projecten', (req, res) => {
     res.json(projecten);
 });
 
