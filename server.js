@@ -1889,12 +1889,14 @@ app.get('/api/google/events', requireAuth, async (req, res) => {
         
         const fetch = (await import('node-fetch')).default;
         
-        // Get events for next 3 months
-        const timeMin = new Date().toISOString();
-        const timeMax = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+        // Use query params or defaults (past 30 days to next 90 days)
+        const timeMin = req.query.timeMin || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const timeMax = req.query.timeMax || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+        
+        console.log(`📅 Fetching Google events: ${timeMin} to ${timeMax}`);
         
         const response = await fetch(
-            `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=100`,
+            `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=250`,
             {
                 headers: { 'Authorization': `Bearer ${token}` }
             }
@@ -1930,8 +1932,12 @@ app.get('/api/google/events', requireAuth, async (req, res) => {
 // Create calendar event
 app.post('/api/google/events', requireAuth, async (req, res) => {
     try {
+        console.log('📅 Creating Google Calendar event...');
+        console.log('📅 Request body:', JSON.stringify(req.body));
+        
         const token = await getValidGoogleToken();
         if (!token) {
+            console.log('❌ No valid Google token');
             return res.status(401).json({ error: 'Google not connected', needsAuth: true });
         }
         
@@ -1950,8 +1956,17 @@ app.post('/api/google/events', requireAuth, async (req, res) => {
             event.start = { date: start.split('T')[0] };
             event.end = { date: end ? end.split('T')[0] : start.split('T')[0] };
         } else {
-            event.start = { dateTime: start, timeZone: 'Europe/Amsterdam' };
-            event.end = { dateTime: end || start, timeZone: 'Europe/Amsterdam' };
+            // Ensure proper datetime format
+            let startDT = start;
+            let endDT = end || start;
+            
+            // If no timezone info, it's local time - keep as is, Google will use timeZone
+            if (!startDT.includes('Z') && !startDT.includes('+')) {
+                // Already in correct format for local time
+            }
+            
+            event.start = { dateTime: startDT, timeZone: 'Europe/Amsterdam' };
+            event.end = { dateTime: endDT, timeZone: 'Europe/Amsterdam' };
         }
         
         // Add attendees if provided (for ZZP invites)
@@ -1959,6 +1974,8 @@ app.post('/api/google/events', requireAuth, async (req, res) => {
             event.attendees = attendees;
             event.sendUpdates = 'all'; // Send email invites to attendees
         }
+        
+        console.log('📅 Sending to Google:', JSON.stringify(event));
         
         const response = await fetch(
             'https://www.googleapis.com/calendar/v3/calendars/primary/events',
@@ -1973,11 +1990,14 @@ app.post('/api/google/events', requireAuth, async (req, res) => {
         );
         
         const data = await response.json();
+        console.log('📅 Google response:', JSON.stringify(data));
         
         if (data.error) {
-            console.error('Google create event error:', data.error);
+            console.error('❌ Google create event error:', data.error);
             return res.status(400).json({ error: data.error.message });
         }
+        
+        console.log('✅ Event created:', data.id);
         
         res.json({
             success: true,
@@ -2594,18 +2614,19 @@ app.post('/api/medewerker/login', (req, res) => {
         medewerkerId: medewerker.id,
         medewerker: medewerker.naam,
         created: Date.now(),
-        expires: Date.now() + (12 * 60 * 60 * 1000) // 12 uur sessie
+        expires: Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 dagen sessie
     });
     
-    // Set cookie
+    // Set cookie - compatible with both HTTP and HTTPS
+    const isSecure = req.secure || req.get('x-forwarded-proto') === 'https';
     const cookieOptions = [
         `medewerker_session=${sessionId}`,
         'Path=/',
         'HttpOnly',
-        'SameSite=Strict',
-        'Secure',
-        `Max-Age=${12 * 60 * 60}`
-    ];
+        'SameSite=Lax',
+        isSecure ? 'Secure' : '',
+        `Max-Age=${7 * 24 * 60 * 60}` // 7 dagen
+    ].filter(Boolean);
     
     res.setHeader('Set-Cookie', cookieOptions.join('; '));
     
@@ -3315,6 +3336,201 @@ app.post('/api/webhook/offerteaanvraag', (req, res) => {
 });
 
 console.log('📩 Offerteaanvragen module geladen');
+
+
+// ============================================
+// KLANTEN NOTITIES & REMINDERS
+// ============================================
+
+const KLANT_NOTES_FILE = path.join(__dirname, '.data', 'klant-notes.json');
+const KLANT_REMINDERS_FILE = path.join(__dirname, '.data', 'klant-reminders.json');
+
+// Ensure .data directory exists
+if (!fs.existsSync(path.join(__dirname, '.data'))) {
+    fs.mkdirSync(path.join(__dirname, '.data'), { recursive: true });
+}
+
+// Load/Save helpers
+function loadKlantNotes() {
+    try {
+        if (fs.existsSync(KLANT_NOTES_FILE)) {
+            return JSON.parse(fs.readFileSync(KLANT_NOTES_FILE, 'utf8'));
+        }
+    } catch (e) { console.error('Error loading klant notes:', e); }
+    return {};
+}
+
+function saveKlantNotes(notes) {
+    try {
+        fs.writeFileSync(KLANT_NOTES_FILE, JSON.stringify(notes, null, 2));
+    } catch (e) { console.error('Error saving klant notes:', e); }
+}
+
+function loadKlantReminders() {
+    try {
+        if (fs.existsSync(KLANT_REMINDERS_FILE)) {
+            return JSON.parse(fs.readFileSync(KLANT_REMINDERS_FILE, 'utf8'));
+        }
+    } catch (e) { console.error('Error loading klant reminders:', e); }
+    return [];
+}
+
+function saveKlantReminders(reminders) {
+    try {
+        fs.writeFileSync(KLANT_REMINDERS_FILE, JSON.stringify(reminders, null, 2));
+    } catch (e) { console.error('Error saving klant reminders:', e); }
+}
+
+// Get all notes for a customer
+app.get('/api/klant-notes/:contactId', requireAuth, (req, res) => {
+    const notes = loadKlantNotes();
+    const contactNotes = notes[req.params.contactId] || [];
+    res.json(contactNotes);
+});
+
+// Add note to customer
+app.post('/api/klant-notes/:contactId', requireAuth, (req, res) => {
+    const { text, type } = req.body;
+    if (!text) return res.status(400).json({ error: 'Tekst is verplicht' });
+    
+    const notes = loadKlantNotes();
+    if (!notes[req.params.contactId]) notes[req.params.contactId] = [];
+    
+    const newNote = {
+        id: Date.now().toString(),
+        text,
+        type: type || 'notitie',
+        created: new Date().toISOString(),
+        createdBy: req.session?.username || 'onbekend'
+    };
+    
+    notes[req.params.contactId].unshift(newNote);
+    saveKlantNotes(notes);
+    
+    res.json(newNote);
+});
+
+// Delete note
+app.delete('/api/klant-notes/:contactId/:noteId', requireAuth, (req, res) => {
+    const notes = loadKlantNotes();
+    if (notes[req.params.contactId]) {
+        notes[req.params.contactId] = notes[req.params.contactId].filter(n => n.id !== req.params.noteId);
+        saveKlantNotes(notes);
+    }
+    res.json({ success: true });
+});
+
+// Get all reminders (optionally filtered by customer)
+app.get('/api/klant-reminders', requireAuth, (req, res) => {
+    let reminders = loadKlantReminders();
+    if (req.query.contactId) {
+        reminders = reminders.filter(r => r.contactId === req.query.contactId);
+    }
+    // Sort by date
+    reminders.sort((a, b) => new Date(a.datum) - new Date(b.datum));
+    res.json(reminders);
+});
+
+// Add reminder
+app.post('/api/klant-reminders', requireAuth, (req, res) => {
+    const { contactId, contactName, titel, datum, tijd, notitie } = req.body;
+    if (!contactId || !titel || !datum) {
+        return res.status(400).json({ error: 'contactId, titel en datum zijn verplicht' });
+    }
+    
+    const reminders = loadKlantReminders();
+    const newReminder = {
+        id: Date.now().toString(),
+        contactId,
+        contactName: contactName || '',
+        titel,
+        datum,
+        tijd: tijd || '09:00',
+        notitie: notitie || '',
+        created: new Date().toISOString(),
+        done: false
+    };
+    
+    reminders.push(newReminder);
+    saveKlantReminders(reminders);
+    
+    res.json(newReminder);
+});
+
+// Update reminder (mark done, etc)
+app.patch('/api/klant-reminders/:id', requireAuth, (req, res) => {
+    const reminders = loadKlantReminders();
+    const idx = reminders.findIndex(r => r.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: 'Reminder niet gevonden' });
+    
+    reminders[idx] = { ...reminders[idx], ...req.body };
+    saveKlantReminders(reminders);
+    
+    res.json(reminders[idx]);
+});
+
+// Delete reminder
+app.delete('/api/klant-reminders/:id', requireAuth, (req, res) => {
+    let reminders = loadKlantReminders();
+    reminders = reminders.filter(r => r.id !== req.params.id);
+    saveKlantReminders(reminders);
+    res.json({ success: true });
+});
+
+// Get active reminders count (for badge)
+app.get('/api/klant-reminders/count/active', requireAuth, (req, res) => {
+    const reminders = loadKlantReminders();
+    const now = new Date();
+    const active = reminders.filter(r => !r.done && new Date(r.datum + 'T' + (r.tijd || '00:00')) <= now);
+    res.json({ count: active.length });
+});
+
+console.log('📝 Klanten Notities & Reminders module geladen');
+
+
+// ============================================
+// KLANT-MEDEWERKER KOPPELINGEN
+// ============================================
+
+const KLANT_KOPPELINGEN_FILE = path.join(__dirname, '.data', 'klant-koppelingen.json');
+
+function loadKlantKoppelingen() {
+    try {
+        if (fs.existsSync(KLANT_KOPPELINGEN_FILE)) {
+            return JSON.parse(fs.readFileSync(KLANT_KOPPELINGEN_FILE, 'utf8'));
+        }
+    } catch (e) { console.error('Error loading klant koppelingen:', e); }
+    return {};
+}
+
+function saveKlantKoppelingen(koppelingen) {
+    try {
+        fs.writeFileSync(KLANT_KOPPELINGEN_FILE, JSON.stringify(koppelingen, null, 2));
+    } catch (e) { console.error('Error saving klant koppelingen:', e); }
+}
+
+// Get koppelingen for a customer
+app.get('/api/klant-koppelingen/:contactId', requireAuth, (req, res) => {
+    const koppelingen = loadKlantKoppelingen();
+    res.json(koppelingen[req.params.contactId] || { medewerkers: [], zzpers: [] });
+});
+
+// Update koppelingen for a customer
+app.put('/api/klant-koppelingen/:contactId', requireAuth, (req, res) => {
+    const { medewerkers, zzpers } = req.body;
+    const koppelingen = loadKlantKoppelingen();
+    
+    koppelingen[req.params.contactId] = {
+        medewerkers: medewerkers || [],
+        zzpers: zzpers || [],
+        updated: new Date().toISOString()
+    };
+    
+    saveKlantKoppelingen(koppelingen);
+    res.json(koppelingen[req.params.contactId]);
+});
+
+console.log('🔗 Klant Koppelingen module geladen');
 
 
 // ============================================

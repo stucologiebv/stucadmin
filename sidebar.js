@@ -5,7 +5,6 @@ function loadSidebar() {
     const menuItems = [
         { href: 'dashboard.html', icon: '🏠', label: 'Dashboard' },
         { href: 'omzet.html', icon: '💹', label: 'Omzet' },
-        { href: 'crm.html', icon: '👥', label: 'Klanten' },
         { href: 'klanten360.html', icon: '🎯', label: 'Klanten 360' },
         { href: 'planning.html', icon: '📅', label: 'Planning' },
         { href: 'opname.html', icon: '📋', label: 'Opname' },
@@ -13,7 +12,6 @@ function loadSidebar() {
         { href: 'zzp-inhuur.html', icon: '🤝', label: 'ZZP Inhuur' },
         { href: 'uren-pro.html', icon: '⏱️', label: 'Uren Pro+' },
         { href: 'calculator.html', icon: '🧮', label: 'Calculator' },
-        { href: 'materials.html', icon: '📊', label: 'Inkoop Analyse' },
         { href: 'materialen-beheer.html', icon: '📦', label: 'Materialen' },
         { href: 'stucie.html', icon: '🤖', label: 'Stucie' },
     ];
