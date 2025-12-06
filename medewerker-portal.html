@@ -435,7 +435,7 @@
             let elapsed = Date.now() - timerStartTime - totalPauseMs;
             const totalHours = elapsed / 3600000, pauseMins = Math.floor(totalPauseMs / 60000);
             try {
-                await fetch('/api/uren', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                await fetch('/api/medewerker/uren', { method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         medewerkerId: currentUser.id, medewerkerNaam: currentUser.naam,
                         datum: new Date().toISOString().split('T')[0],

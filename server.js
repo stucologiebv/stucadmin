@@ -2845,7 +2845,7 @@ app.get('/api/medewerker/uren', requireMedewerkerAuth, (req, res) => {
 app.post('/api/medewerker/uren', requireMedewerkerAuth, (req, res) => {
     const { projectId, projectNaam, datum, begintijd, eindtijd, pauze, notitie } = req.body;
     
-    if (!projectId || !datum || !begintijd || !eindtijd) {
+    if (!datum || !begintijd || !eindtijd) {
         return res.status(400).json({ error: 'Project, datum, begin- en eindtijd zijn verplicht' });
     }
     
