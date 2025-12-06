@@ -2594,18 +2594,19 @@ app.delete('/api/uren/:id', requireAuth, (req, res) => {
 
 // ============ MEDEWERKER ENDPOINTS ============
 
-// Medewerker login
+// Medewerker login - alleen pincode (namen afgeschermd)
 app.post('/api/medewerker/login', (req, res) => {
-    const { medewerkerId, pincode } = req.body;
+    const { pincode } = req.body;
     
-    const medewerker = medewerkers.find(m => m.id === medewerkerId && m.actief);
-    
-    if (!medewerker) {
-        return res.status(401).json({ error: 'Medewerker niet gevonden' });
+    if (!pincode || pincode.length !== 4) {
+        return res.status(400).json({ error: 'Voer een 4-cijferige pincode in' });
     }
     
-    if (medewerker.pincode !== pincode) {
-        return res.status(401).json({ error: 'Onjuiste pincode' });
+    // Zoek medewerker alleen op pincode (pincode moet uniek zijn)
+    const medewerker = medewerkers.find(m => m.pincode === pincode && m.actief);
+    
+    if (!medewerker) {
+        return res.status(401).json({ error: 'Ongeldige pincode' });
     }
     
     // Create session
