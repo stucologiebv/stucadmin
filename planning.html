@@ -119,6 +119,36 @@
         .form-input:focus, .form-select:focus { outline: none; border-color: #6366f1; }
         .form-textarea { min-height: 120px; resize: vertical; }
         
+        /* Searchable Dropdown */
+        .searchable-dropdown { position: relative; }
+        .searchable-dropdown .dropdown-list { 
+            position: absolute; top: 100%; left: 0; right: 0; 
+            background: white; border: 1px solid #e5e7eb; border-radius: 10px; 
+            max-height: 250px; overflow-y: auto; z-index: 100; 
+            display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            margin-top: 4px;
+        }
+        .searchable-dropdown.open .dropdown-list { display: block; }
+        .searchable-dropdown .dropdown-item { 
+            padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9;
+            display: flex; flex-direction: column; gap: 2px;
+        }
+        .searchable-dropdown .dropdown-item:last-child { border-bottom: none; }
+        .searchable-dropdown .dropdown-item:hover { background: #f1f5f9; }
+        .searchable-dropdown .dropdown-item.selected { background: #eef2ff; }
+        .searchable-dropdown .dropdown-item .item-name { font-weight: 500; color: #1f2937; }
+        .searchable-dropdown .dropdown-item .item-address { font-size: 12px; color: #6b7280; }
+        .searchable-dropdown .no-results { padding: 14px; text-align: center; color: #9ca3af; font-size: 14px; }
+        .searchable-dropdown .selected-badge { 
+            display: inline-flex; align-items: center; gap: 8px; 
+            background: #eef2ff; color: #4f46e5; padding: 6px 12px; 
+            border-radius: 8px; font-size: 13px; margin-top: 8px;
+        }
+        .searchable-dropdown .selected-badge button { 
+            background: none; border: none; color: #6366f1; cursor: pointer; font-size: 16px; line-height: 1;
+        }
+        .searchable-dropdown .selected-badge button:hover { color: #ef4444; }
+        
         /* Toast */
         .toast { position: fixed; bottom: 20px; right: 20px; padding: 14px 24px; border-radius: 12px; color: white; font-weight: 500; z-index: 9999; animation: slideIn 0.3s ease; }
         .toast.success { background: #10b981; }
@@ -291,7 +321,11 @@
                 <div id="handmatigForm" style="display:none;">
                     <div class="form-group">
                         <label class="form-label">Klant (uit Moneybird)</label>
-                        <select class="form-select" id="selectKlant"></select>
+                        <div class="searchable-dropdown" id="klantDropdown">
+                            <input type="text" class="form-input" id="klantSearch" placeholder="🔍 Zoek klant..." autocomplete="off">
+                            <input type="hidden" id="selectKlant">
+                            <div class="dropdown-list" id="klantList"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Titel / Omschrijving</label>
@@ -925,13 +959,110 @@
             opnameSelect.innerHTML = '<option value="">-- Selecteer --</option>' + 
                 opnames.map(o => `<option value="${o.id}">${escapeHtml(o.klant?.naam || 'Onbekend')} - ${escapeHtml(o.klant?.plaats || '')} (${o.datum || ''})</option>`).join('');
             
-            const klantSelect = document.getElementById('selectKlant');
-            klantSelect.innerHTML = '<option value="">-- Selecteer --</option>' + 
-                contacts.slice(0, 100).map(c => `<option value="${c.id}">${escapeHtml(c.company_name || (c.firstname + ' ' + c.lastname))}</option>`).join('');
+            // Zoekbare klant dropdown initialiseren
+            initKlantSearch();
             
             const zzpSelect = document.getElementById('projectZZP');
             zzpSelect.innerHTML = '<option value="">-- Niet toegewezen --</option>' + 
                 zzpers.map(z => `<option value="${z.id}">${escapeHtml(z.naam)}</option>`).join('');
+        }
+        
+        // Zoekbare klant dropdown
+        function initKlantSearch() {
+            const searchInput = document.getElementById('klantSearch');
+            const dropdown = document.getElementById('klantDropdown');
+            const list = document.getElementById('klantList');
+            const hiddenInput = document.getElementById('selectKlant');
+            
+            // Render filtered results
+            function renderKlantList(filter = '') {
+                const search = filter.toLowerCase().trim();
+                let filtered = contacts;
+                
+                if (search) {
+                    filtered = contacts.filter(c => {
+                        const name = (c.company_name || `${c.firstname || ''} ${c.lastname || ''}`).toLowerCase();
+                        const city = (c.city || '').toLowerCase();
+                        const address = (c.address1 || '').toLowerCase();
+                        return name.includes(search) || city.includes(search) || address.includes(search);
+                    });
+                }
+                
+                // Limit to 50 results for performance
+                filtered = filtered.slice(0, 50);
+                
+                if (filtered.length === 0) {
+                    list.innerHTML = '<div class="no-results">Geen klanten gevonden</div>';
+                } else {
+                    list.innerHTML = filtered.map(c => {
+                        const name = c.company_name || `${c.firstname || ''} ${c.lastname || ''}`.trim();
+                        const address = [c.address1, c.zipcode, c.city].filter(Boolean).join(', ');
+                        return `
+                            <div class="dropdown-item" data-id="${c.id}" data-name="${escapeHtml(name)}">
+                                <span class="item-name">${escapeHtml(name)}</span>
+                                ${address ? `<span class="item-address">${escapeHtml(address)}</span>` : ''}
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+            
+            // Show dropdown on focus
+            searchInput.addEventListener('focus', () => {
+                dropdown.classList.add('open');
+                renderKlantList(searchInput.value);
+            });
+            
+            // Filter on input
+            searchInput.addEventListener('input', (e) => {
+                renderKlantList(e.target.value);
+                // Clear selection when typing new search
+                if (hiddenInput.value) {
+                    const badge = dropdown.querySelector('.selected-badge');
+                    if (badge) badge.remove();
+                    hiddenInput.value = '';
+                }
+            });
+            
+            // Select klant on click
+            list.addEventListener('click', (e) => {
+                const item = e.target.closest('.dropdown-item');
+                if (item) {
+                    const id = item.dataset.id;
+                    const name = item.dataset.name;
+                    
+                    hiddenInput.value = id;
+                    searchInput.value = '';
+                    searchInput.placeholder = '🔍 Zoek andere klant...';
+                    dropdown.classList.remove('open');
+                    
+                    // Show selected badge
+                    const existingBadge = dropdown.querySelector('.selected-badge');
+                    if (existingBadge) existingBadge.remove();
+                    
+                    const badge = document.createElement('div');
+                    badge.className = 'selected-badge';
+                    badge.innerHTML = `✅ ${name} <button onclick="clearKlantSelection()" title="Verwijder">×</button>`;
+                    dropdown.appendChild(badge);
+                }
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!dropdown.contains(e.target)) {
+                    dropdown.classList.remove('open');
+                }
+            });
+            
+            // Initial render
+            renderKlantList();
+        }
+        
+        function clearKlantSelection() {
+            document.getElementById('selectKlant').value = '';
+            document.getElementById('klantSearch').placeholder = '🔍 Zoek klant...';
+            const badge = document.querySelector('#klantDropdown .selected-badge');
+            if (badge) badge.remove();
         }
 
         async function createProject() {
