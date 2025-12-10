@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin - StucAdmin SaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; background: #f1f5f9; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="min-h-screen p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">🛡️ Super Admin Dashboard</h1>
+                <p class="text-gray-600">StucAdmin SaaS - Beheer alle bedrijven en gebruikers</p>
+            </div>
+            <a href="/dashboard.html" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">← Terug</a>
+        </header>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="card p-6">
+                <div class="text-3xl font-bold text-indigo-600" id="totalCompanies">-</div>
+                <div class="text-gray-600">Bedrijven</div>
+            </div>
+            <div class="card p-6">
+                <div class="text-3xl font-bold text-green-600" id="activeCompanies">-</div>
+                <div class="text-gray-600">Actief</div>
+            </div>
+            <div class="card p-6">
+                <div class="text-3xl font-bold text-orange-600" id="trialCompanies">-</div>
+                <div class="text-gray-600">Trial</div>
+            </div>
+            <div class="card p-6">
+                <div class="text-3xl font-bold text-blue-600" id="totalUsers">-</div>
+                <div class="text-gray-600">Gebruikers</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex gap-2 mb-4">
+            <button onclick="showTab('companies')" id="tab-companies" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Bedrijven</button>
+            <button onclick="showTab('audit')" id="tab-audit" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">Audit Log</button>
+        </div>
+
+        <!-- Bedrijven Tabel -->
+        <div id="panel-companies" class="card mb-8">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h2 class="text-xl font-bold">📊 Geregistreerde Bedrijven</h2>
+                <button onclick="loadData()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">🔄 Vernieuwen</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="text-left p-4">Bedrijf</th>
+                            <th class="text-left p-4">Contact</th>
+                            <th class="text-left p-4">Plan</th>
+                            <th class="text-left p-4">Registratie</th>
+                            <th class="text-left p-4">Integraties</th>
+                            <th class="text-left p-4">Acties</th>
+                        </tr>
+                    </thead>
+                    <tbody id="companiesTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Audit Log Panel -->
+        <div id="panel-audit" class="card mb-8 hidden">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h2 class="text-xl font-bold">📋 Audit Log</h2>
+                <div class="flex gap-2">
+                    <select id="auditFilter" onchange="loadAuditLog()" class="px-3 py-2 border rounded-lg">
+                        <option value="">Alle acties</option>
+                        <option value="LOGIN">Login</option>
+                        <option value="LOGIN_FAILED">Login Failed</option>
+                        <option value="IMPERSONATE">Impersonate</option>
+                        <option value="PASSWORD_CHANGE">Wachtwoord</option>
+                        <option value="DATA_DELETE">Data Delete</option>
+                    </select>
+                    <button onclick="loadAuditLog()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">🔄</button>
+                </div>
+            </div>
+            <div class="p-4 max-h-96 overflow-y-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-50 sticky top-0">
+                        <tr>
+                            <th class="text-left p-2">Tijd</th>
+                            <th class="text-left p-2">Actie</th>
+                            <th class="text-left p-2">Gebruiker</th>
+                            <th class="text-left p-2">Bedrijf</th>
+                            <th class="text-left p-2">IP</th>
+                            <th class="text-left p-2">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recente Activiteit -->
+        <div class="card">
+            <div class="p-6 border-b">
+                <h2 class="text-xl font-bold">📋 Recente Registraties</h2>
+            </div>
+            <div class="p-6" id="recentActivity">
+                <p class="text-gray-500">Laden...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tab) {
+            document.querySelectorAll('[id^="panel-"]').forEach(p => p.classList.add('hidden'));
+            document.querySelectorAll('[id^="tab-"]').forEach(t => {
+                t.classList.remove('bg-indigo-600', 'text-white');
+                t.classList.add('bg-gray-200');
+            });
+            document.getElementById('panel-' + tab).classList.remove('hidden');
+            document.getElementById('tab-' + tab).classList.add('bg-indigo-600', 'text-white');
+            document.getElementById('tab-' + tab).classList.remove('bg-gray-200');
+            
+            if (tab === 'audit') loadAuditLog();
+        }
+
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/superadmin/check');
+                const data = await res.json();
+                if (!data.authorized) {
+                    alert('Geen toegang. Alleen voor StucAdmin super admins.');
+                    window.location.href = '/login.html';
+                }
+            } catch (e) {
+                window.location.href = '/login.html';
+            }
+        }
+
+        async function loadData() {
+            try {
+                const res = await fetch('/api/superadmin/companies');
+                const companies = await res.json();
+                
+                document.getElementById('totalCompanies').textContent = companies.length;
+                document.getElementById('activeCompanies').textContent = companies.filter(c => c.subscription?.status === 'active').length;
+                document.getElementById('trialCompanies').textContent = companies.filter(c => c.subscription?.plan === 'trial' || !c.subscription).length;
+                document.getElementById('totalUsers').textContent = companies.reduce((sum, c) => sum + (c.userCount || 1), 0);
+                
+                const tbody = document.getElementById('companiesTable');
+                tbody.innerHTML = companies.map(c => `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-4">
+                            <div class="font-semibold">${c.naam || c.name || 'Onbekend'}</div>
+                            <div class="text-sm text-gray-500">${c.id}</div>
+                        </td>
+                        <td class="p-4">
+                            <div>${c.email || '-'}</div>
+                            <div class="text-sm text-gray-500">${c.telefoon || ''}</div>
+                        </td>
+                        <td class="p-4">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium ${getPlanClass(c.subscription?.plan)}">
+                                ${c.subscription?.plan || 'Trial'}
+                            </span>
+                        </td>
+                        <td class="p-4">${formatDate(c.created || c.createdAt)}</td>
+                        <td class="p-4">
+                            ${c.hasMoneybird ? '💰' : ''}
+                            ${c.hasGoogle ? '📅' : ''}
+                            ${!c.hasMoneybird && !c.hasGoogle ? '<span class="text-gray-400">-</span>' : ''}
+                        </td>
+                        <td class="p-4">
+                            <button onclick="impersonate('${c.id}')" class="text-orange-600 hover:underline">Login als</button>
+                        </td>
+                    </tr>
+                `).join('');
+                
+                const recent = companies.slice().sort((a, b) => new Date(b.created || b.createdAt) - new Date(a.created || a.createdAt)).slice(0, 5);
+                document.getElementById('recentActivity').innerHTML = recent.map(c => `
+                    <div class="flex justify-between items-center py-3 border-b last:border-0">
+                        <div>
+                            <span class="font-medium">${c.naam || c.name}</span>
+                            <span class="text-gray-500 text-sm ml-2">${c.email}</span>
+                        </div>
+                        <div class="text-sm text-gray-500">${formatDate(c.created || c.createdAt)}</div>
+                    </div>
+                `).join('') || '<p class="text-gray-500">Geen recente registraties</p>';
+                
+            } catch (e) {
+                console.error('Error:', e);
+                alert('Kon data niet laden');
+            }
+        }
+
+        async function loadAuditLog() {
+            try {
+                const filter = document.getElementById('auditFilter').value;
+                const url = '/api/superadmin/audit-log?limit=200' + (filter ? '&action=' + filter : '');
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                const tbody = document.getElementById('auditTable');
+                tbody.innerHTML = data.entries.map(e => `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-2 whitespace-nowrap">${new Date(e.timestamp).toLocaleString('nl-NL')}</td>
+                        <td class="p-2"><span class="px-2 py-1 rounded text-xs ${getActionClass(e.action)}">${e.action}</span></td>
+                        <td class="p-2">${e.username || '-'}</td>
+                        <td class="p-2 text-xs">${e.companyId?.substring(0,15) || '-'}</td>
+                        <td class="p-2 text-xs">${e.ip || '-'}</td>
+                        <td class="p-2 text-xs text-gray-500">${JSON.stringify(e.details || {}).substring(0,50)}</td>
+                    </tr>
+                `).join('') || '<tr><td colspan="6" class="p-4 text-center text-gray-500">Geen audit logs</td></tr>';
+            } catch (e) {
+                console.error('Error:', e);
+            }
+        }
+
+        function getActionClass(action) {
+            const classes = {
+                'LOGIN': 'bg-green-100 text-green-800',
+                'LOGIN_FAILED': 'bg-red-100 text-red-800',
+                'LOGOUT': 'bg-gray-100 text-gray-800',
+                'IMPERSONATE': 'bg-purple-100 text-purple-800',
+                'PASSWORD_CHANGE': 'bg-yellow-100 text-yellow-800',
+                'DATA_DELETE': 'bg-red-100 text-red-800'
+            };
+            return classes[action] || 'bg-gray-100 text-gray-800';
+        }
+
+        function getPlanClass(plan) {
+            const classes = {
+                'professional': 'bg-indigo-100 text-indigo-800',
+                'starter': 'bg-green-100 text-green-800',
+                'enterprise': 'bg-purple-100 text-purple-800'
+            };
+            return classes[plan] || 'bg-gray-100 text-gray-800';
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        async function impersonate(companyId) {
+            if (!confirm('Wil je inloggen als dit bedrijf?')) return;
+            try {
+                const res = await fetch('/api/superadmin/impersonate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ companyId })
+                });
+                if (res.ok) window.location.href = '/dashboard.html';
+                else alert('Kon niet inloggen als dit bedrijf');
+            } catch (e) {
+                alert('Fout bij impersonatie');
+            }
+        }
+
+        checkAuth();
+        loadData();
+    </script>
+</body>
+</html>

@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/sidebar.js"></script>
+    <script src="/storage-helper.js"></script>
     <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
     <style>
         * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
@@ -164,7 +165,7 @@
                 </div>
                 <div class="card-body p-0 overflow-x-auto">
                     <table class="data-table">
-                        <thead><tr><th>Naam</th><th>Type</th><th>Telefoon</th><th>Documenten</th><th>Uren week</th><th>Acties</th></tr></thead>
+                        <thead><tr><th>Naam</th><th>Type</th><th>Telefoon</th><th>PIN</th><th>Documenten</th><th>Uren week</th><th>Acties</th></tr></thead>
                         <tbody id="medewerkersTabel"></tbody>
                     </table>
                 </div>
@@ -335,7 +336,14 @@
                 <div><label class="block text-sm font-medium mb-1">Naam *</label><input type="text" id="mNaam" class="input-field"></div>
                 <div><label class="block text-sm font-medium mb-1">Type</label><select id="mType" class="input-field"><option value="vast">Vast</option><option value="zzp">ZZP</option></select></div>
                 <div><label class="block text-sm font-medium mb-1">Telefoon</label><input type="tel" id="mTelefoon" class="input-field"></div>
-                <div><label class="block text-sm font-medium mb-1">Pincode (4 cijfers) *</label><input type="text" id="mPincode" class="input-field" maxlength="4"></div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Pincode (4 cijfers) *</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="mPincode" class="input-field flex-1" maxlength="4" placeholder="Laat leeg om niet te wijzigen">
+                        <button type="button" onclick="generateNewPin()" class="px-3 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 text-sm">🔄 Genereer</button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Huidige PIN: <span id="currentPinDisplay" class="font-mono bg-gray-100 px-1 rounded">-</span></p>
+                </div>
                 <div><label class="block text-sm font-medium mb-1">Email</label><input type="email" id="mEmail" class="input-field"></div>
                 <div><label class="block text-sm font-medium mb-1">Uurtarief €</label><input type="number" id="mUurtarief" class="input-field" step="0.01"></div>
             </div>
@@ -528,16 +536,18 @@
 
         function renderMedewerkers() {
             const tbody = document.getElementById('medewerkersTabel');
-            if (!medewerkers.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-8">Geen medewerkers</td></tr>'; return; }
+            if (!medewerkers.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-8">Geen medewerkers</td></tr>'; return; }
             const ws = new Date(); ws.setDate(ws.getDate() - ws.getDay() + 1); ws.setHours(0,0,0,0);
             
             tbody.innerHTML = medewerkers.map(m => {
                 const weekU = uren.filter(u => u.medewerkerId === m.id && new Date(u.datum) >= ws).reduce((s,u) => s+(u.totaalUren||0), 0);
                 const docs = m.documenten || {}, files = docs.bestanden || {};
+                const pinDisplay = m.pinPlain || '****';
                 return `<tr>
                     <td><div class="font-semibold">${esc(m.naam)}</div><div class="text-xs text-gray-400">${m.email||''}</div></td>
                     <td><span class="badge badge-${m.type}">${m.type==='zzp'?'ZZP':'VAST'}</span></td>
                     <td>${esc(m.telefoon||'-')}</td>
+                    <td><code class="bg-gray-100 px-2 py-1 rounded text-sm font-mono">${pinDisplay}</code></td>
                     <td class="space-x-1">${renderDocBadge(docs.idVerloop, files.id, 'ID')} ${renderDocBadge(docs.vcaVerloop, files.vca, 'VCA')} ${docs.bhvType ? renderDocBadge(docs.bhvVerloop, files.bhv, 'BHV') : ''}</td>
                     <td class="font-bold text-indigo-600">${weekU.toFixed(1)}u</td>
                     <td><button onclick="editMedewerker('${m.id}')" class="text-indigo-600 mr-2">✏️</button><button onclick="deleteMedewerker('${m.id}')" class="text-red-500">🗑️</button></td>
@@ -860,6 +870,7 @@
             document.getElementById('medewerkerModalTitle').textContent = 'Nieuwe Medewerker';
             document.getElementById('editMedewerkerId').value = '';
             ['mNaam','mTelefoon','mPincode','mEmail','mUurtarief'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('currentPinDisplay').textContent = 'Nieuw';
             document.getElementById('mType').value = 'vast';
             ['id','contract','vca','bhv'].forEach(t => { removeDoc(t); document.getElementById('docVerloop-'+t).value = ''; });
             ['contract','vca','bhv'].forEach(t => document.getElementById('docType-'+t).value = '');
@@ -867,6 +878,11 @@
             overigCertCounter = 0;
             pendingUploads = {};
             document.getElementById('medewerkerModal').classList.add('active');
+        }
+        
+        function generateNewPin() {
+            const newPin = Math.floor(1000 + Math.random() * 9000).toString();
+            document.getElementById('mPincode').value = newPin;
         }
 
         function editMedewerker(id) {
@@ -878,7 +894,8 @@
             document.getElementById('mNaam').value = m.naam || '';
             document.getElementById('mType').value = m.type || 'vast';
             document.getElementById('mTelefoon').value = m.telefoon || '';
-            document.getElementById('mPincode').value = m.pincode || '';
+            document.getElementById('mPincode').value = ''; // Laat leeg, alleen invullen bij wijziging
+            document.getElementById('currentPinDisplay').textContent = m.pinPlain || '****';
             document.getElementById('mEmail').value = m.email || '';
             document.getElementById('mUurtarief').value = m.uurtarief || '';
             
@@ -938,7 +955,9 @@
             const naam = document.getElementById('mNaam').value.trim();
             const pincode = document.getElementById('mPincode').value.trim();
             if (!naam) { alert('Vul naam in'); return; }
-            if (!pincode || pincode.length !== 4) { alert('Vul 4-cijferige pincode in'); return; }
+            // Bij nieuw: PIN verplicht. Bij bewerken: alleen valideren als ingevuld
+            if (!id && (!pincode || pincode.length !== 4)) { alert('Vul 4-cijferige pincode in'); return; }
+            if (pincode && pincode.length !== 4) { alert('Pincode moet 4 cijfers zijn'); return; }
             
             const overig = [];
             document.querySelectorAll('#overigeCerts > div').forEach(div => {
@@ -951,7 +970,7 @@
             const data = {
                 naam, type: document.getElementById('mType').value,
                 telefoon: document.getElementById('mTelefoon').value.trim(),
-                pincode, email: document.getElementById('mEmail').value.trim(),
+                email: document.getElementById('mEmail').value.trim(),
                 uurtarief: document.getElementById('mUurtarief').value || null,
                 actief: true,
                 documenten: {
@@ -965,6 +984,11 @@
                     overig
                 }
             };
+            
+            // Alleen pincode toevoegen als die is ingevuld (voor reset)
+            if (pincode) {
+                data.pincode = pincode;
+            }
             
             // Save medewerker first
             const res = await fetch(id ? '/api/medewerkers/' + id : '/api/medewerkers', {
@@ -1486,13 +1510,15 @@
         function fmtDate(d) { return new Date(d).toLocaleDateString('nl-NL', {day:'numeric',month:'short',year:'numeric'}); }
         function esc(t) { if (!t) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
         function copyPortalLink() { 
-            const url = location.origin + '/medewerker-portal.html';
+            const companyId = window.companyId || localStorage.getItem('bedrijf_id');
+            const url = location.origin + '/medewerker-portal.html?c=' + companyId;
             navigator.clipboard?.writeText(url).then(() => {
-                alert('Portal link gekopieerd!\\n\\nMedewerkers moeten inloggen met hun pincode.');
+                alert('Portal link gekopieerd!\n\n' + url + '\n\nMedewerkers moeten inloggen met hun pincode.');
             }); 
         }
         function exportUren() { const csv = 'Datum,Medewerker,Project,Begin,Eind,Uren\\n' + uren.map(u => `${u.datum},"${u.medewerkerNaam}","${u.projectNaam}",${u.begintijd},${u.eindtijd},${u.totaalUren}`).join('\\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\\ufeff'+csv],{type:'text/csv'})); a.download = 'uren.csv'; a.click(); }
     </script>
     <script src="/sidebar.js"></script>
+    <script src="/storage-helper.js"></script>
 </body>
 </html>

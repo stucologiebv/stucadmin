@@ -116,7 +116,7 @@
                 const res = await fetch('/api/medewerker/status');
                 const data = await res.json();
                 if (data.loggedIn) {
-                    window.location.href = '/medewerker-portal.html';
+                    window.location.href = '/medewerker-portal.html?c=' + companyId;
                 }
             } catch (e) {}
         }
@@ -165,7 +165,7 @@
                     input.style.borderColor = '#10b981';
                     
                     setTimeout(() => {
-                        window.location.href = '/medewerker-portal.html';
+                        window.location.href = '/medewerker-portal.html?c=' + companyId;
                     }, 800);
                 } else {
                     statusMsg.innerHTML = `<span class="text-red-500 font-medium">❌ ${data.error || 'Ongeldige pincode'}</span>`;

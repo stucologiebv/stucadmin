@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/sidebar.js"></script>
+    <script src="/storage-helper.js"></script>
     <style>
         * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: #f5f7fa; margin: 0; }
@@ -631,6 +632,9 @@ ${signature}`
                 if (res.ok) {
                     const data = await res.json();
                     
+                    // Clear any old localStorage data (security)
+                    StucStorage.removeItem('offerteaanvragen');
+                    
                     // Spam filter toepassen
                     aanvragen = [];
                     spamAanvragen = [];
@@ -644,11 +648,16 @@ ${signature}`
                             aanvragen.push(a);
                         }
                     });
+                } else {
+                    console.error('Failed to load aanvragen:', res.status);
+                    aanvragen = [];
+                    spamAanvragen = [];
                 }
             } catch (e) {
                 console.error('Error loading aanvragen:', e);
-                // Fallback: localStorage
-                aanvragen = JSON.parse(localStorage.getItem('stuc_offerteaanvragen') || '[]');
+                // No fallback - just show empty (security)
+                aanvragen = [];
+                spamAanvragen = [];
             }
             
             render();
@@ -1258,5 +1267,6 @@ ${signature}`
         }
     </script>
 <script src="/sidebar.js"></script>
+    <script src="/storage-helper.js"></script>
 </body>
 </html>

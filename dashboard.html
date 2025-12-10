@@ -10,13 +10,14 @@
     <meta name="theme-color" content="#f97316">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Stucologie">
-    <link rel="apple-touch-icon" href="/logo-stucologie.jpg">
+    <meta name="apple-mobile-web-app-title" content="StucAdmin">
+    <link rel="apple-touch-icon" href="/logo.png">
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/sidebar.js"></script>
+    <script src="/storage-helper.js"></script>
     <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
     <style>
         * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -117,19 +118,17 @@
                     <p class="text-gray-500 text-xs mb-1">Uren deze week</p>
                     <p class="kpi-value text-lg sm:text-2xl" id="kpiUren">0</p>
                 </div>
-                <div class="card kpi-card p-4" style="--accent: #8b5cf6">
-                    <p class="text-gray-500 text-xs mb-1">Omzet maand</p>
-                    <p class="kpi-value text-lg sm:text-2xl" id="kpiOmzet">€0</p>
-                </div>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
                 <div class="card p-4 lg:col-span-2">
                     <div class="flex items-center justify-between mb-4">
-                        <h2 class="font-bold text-sm sm:text-base">📈 Omzet per maand</h2>
-                        <span class="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Auto-sync uit facturen</span>
+                        <h2 class="font-bold text-sm sm:text-base">📋 Projecten overzicht</h2>
+                        <a href="planning.html" class="text-xs text-indigo-500 hover:underline">Bekijk alle →</a>
                     </div>
-                    <div class="h-48"><canvas id="omzetChart"></canvas></div>
+                    <div id="projectenWidget">
+                        <div class="text-gray-400 text-sm">Laden...</div>
+                    </div>
                 </div>
                 <div class="card p-4">
                     <h2 class="font-bold mb-4 text-sm sm:text-base">⚡ Snelle acties</h2>
@@ -253,7 +252,6 @@
             document.getElementById('kpiWeek').textContent = '...';
             document.getElementById('kpiOpen').textContent = '...';
             document.getElementById('kpiUren').textContent = '...';
-            document.getElementById('kpiOmzet').textContent = '...';
             
             try {
                 const [invRes, conRes, projRes] = await Promise.all([
@@ -277,7 +275,7 @@
                     projecten = await projRes.json();
                 } else {
                     // Fallback naar localStorage
-                    projecten = JSON.parse(localStorage.getItem('stuc_planning_projecten') || '[]');
+                    projecten = StucStorage.getItem('planning_projecten', []);
                 }
                 
                 // Ensure we have arrays
@@ -327,16 +325,6 @@
                 }).reduce((s, u) => s + (u.totaalUren || 0), 0);
                 document.getElementById('kpiUren').textContent = Math.round(weekUren);
                 
-                // KPI: Omzet deze maand
-                const thisMonth = invoiceArray.filter(inv => { 
-                    if (inv.state === 'draft') return false;
-                    const dateStr = inv.invoice_date || inv.created_at;
-                    if (!dateStr) return false;
-                    const d = new Date(dateStr); 
-                    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); 
-                });
-                document.getElementById('kpiOmzet').textContent = '€' + thisMonth.reduce((s,i) => s + parseFloat(i.total_price_incl_tax||0), 0).toLocaleString('nl-NL', {maximumFractionDigits:0});
-                
                 // Tabel: Planning deze week
                 const statusKleuren = {
                     'gepland': '<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">Gepland</span>',
@@ -366,22 +354,60 @@
                 const uniekeMedewerkers = [...new Set(vandaagUren.map(u => u.medewerkerId))];
                 document.getElementById('activeMedewerkers').textContent = uniekeMedewerkers.length;
                 
-                // Omzet grafiek
-                const ctx = document.getElementById('omzetChart').getContext('2d');
-                const months = ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
-                const data = [];
-                for (let i = 5; i >= 0; i--) {
-                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                    const m = invoiceArray.filter(inv => { 
-                        if (inv.state === 'draft') return false;
-                        const dateStr = inv.invoice_date || inv.created_at;
-                        if (!dateStr) return false;
-                        const id = new Date(dateStr); 
-                        return id.getMonth() === d.getMonth() && id.getFullYear() === d.getFullYear(); 
-                    });
-                    data.push({ month: months[d.getMonth()], total: m.reduce((s,i) => s + parseFloat(i.total_price_incl_tax||0), 0) });
+                // Projecten widget
+                const zzpOpdrachtenRes = await fetch('/api/zzp-opdrachten').catch(() => ({ ok: false }));
+                let zzpOpdrachten = [];
+                if (zzpOpdrachtenRes.ok) {
+                    zzpOpdrachten = await zzpOpdrachtenRes.json();
                 }
-                new Chart(ctx, { type: 'bar', data: { labels: data.map(d => d.month), datasets: [{ data: data.map(d => d.total), backgroundColor: '#6366f1', borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString() } } } } });
+                
+                const lopend = projecten.filter(p => p.status === 'actief' || p.status === 'gepland' || p.status === 'lopend');
+                const afgerondDezeMaand = projecten.filter(p => {
+                    if (p.status !== 'afgerond') return false;
+                    const d = new Date(p.updated || p.created);
+                    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                });
+                const wachtOpReactie = zzpOpdrachten.filter(o => o.status === 'openstaand');
+                
+                let widgetHtml = '<div class="space-y-2">';
+                
+                // Lopende projecten (max 4)
+                if (lopend.length > 0) {
+                    widgetHtml += `<div class="text-xs font-semibold text-gray-500 mb-2">🔵 LOPEND (${lopend.length})</div>`;
+                    lopend.slice(0, 4).forEach(p => {
+                        const zzpInfo = zzpOpdrachten.find(o => o.projectId === p.id);
+                        const zzpStatus = zzpInfo ? (zzpInfo.status === 'geaccepteerd' ? '✅' : zzpInfo.status === 'afgewezen' ? '❌' : '⏳') : '';
+                        widgetHtml += `<a href="planning.html?project=${p.id}" class="block p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-sm truncate">${p.locatie || p.titel || p.naam || 'Project'}</div>
+                                    <div class="text-xs text-gray-500">${p.zzperNaam || p.medewerker || ''} ${zzpStatus}</div>
+                                </div>
+                                <span class="text-xs px-2 py-1 rounded ${p.status === 'actief' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">${p.status}</span>
+                            </div>
+                        </a>`;
+                    });
+                    if (lopend.length > 4) {
+                        widgetHtml += `<a href="planning.html" class="block text-center text-xs text-indigo-500 hover:underline py-1">+${lopend.length - 4} meer projecten</a>`;
+                    }
+                } else {
+                    widgetHtml += '<div class="text-gray-400 text-sm py-2">Geen lopende projecten</div>';
+                }
+                
+                // Stats onderaan
+                widgetHtml += `<div class="flex gap-4 pt-3 mt-3 border-t">
+                    <div class="text-center flex-1">
+                        <div class="text-lg font-bold text-green-600">${afgerondDezeMaand.length}</div>
+                        <div class="text-xs text-gray-500">Afgerond deze maand</div>
+                    </div>
+                    <div class="text-center flex-1">
+                        <div class="text-lg font-bold ${wachtOpReactie.length > 0 ? 'text-amber-500' : 'text-gray-400'}">${wachtOpReactie.length}</div>
+                        <div class="text-xs text-gray-500">Wacht op ZZP reactie</div>
+                    </div>
+                </div>`;
+                
+                widgetHtml += '</div>';
+                document.getElementById('projectenWidget').innerHTML = widgetHtml;
                 
                 // Update sync status
                 document.getElementById('syncStatus').innerHTML = '✅ Alles gesynchroniseerd';
@@ -403,5 +429,6 @@
         }
     </script>
 <script src="/sidebar.js"></script>
+    <script src="/storage-helper.js"></script>
 </body>
 </html>

@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/sidebar.js"></script>
+    <script src="/storage-helper.js"></script>
     <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
     <style>
         * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -1770,7 +1771,7 @@ De opdrachtgever is verantwoordelijk voor het volledig en correct opgeven van al
         // ============================================
         async function loadOpnames() {
             try {
-                const saved = localStorage.getItem('stuc_opnames');
+                const saved = StucStorage.getItem('opnames');
                 if (saved) opnames = JSON.parse(saved);
             } catch (e) { console.error('Opnames laden mislukt'); }
         }
@@ -1797,7 +1798,7 @@ De opdrachtgever is verantwoordelijk voor het volledig en correct opgeven van al
             };
             
             opnames.push(opname);
-            localStorage.setItem('stuc_opnames', JSON.stringify(opnames));
+            StucStorage.setItem('opnames', opnames);
             alert('Opname opgeslagen!');
         }
 
@@ -2127,14 +2128,14 @@ De opdrachtgever is verantwoordelijk voor het volledig en correct opgeven van al
                 <div style="margin-top: 10px; font-size: 12px;">Datum: ${datum}</div>
             </div>
             <div class="handtekening-box">
-                <div class="handtekening-label">Voor akkoord namens Stucologie</div>
+                <div class="handtekening-label">Voor akkoord namens ${window.companyName || 'Opdrachtnemer'}</div>
                 <div style="margin-top: 40px; border-top: 1px solid #ccc; padding-top: 5px; font-size: 12px;">Naam:</div>
             </div>
         </div>
         
         <div class="footer">
-            <strong>Stucologie B.V.</strong><br>
-            info@stucologie.nl | www.stucologie.nl | KvK: 12345678
+            <strong>${window.companyName || 'Uw Stukadoorsbedrijf'}</strong><br>
+            ${window.companyEmail || ''} | ${window.companyWebsite || ''} | KvK: ${window.companyKvk || ''}
         </div>
     </div>
 `;
@@ -2161,5 +2162,6 @@ De opdrachtgever is verantwoordelijk voor het volledig en correct opgeven van al
         }
     </script>
 <script src="/sidebar.js"></script>
+    <script src="/storage-helper.js"></script>
 </body>
 </html>

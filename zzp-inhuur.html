@@ -17,6 +17,7 @@
     <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/sidebar.js"></script>
+    <script src="/storage-helper.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -134,6 +135,7 @@
                 <div class="flex items-center gap-3">
                     <span class="text-xs text-gray-400" id="syncStatus">✓ Gesynchroniseerd</span>
                     <button onclick="openNieuweZZP()" class="btn-primary text-sm">+ Nieuwe ZZP'er</button>
+                    <button onclick="openInviteModal()" class="btn-secondary text-sm" style="margin-left:8px;">📨 ZZP'er Uitnodigen</button>
                 </div>
             </header>
 
@@ -636,6 +638,48 @@
     </div>
 
     <!-- ============================================ -->
+    <!-- MODAL: ZZP'er Uitnodigen -->
+    <!-- ============================================ -->
+    <div id="inviteModal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                <h2 class="text-lg font-bold">📨 ZZP'er Uitnodigen</h2>
+                <button onclick="closeInviteModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <form id="inviteForm" onsubmit="sendInvite(event)" class="p-4">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                    <p class="text-blue-700 text-sm">💡 De ZZP'er ontvangt een email met een link om zelf zijn gegevens in te vullen, documenten te uploaden en het DBA-contract te tekenen.</p>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email ZZP'er *</label>
+                    <input type="email" id="inviteEmail" required class="w-full p-3 border rounded-lg" placeholder="zzper@email.nl">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Naam (optioneel)</label>
+                    <input type="text" id="inviteName" class="w-full p-3 border rounded-lg" placeholder="Voornaam of bedrijfsnaam">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Contract type</label>
+                    <select id="inviteContractType" class="w-full p-3 border rounded-lg">
+                        <option value="onderaannemer">Modelovereenkomst Onderaannemer</option>
+                        <option value="aannemer">Modelovereenkomst Aannemer</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Persoonlijk bericht (optioneel)</label>
+                    <textarea id="inviteMessage" rows="2" class="w-full p-3 border rounded-lg" placeholder="Bijv. 'Hoi Jan, graag wil ik je uitnodigen om...'"></textarea>
+                </div>
+                
+                <button type="submit" class="btn-primary w-full">📨 Uitnodiging Versturen</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
     <!-- WIZARD: Nieuwe ZZP'er Onboarding (5 stappen) -->
     <!-- ============================================ -->
     <div id="wizardZZP" class="modal">
@@ -880,6 +924,8 @@
         
         .btn-primary { background: #8b5cf6; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
         .btn-primary:hover { background: #7c3aed; }
+        .btn-secondary { background: #f3f4f6; color: #374151; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: 1px solid #d1d5db; cursor: pointer; }
+        .btn-secondary:hover { background: #e5e7eb; }
     </style>
 
     <script src="/data-sync.js"></script>
@@ -927,15 +973,15 @@
             
             // If empty, try localStorage fallback
             if (zzpers.length === 0) {
-                const stored = localStorage.getItem('stuc_zzpers');
+                const stored = StucStorage.getItem('zzpers');
                 if (stored) zzpers = JSON.parse(stored);
             }
             if (opdrachten.length === 0) {
-                const stored = localStorage.getItem('stuc_zzp_opdrachten');
+                const stored = StucStorage.getItem('zzp_opdrachten');
                 if (stored) opdrachten = JSON.parse(stored);
             }
             if (documenten.length === 0) {
-                const stored = localStorage.getItem('stuc_zzp_documenten');
+                const stored = StucStorage.getItem('zzp_documenten');
                 if (stored) documenten = JSON.parse(stored);
             }
             
@@ -943,9 +989,9 @@
         }
         
         function loadFromLocalStorage() {
-            const storedZZP = localStorage.getItem('stuc_zzpers');
-            const storedOpdrachten = localStorage.getItem('stuc_zzp_opdrachten');
-            const storedDocs = localStorage.getItem('stuc_zzp_documenten');
+            const storedZZP = StucStorage.getItem('zzpers');
+            const storedOpdrachten = StucStorage.getItem('zzp_opdrachten');
+            const storedDocs = StucStorage.getItem('zzp_documenten');
             
             if (storedZZP) zzpers = JSON.parse(storedZZP);
             if (storedOpdrachten) opdrachten = JSON.parse(storedOpdrachten);
@@ -956,9 +1002,9 @@
         
         function saveData() {
             // Save to localStorage (DataSync will intercept and sync to server)
-            localStorage.setItem('stuc_zzpers', JSON.stringify(zzpers));
-            localStorage.setItem('stuc_zzp_opdrachten', JSON.stringify(opdrachten));
-            localStorage.setItem('stuc_zzp_documenten', JSON.stringify(documenten));
+            StucStorage.setItem('zzpers', zzpers);
+            StucStorage.setItem('zzp_opdrachten', opdrachten);
+            StucStorage.setItem('zzp_documenten', documenten);
             
             updateSyncStatus();
         }
@@ -1084,6 +1130,54 @@
             return warnings;
         }
         
+        // ZZP'er Uitnodigen functies
+        // Toast notificatie
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 ${type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500'} text-white`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        function openInviteModal() {
+            document.getElementById('inviteForm').reset();
+            document.getElementById('inviteModal').style.display = 'flex';
+        }
+        
+        function closeInviteModal() {
+            document.getElementById('inviteModal').style.display = 'none';
+        }
+        
+        async function sendInvite(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('inviteEmail').value;
+            const naam = document.getElementById('inviteName').value;
+            const contractType = document.getElementById('inviteContractType').value;
+            const message = document.getElementById('inviteMessage').value;
+            
+            try {
+                const res = await fetch('/api/zzp-invite', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, naam, contractType, message })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok) {
+                    closeInviteModal();
+                    showToast('Uitnodiging verzonden naar ' + email, 'success');
+                    loadData(); // Refresh lijst met invites
+                } else {
+                    showToast(data.error || 'Fout bij verzenden', 'error');
+                }
+            } catch (err) {
+                showToast('Netwerkfout', 'error');
+            }
+        }
+        
         function openNieuweZZP() {
             document.getElementById('modalZZPTitle').textContent = 'Nieuwe ZZP\'er';
             document.getElementById('formZZP').reset();
@@ -1190,20 +1284,58 @@
         }
         
         function renderDetailDocumenten(zzpId) {
-            const docs = documenten.filter(d => d.zzpId === zzpId);
+            const zzp = zzpers.find(z => z.id === zzpId);
+            const uploadedDocs = documenten.filter(d => d.zzpId === zzpId);
             
-            if (docs.length === 0) {
+            // Combineer documenten uit oude systeem + nieuwe registratie
+            let allDocs = [...uploadedDocs];
+            
+            // Voeg documenten uit ZZP object toe (van self-registration)
+            if (zzp?.documenten && Array.isArray(zzp.documenten)) {
+                zzp.documenten.forEach(d => {
+                    allDocs.push({
+                        id: d.filename,
+                        type: d.type,
+                        filename: d.originalName || d.filename,
+                        path: d.path,
+                        uploadedAt: d.uploadedAt
+                    });
+                });
+            }
+            
+            // Voeg contract PDF toe als aanwezig
+            if (zzp?.contractPDF) {
+                allDocs.push({
+                    id: 'contract_pdf',
+                    type: 'contract',
+                    filename: 'Getekend Contract.pdf',
+                    path: zzp.contractPDF
+                });
+            }
+            
+            if (allDocs.length === 0) {
                 document.getElementById('detailDocumenten').innerHTML = `<p class="text-gray-400 text-xs text-center py-2">Geen documenten</p>`;
                 return;
             }
             
-            document.getElementById('detailDocumenten').innerHTML = docs.map(d => {
-                const icon = DOC_TYPES[d.type]?.label.split(' ')[0] || '📄';
-                const name = DOC_TYPES[d.type]?.label.slice(2) || d.type;
+            const typeLabels = {
+                'id': '🪪 ID/Paspoort',
+                'kvk': '📄 KVK Uittreksel', 
+                'verzekering': '🛡️ Verzekering',
+                'handtekening': '✍️ Handtekening',
+                'contract': '📋 Contract',
+                ...DOC_TYPES
+            };
+            
+            document.getElementById('detailDocumenten').innerHTML = allDocs.map(d => {
+                const label = typeLabels[d.type]?.label || typeLabels[d.type] || `📄 ${d.type}`;
+                const icon = typeof label === 'string' ? label.split(' ')[0] : '📄';
+                const name = typeof label === 'string' ? label.slice(2) : d.type;
+                const canDelete = !d.path; // Alleen oude uploads kunnen verwijderd worden
                 return `
                     <div class="flex items-center justify-between py-1 text-xs">
                         <span>${icon} ${name}</span>
-                        <button onclick="event.stopPropagation(); deleteDocument('${d.id}')" class="text-gray-300 hover:text-red-500">🗑️</button>
+                        ${canDelete ? `<button onclick="event.stopPropagation(); deleteDocument('${d.id}')" class="text-gray-300 hover:text-red-500">🗑️</button>` : '<span class="text-green-500">✓</span>'}
                     </div>
                 `;
             }).join('');
@@ -1767,6 +1899,7 @@ StucAdmin ZZP Inhuur
         init();
     </script>
 <script src="/sidebar.js"></script>
+    <script src="/storage-helper.js"></script>
 <script src="/zzp-wizard.js"></script>
 </body>
 </html>

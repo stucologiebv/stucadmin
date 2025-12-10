@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZZP Registratie - StucAdmin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .form-input { width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 16px; }
+        .form-input:focus { border-color: #8b5cf6; outline: none; }
+        .btn-primary { background: #8b5cf6; color: white; padding: 14px 28px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; width: 100%; font-size: 16px; }
+        .btn-primary:hover { background: #7c3aed; }
+        .btn-primary:disabled { background: #d1d5db; cursor: not-allowed; }
+        .btn-secondary { background: #f3f4f6; color: #374151; padding: 14px 28px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .step-indicator { display: flex; justify-content: center; gap: 8px; margin-bottom: 24px; }
+        .step-dot { width: 12px; height: 12px; border-radius: 50%; background: #e5e7eb; }
+        .step-dot.active { background: #8b5cf6; }
+        .step-dot.done { background: #22c55e; }
+        .checkbox-card { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+        .checkbox-card:hover { border-color: #8b5cf6; background: #faf5ff; }
+        .checkbox-card.checked { border-color: #8b5cf6; background: #faf5ff; }
+        .signature-canvas { border: 2px dashed #d1d5db; border-radius: 10px; background: #fafafa; touch-action: none; width: 100%; height: 150px; display: block; }
+        .upload-box { border: 2px dashed #d1d5db; border-radius: 10px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .upload-box:hover { border-color: #8b5cf6; background: #faf5ff; }
+        .upload-box.has-file { border-color: #22c55e; background: #f0fdf4; }
+        .contract-preview { max-height: 300px; overflow-y: auto; padding: 16px; background: #f9fafb; border-radius: 10px; font-size: 13px; line-height: 1.6; }
+        .error-state { background: #fef2f2; }
+        .error-state .card { border: 2px solid #ef4444; }
+    </style>
+</head>
+<body class="p-4">
+    <div class="max-w-lg mx-auto pt-8 pb-16">
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-white mb-2">ZZP Registratie</h1>
+            <p class="text-white/80" id="companyName">Laden...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden">
+            <div class="card p-8 text-center">
+                <div class="text-5xl mb-4">❌</div>
+                <h2 class="text-xl font-bold text-red-600 mb-2" id="errorTitle">Fout</h2>
+                <p class="text-gray-600" id="errorMessage">Er is een fout opgetreden.</p>
+            </div>
+        </div>
+
+        <!-- Success State -->
+        <div id="successState" class="hidden">
+            <div class="card p-8 text-center">
+                <div class="text-5xl mb-4">✅</div>
+                <h2 class="text-xl font-bold text-green-600 mb-2">Registratie Voltooid!</h2>
+                <p class="text-gray-600 mb-4">Je gegevens zijn succesvol ontvangen.</p>
+                <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                    <p class="text-purple-700 text-sm font-semibold mb-2">📱 Je toegangscode voor de app:</p>
+                    <p class="text-3xl font-bold text-purple-600" id="portalPin">----</p>
+                    <p class="text-purple-600 text-xs mt-2">Bewaar deze code goed! Je hebt hem nodig om in te loggen.</p>
+                </div>
+                <a href="#" id="loginLink" class="btn-primary inline-block mb-4">🚀 Direct Inloggen</a>
+                <p class="text-gray-500 text-sm">Je ontvangt ook een email met het getekende contract.</p>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="card p-8 text-center">
+            <div class="text-4xl mb-4">⏳</div>
+            <p class="text-gray-600">Uitnodiging laden...</p>
+        </div>
+
+        <!-- Registration Form -->
+        <div id="formState" class="hidden">
+            <div class="card">
+                <!-- Step Indicator -->
+                <div class="p-4 border-b">
+                    <div class="step-indicator">
+                        <div class="step-dot active" id="dot1"></div>
+                        <div class="step-dot" id="dot2"></div>
+                        <div class="step-dot" id="dot3"></div>
+                        <div class="step-dot" id="dot4"></div>
+                    </div>
+                    <h2 class="text-lg font-bold text-center" id="stepTitle">Stap 1: Persoonlijke gegevens</h2>
+                </div>
+
+                <form id="registrationForm" class="p-4">
+                    <!-- Step 1: Persoonlijke gegevens -->
+                    <div id="step1" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Volledige naam *</label>
+                            <input type="text" id="naam" class="form-input" required placeholder="Jan de Vries">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                            <input type="email" id="email" class="form-input" required placeholder="jan@email.nl">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Telefoon *</label>
+                            <input type="tel" id="telefoon" class="form-input" required placeholder="06-12345678">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Adres *</label>
+                            <input type="text" id="adres" class="form-input" required placeholder="Straatnaam 123, 1234AB Plaats">
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Bedrijfsgegevens -->
+                    <div id="step2" class="space-y-4 hidden">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Bedrijfsnaam (indien van toepassing)</label>
+                            <input type="text" id="bedrijfsnaam" class="form-input" placeholder="Stukadoorsbedrijf De Vries">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">KVK-nummer *</label>
+                            <input type="text" id="kvk" class="form-input" required placeholder="12345678" pattern="[0-9]{8}">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">BTW-nummer *</label>
+                            <input type="text" id="btw" class="form-input" required placeholder="NL123456789B01">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">IBAN *</label>
+                            <input type="text" id="iban" class="form-input" required placeholder="NL91ABNA0417164300">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Specialisatie</label>
+                            <select id="specialisatie" class="form-input">
+                                <option value="stucwerk">Stucwerk</option>
+                                <option value="spuitwerk">Spuitwerk</option>
+                                <option value="sierpleister">Sierpleister</option>
+                                <option value="isolatie">Isolatie</option>
+                                <option value="allround">Allround</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Documenten -->
+                    <div id="step3" class="space-y-4 hidden">
+                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                            <p class="text-amber-700 text-sm">⚠️ <strong>Wet DBA:</strong> Deze documenten zijn vereist voor een geldige overeenkomst.</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Kopie ID/Paspoort *</label>
+                            <div class="upload-box" onclick="document.getElementById('fileID').click()" id="boxID">
+                                <input type="file" id="fileID" accept="image/*,.pdf" class="hidden" onchange="handleFileUpload('ID', this)">
+                                <span class="text-3xl">🪪</span>
+                                <p class="text-gray-500 mt-2" id="labelID">Klik om te uploaden</p>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">KVK-uittreksel * <span class="text-gray-400 font-normal">(max 3 maanden oud)</span></label>
+                            <div class="upload-box" onclick="document.getElementById('fileKVK').click()" id="boxKVK">
+                                <input type="file" id="fileKVK" accept="image/*,.pdf" class="hidden" onchange="handleFileUpload('KVK', this)">
+                                <span class="text-3xl">📄</span>
+                                <p class="text-gray-500 mt-2" id="labelKVK">Klik om te uploaden</p>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Aansprakelijkheidsverzekering (AVB) *</label>
+                            <div class="upload-box" onclick="document.getElementById('fileAVB').click()" id="boxAVB">
+                                <input type="file" id="fileAVB" accept="image/*,.pdf" class="hidden" onchange="handleFileUpload('AVB', this)">
+                                <span class="text-3xl">🛡️</span>
+                                <p class="text-gray-500 mt-2" id="labelAVB">Klik om te uploaden</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 4: DBA & Contract -->
+                    <div id="step4" class="space-y-4 hidden">
+                        <div class="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                            <p class="text-purple-700 text-sm">📋 <strong>Wet DBA 2025:</strong> Bevestig onderstaande punten en teken het contract.</p>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <p class="text-sm font-medium text-gray-700 mb-2">Bevestig dat je voldoet aan de volgende criteria:</p>
+                            
+                            <label class="checkbox-card" onclick="toggleCheck(this)">
+                                <input type="checkbox" name="dba1" class="mt-1" required>
+                                <span class="text-sm">Ik werk voor meerdere opdrachtgevers of ben vrij om dit te doen</span>
+                            </label>
+                            
+                            <label class="checkbox-card" onclick="toggleCheck(this)">
+                                <input type="checkbox" name="dba2" class="mt-1" required>
+                                <span class="text-sm">Ik draag eigen ondernemersrisico</span>
+                            </label>
+                            
+                            <label class="checkbox-card" onclick="toggleCheck(this)">
+                                <input type="checkbox" name="dba3" class="mt-1" required>
+                                <span class="text-sm">Ik bepaal zelf hoe ik het werk uitvoer (geen werkgeversgezag)</span>
+                            </label>
+                            
+                            <label class="checkbox-card" onclick="toggleCheck(this)">
+                                <input type="checkbox" name="dba4" class="mt-1" required>
+                                <span class="text-sm">Ik ben vrij om opdrachten te weigeren</span>
+                            </label>
+                            
+                            <label class="checkbox-card" onclick="toggleCheck(this)">
+                                <input type="checkbox" name="dba5" class="mt-1" required>
+                                <span class="text-sm">Ik factureer zelf voor mijn werkzaamheden</span>
+                            </label>
+                            
+                            <label class="checkbox-card" onclick="toggleCheck(this)">
+                                <input type="checkbox" name="dba6" class="mt-1" required>
+                                <span class="text-sm">Ik ben ingeschreven bij de Kamer van Koophandel als zelfstandige</span>
+                            </label>
+                        </div>
+                        
+                        <div class="mt-6">
+                            <div class="flex items-center justify-between mb-2">
+                                <p class="text-sm font-medium text-gray-700">Modelovereenkomst <span id="contractTypeLabel">Onderaannemer</span></p>
+                                <a href="#" id="downloadContract" class="text-purple-600 text-sm hover:underline">📥 Download PDF</a>
+                            </div>
+                            <div class="contract-preview" id="contractPreview">
+                                Laden...
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                            <p class="text-sm font-medium text-gray-700 mb-3">✍️ Digitale ondertekening</p>
+                            <label class="checkbox-card checked border-green-500 bg-green-50" onclick="toggleCheck(this)">
+                                <input type="checkbox" name="akkoord" class="mt-1" required checked>
+                                <span class="text-sm"><strong>Ik ga akkoord</strong> met de modelovereenkomst en verklaar dat alle opgegeven gegevens correct zijn.</span>
+                            </label>
+                            <p class="text-xs text-gray-500 mt-3">Door akkoord te gaan teken je digitaal. Je naam, datum, tijd en IP-adres worden vastgelegd als bewijs.</p>
+                        </div>
+                    </div>
+
+                    <!-- Navigation -->
+                    <div class="flex gap-3 mt-6">
+                        <button type="button" id="prevBtn" onclick="prevStep()" class="btn-secondary flex-1 hidden">← Vorige</button>
+                        <button type="button" id="nextBtn" onclick="nextStep()" class="btn-primary flex-1">Volgende →</button>
+                        <button type="submit" id="submitBtn" class="btn-primary flex-1 hidden" onclick="submitForm(event)">✅ Registratie Voltooien</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 1;
+        let inviteData = null;
+        let companyData = null;
+        let uploadedFiles = {};
+        let signatureData = null;
+        
+        // Canvas setup
+        let canvas, ctx, isDrawing = false;
+        
+        // Init
+        document.addEventListener('DOMContentLoaded', async () => {
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('token');
+            const companyId = params.get('company');
+            
+            if (!token || !companyId) {
+                showError('Ongeldige link', 'De registratielink is ongeldig of incompleet.');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`/api/zzp-invite/${token}?company=${companyId}`);
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    showError('Uitnodiging niet geldig', data.error || 'De uitnodiging is verlopen of niet gevonden.');
+                    return;
+                }
+                
+                inviteData = data.invite;
+                companyData = data.company;
+                
+                document.getElementById('companyName').textContent = companyData.name;
+                document.getElementById('email').value = inviteData.email;
+                if (inviteData.naam) {
+                    document.getElementById('naam').value = inviteData.naam;
+                }
+                
+                // Contract type label
+                document.getElementById('contractTypeLabel').textContent = 
+                    inviteData.contractType === 'aannemer' ? 'Aannemer' : 'Onderaannemer';
+                
+                // Download link
+                const contractFile = inviteData.contractType === 'aannemer' 
+                    ? '/public/docs/Modelovereenkomst_90523.64772.1.0_Aannemer.docx'
+                    : '/public/docs/Modelovereenkomst_90523.64772.2.0_Onderaannemer.docx';
+                document.getElementById('downloadContract').href = contractFile;
+                
+                // Load contract preview
+                loadContractPreview();
+                
+                // Show form
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('formState').classList.remove('hidden');
+                
+            } catch (err) {
+                console.error(err);
+                showError('Fout', 'Er is een fout opgetreden bij het laden.');
+            }
+        });
+        
+        function showError(title, message) {
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('errorState').classList.remove('hidden');
+            document.getElementById('errorTitle').textContent = title;
+            document.getElementById('errorMessage').textContent = message;
+        }
+        
+        function updateStepUI() {
+            // Update dots
+            for (let i = 1; i <= 4; i++) {
+                const dot = document.getElementById('dot' + i);
+                dot.classList.remove('active', 'done');
+                if (i < currentStep) dot.classList.add('done');
+                if (i === currentStep) dot.classList.add('active');
+            }
+            
+            // Update title
+            const titles = ['Persoonlijke gegevens', 'Bedrijfsgegevens', 'Documenten uploaden', 'DBA Verklaring & Contract'];
+            document.getElementById('stepTitle').textContent = `Stap ${currentStep}: ${titles[currentStep - 1]}`;
+            
+            // Show/hide steps
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById('step' + i).classList.toggle('hidden', i !== currentStep);
+            }
+            
+            // Buttons
+            document.getElementById('prevBtn').classList.toggle('hidden', currentStep === 1);
+            document.getElementById('nextBtn').classList.toggle('hidden', currentStep === 4);
+            document.getElementById('submitBtn').classList.toggle('hidden', currentStep !== 4);
+        }
+        
+        function nextStep() {
+            // Validate current step
+            if (!validateStep(currentStep)) return;
+            
+            if (currentStep < 4) {
+                currentStep++;
+                updateStepUI();
+            }
+        }
+        
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateStepUI();
+            }
+        }
+        
+        function validateStep(step) {
+            if (step === 1) {
+                const naam = document.getElementById('naam').value;
+                const email = document.getElementById('email').value;
+                const telefoon = document.getElementById('telefoon').value;
+                const adres = document.getElementById('adres').value;
+                if (!naam || !email || !telefoon || !adres) {
+                    alert('Vul alle verplichte velden in.');
+                    return false;
+                }
+            }
+            if (step === 2) {
+                const kvk = document.getElementById('kvk').value;
+                const btw = document.getElementById('btw').value;
+                const iban = document.getElementById('iban').value;
+                if (!kvk || !btw || !iban) {
+                    alert('Vul alle verplichte velden in.');
+                    return false;
+                }
+            }
+            if (step === 3) {
+                if (!uploadedFiles.ID || !uploadedFiles.KVK || !uploadedFiles.AVB) {
+                    alert('Upload alle verplichte documenten.');
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        function handleFileUpload(type, input) {
+            console.log('handleFileUpload called for:', type);
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                console.log('File selected:', file.name, 'size:', file.size, 'type:', file.type);
+                
+                // Convert to base64
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    console.log('FileReader onload for:', type, 'data length:', e.target.result?.length);
+                    uploadedFiles[type] = {
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        data: e.target.result // base64 data URL
+                    };
+                    
+                    document.getElementById('box' + type).classList.add('has-file');
+                    document.getElementById('label' + type).textContent = '✅ ' + file.name;
+                    console.log('uploadedFiles now:', Object.keys(uploadedFiles));
+                };
+                reader.onerror = function(e) {
+                    console.error('FileReader error for:', type, e);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                console.log('No file selected for:', type);
+            }
+        }
+        
+        function toggleCheck(el) {
+            const checkbox = el.querySelector('input[type="checkbox"]');
+            checkbox.checked = !checkbox.checked;
+            el.classList.toggle('checked', checkbox.checked);
+        }
+        
+        function setupSignatureCanvas() {
+            canvas = document.getElementById('signatureCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Set canvas size - wacht even voor DOM render
+            setTimeout(() => {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width || 300;
+                canvas.height = 150;
+                
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+            }, 100);
+            
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events met passive: false voor preventDefault
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+        
+        function handleTouchStart(e) {
+            e.preventDefault();
+            console.log("Form submit triggered, signature:", !!signatureData);
+            const touch = e.touches[0];
+            startDrawing(touch);
+        }
+        
+        function handleTouchMove(e) {
+            e.preventDefault();
+            console.log("Form submit triggered, signature:", !!signatureData);
+            const touch = e.touches[0];
+            draw(touch);
+        }
+        
+        function startDrawing(e) {
+            isDrawing = true;
+            ctx.beginPath();
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            ctx.moveTo(x, y);
+        }
+        
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+        
+        function stopDrawing() {
+            if (isDrawing) {
+                isDrawing = false;
+                try {
+                    signatureData = canvas.toDataURL('image/png');
+                    console.log('Signature captured, length:', signatureData?.length);
+                } catch (e) {
+                    console.error('Signature capture error:', e);
+                    signatureData = null;
+                }
+            }
+        }
+        
+        function clearSignature() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            signatureData = null;
+        }
+        
+        function loadContractPreview() {
+            const contractType = inviteData?.contractType || 'onderaannemer';
+            const preview = contractType === 'aannemer' 
+                ? getAannemerContractPreview()
+                : getOnderaannemerContractPreview();
+            document.getElementById('contractPreview').innerHTML = preview;
+        }
+        
+        function getOnderaannemerContractPreview() {
+            return `
+                <h4 class="font-bold mb-2">MODELOVEREENKOMST ONDERAANNEMER</h4>
+                <p class="text-xs text-gray-500 mb-3">Nr. 90523.64772.2.0 - Goedgekeurd door Belastingdienst</p>
+                
+                <p class="mb-2"><strong>Partijen:</strong></p>
+                <p class="mb-1">Opdrachtgever: ${companyData?.name || '[Bedrijfsnaam]'}</p>
+                <p class="mb-3">Opdrachtnemer: [Wordt ingevuld met uw gegevens]</p>
+                
+                <p class="mb-2"><strong>Artikel 1 - Opdracht</strong></p>
+                <p class="mb-3 text-gray-600">Opdrachtnemer verricht voor opdrachtgever werkzaamheden als onderaannemer in het stukadoorsbedrijf.</p>
+                
+                <p class="mb-2"><strong>Artikel 2 - Geen werkgeversgezag</strong></p>
+                <p class="mb-3 text-gray-600">Opdrachtgever geeft geen aanwijzingen of instructies over de wijze waarop opdrachtnemer de werkzaamheden uitvoert.</p>
+                
+                <p class="mb-2"><strong>Artikel 3 - Vervanging</strong></p>
+                <p class="mb-3 text-gray-600">Opdrachtnemer mag zich laten vervangen door een derde.</p>
+                
+                <p class="mb-2"><strong>Artikel 4 - Eigen materiaal</strong></p>
+                <p class="mb-3 text-gray-600">Opdrachtnemer maakt gebruik van eigen gereedschap en materialen.</p>
+                
+                <p class="mb-2"><strong>Artikel 5 - Facturatie</strong></p>
+                <p class="mb-3 text-gray-600">Opdrachtnemer factureert zelf voor de verrichte werkzaamheden.</p>
+                
+                <p class="text-xs text-gray-400 mt-4">Dit is een samenvatting. Download het volledige document voor alle voorwaarden.</p>
+            `;
+        }
+        
+        function getAannemerContractPreview() {
+            return `
+                <h4 class="font-bold mb-2">MODELOVEREENKOMST AANNEMER</h4>
+                <p class="text-xs text-gray-500 mb-3">Nr. 90523.64772.1.0 - Goedgekeurd door Belastingdienst</p>
+                
+                <p class="mb-2"><strong>Partijen:</strong></p>
+                <p class="mb-1">Opdrachtgever: ${companyData?.name || '[Bedrijfsnaam]'}</p>
+                <p class="mb-3">Aannemer: [Wordt ingevuld met uw gegevens]</p>
+                
+                <p class="mb-2"><strong>Artikel 1 - Aanneming van werk</strong></p>
+                <p class="mb-3 text-gray-600">Aannemer verbindt zich tot het tot stand brengen van een werk van stoffelijke aard.</p>
+                
+                <p class="mb-2"><strong>Artikel 2 - Zelfstandigheid</strong></p>
+                <p class="mb-3 text-gray-600">Aannemer verricht het werk als zelfstandig ondernemer naar eigen inzicht.</p>
+                
+                <p class="mb-2"><strong>Artikel 3 - Resultaatsverplichting</strong></p>
+                <p class="mb-3 text-gray-600">Aannemer is verantwoordelijk voor het eindresultaat.</p>
+                
+                <p class="text-xs text-gray-400 mt-4">Dit is een samenvatting. Download het volledige document voor alle voorwaarden.</p>
+            `;
+        }
+        
+        // Form submit
+        async function submitForm(e) {
+            if (e) e.preventDefault();
+            console.log("Form submit triggered, signature:", !!signatureData);
+            
+            // Validate DBA checkboxes
+            const checkboxes = document.querySelectorAll('input[name^="dba"]');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            if (!allChecked) {
+                alert('Bevestig alle DBA criteria.');
+                return;
+            }
+            
+            // Check akkoord
+            if (!document.querySelector('input[name="akkoord"]').checked) {
+                alert('Ga akkoord met de overeenkomst.');
+                return;
+            }
+            
+            // Disable button
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Bezig...';
+            
+            try {
+                const params = new URLSearchParams(window.location.search);
+                
+                // Prepare data
+                const formData = {
+                    token: params.get('token'),
+                    companyId: params.get('company'),
+                    zzpData: {
+                        naam: document.getElementById('naam').value,
+                        email: document.getElementById('email').value,
+                        telefoon: document.getElementById('telefoon').value,
+                        adres: document.getElementById('adres').value,
+                        bedrijfsnaam: document.getElementById('bedrijfsnaam').value,
+                        kvk: document.getElementById('kvk').value,
+                        btw: document.getElementById('btw').value,
+                        iban: document.getElementById('iban').value,
+                        specialisatie: document.getElementById('specialisatie').value,
+                        dbaChecklist: {
+                            meerdereOpdrachtgevers: document.querySelector('input[name="dba1"]').checked,
+                            ondernemersrisico: document.querySelector('input[name="dba2"]').checked,
+                            geenWerkgeversgezag: document.querySelector('input[name="dba3"]').checked,
+                            vrijOmTeWeigeren: document.querySelector('input[name="dba4"]').checked,
+                            zelfFactureren: document.querySelector('input[name="dba5"]').checked,
+                            kvkIngeschreven: document.querySelector('input[name="dba6"]').checked
+                        },
+                        documenten: {
+                            id: uploadedFiles.ID || null,
+                            kvk: uploadedFiles.KVK || null,
+                            verzekering: uploadedFiles.AVB || null
+                        }
+                    },
+                    signature: null
+                };
+                
+                console.log('uploadedFiles before send:', Object.keys(uploadedFiles), uploadedFiles.ID ? 'ID:' + uploadedFiles.ID.name : 'no ID');
+                console.log('Sending data, size:', JSON.stringify(formData).length);
+                
+                const res = await fetch('/api/zzp-register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                
+                console.log('Response status:', res.status);
+                const data = await res.json();
+                console.log('Response data:', data);
+                
+                if (res.ok) {
+                    // Show success
+                    document.getElementById('formState').classList.add('hidden');
+                    document.getElementById('successState').classList.remove('hidden');
+                    document.getElementById('portalPin').textContent = data.portalPin;
+                    document.getElementById('loginLink').href = '/medewerker-login.html?c=' + params.get('company');
+                } else {
+                    alert(data.error || 'Er is een fout opgetreden.');
+                    btn.disabled = false;
+                    btn.textContent = '✅ Registratie Voltooien';
+                }
+            } catch (err) {
+                console.error('Full error:', err);
+                alert('Netwerkfout: ' + err.message);
+                btn.disabled = false;
+                btn.textContent = '✅ Registratie Voltooien';
+            }
+        }
+        
+        // Ook form submit event
+        document.getElementById('registrationForm').addEventListener('submit', submitForm);
+    </script>
+</body>
+</html>

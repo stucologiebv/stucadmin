@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/sidebar.js"></script>
+    <script src="/storage-helper.js"></script>
     <style>
         * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: #f5f7fa; margin: 0; }
@@ -448,9 +449,9 @@
         async function loadData() {
             // Load from localStorage (fallback)
             try {
-                opnames = JSON.parse(localStorage.getItem('stuc_opnames') || '[]');
-                zzpers = JSON.parse(localStorage.getItem('stuc_zzpers') || '[]');
-                zzpOpdrachten = JSON.parse(localStorage.getItem('stuc_zzp_opdrachten') || '[]');
+                opnames = StucStorage.getItem('opnames', []);
+                zzpers = StucStorage.getItem('zzpers', []);
+                zzpOpdrachten = StucStorage.getItem('zzp_opdrachten', []);
             } catch (e) {
                 console.error('Error loading localStorage:', e);
             }
@@ -461,14 +462,14 @@
                 if (res.ok) {
                     projects = await res.json();
                     // Sync naar localStorage voor offline/backup
-                    localStorage.setItem('stuc_planning_projecten', JSON.stringify(projects));
+                    StucStorage.setItem('planning_projecten', projects);
                 } else {
                     // Fallback naar localStorage als server niet beschikbaar
-                    projects = JSON.parse(localStorage.getItem('stuc_planning_projecten') || '[]');
+                    projects = StucStorage.getItem('planning_projecten', []);
                 }
             } catch (e) {
                 console.error('Error loading projecten from server:', e);
-                projects = JSON.parse(localStorage.getItem('stuc_planning_projecten') || '[]');
+                projects = StucStorage.getItem('planning_projecten', []);
             }
 
             // Load Moneybird contacts
@@ -528,7 +529,7 @@
         }
 
         function saveProjects() {
-            localStorage.setItem('stuc_planning_projecten', JSON.stringify(projects));
+            StucStorage.setItem('planning_projecten', projects);
         }
 
         // ============================================
@@ -1301,18 +1302,20 @@ Uw stukadoorsbedrijf`;
             showToast('WhatsApp geopend', 'success');
         }
 
-        function sendEmail() {
+        async function sendEmail() {
             // Unified: werkt voor zowel ZZP notificaties als klant bevestigingen
             const zzpData = window.currentZZPNotification || {};
-            const message = document.getElementById('sendText').value;
+            let message = document.getElementById('sendText').value;
             
             let email = null;
             let subject = '';
+            let isZZPNotification = false;
             
             // Check eerst ZZP notificatie, dan selectedProject
             if (zzpData.zzp?.email) {
                 email = zzpData.zzp.email;
                 subject = `Nieuwe opdracht: ${zzpData.project?.titel || zzpData.project?.locatie || 'Project'}`;
+                isZZPNotification = true;
             } else if (selectedProject) {
                 const klant = selectedProject.klant || findContactById(selectedProject.contactId);
                 email = klant?.email;
@@ -1324,10 +1327,78 @@ Uw stukadoorsbedrijf`;
                 return;
             }
             
+            // Als ZZP notificatie: maak opdracht aan en voeg login info toe
+            if (isZZPNotification && zzpData.zzp && zzpData.project) {
+                try {
+                    // Check of ZZP'er als medewerker bestaat, zo ja haal PIN op
+                    const medewerkerRes = await fetch('/api/medewerkers');
+                    const medewerkers = await medewerkerRes.json();
+                    const zzpMedewerker = medewerkers.find(m => m.type === 'zzp' && m.naam.toLowerCase() === zzpData.zzp.naam.toLowerCase());
+                    
+                    // Maak ZZP opdracht aan
+                    const opdrachtRes = await fetch('/api/zzp-opdrachten', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            zzperId: zzpMedewerker?.id || zzpData.zzp.id,
+                            zzperNaam: zzpData.zzp.naam,
+                            projectId: zzpData.project.id,
+                            projectTitel: zzpData.project.titel || zzpData.project.locatie,
+                            locatie: zzpData.project.locatie,
+                            datum: zzpData.project.datum,
+                            details: {
+                                m2: zzpData.project.m2,
+                                bedrag: zzpData.project.bedrag
+                            }
+                        })
+                    });
+                    
+                    // Voeg login info toe aan bericht als medewerker bestaat
+                    if (zzpMedewerker) {
+                        const loginUrl = window.location.origin + '/medewerker-login.html';
+                        message += `\n\n━━━━━━━━━━━━━━━━━━━━━━\n📱 REAGEER VIA DE APP:\n${loginUrl}\nJe pincode: vraag aan je opdrachtgever\n\n✅ Accepteer of ❌ Wijs af direct in de app!`;
+                    }
+                    
+                } catch (e) {
+                    console.warn('Kon ZZP opdracht niet aanmaken:', e);
+                }
+            }
+            
+            // Check of Gmail gekoppeld is
+            try {
+                const statusRes = await fetch('/api/google/status');
+                const status = await statusRes.json();
+                
+                if (status.connected) {
+                    // Verstuur via Gmail API
+                    const res = await fetch('/api/gmail/send', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            to: email,
+                            subject: subject,
+                            body: message
+                        })
+                    });
+                    
+                    if (res.ok) {
+                        closeModal('sendModal');
+                        window.currentZZPNotification = null;
+                        showToast('Email verzonden via Gmail', 'success');
+                        return;
+                    } else {
+                        console.warn('Gmail API failed, fallback naar mailto');
+                    }
+                }
+            } catch (e) {
+                console.warn('Gmail check failed, fallback naar mailto:', e);
+            }
+            
+            // Fallback: open mailto link
             window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`, '_blank');
             closeModal('sendModal');
             window.currentZZPNotification = null;
-            showToast('Email geopend', 'success');
+            showToast('Email geopend in mail app', 'success');
         }
 
         async function sendCalendarInvite() {
@@ -1646,5 +1717,6 @@ END:VCALENDAR`;
         }
     </script>
 <script src="/sidebar.js"></script>
+    <script src="/storage-helper.js"></script>
 </body>
 </html>

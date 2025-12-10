@@ -9,6 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/sidebar.js"></script>
+    <script src="/storage-helper.js"></script>
     <style>
         * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: #f5f7fa; }
@@ -404,9 +405,9 @@
                     kits = result.data.kits || [];
                     prijsHistorie = result.data.prijsHistorie || [];
                     // Also update localStorage as backup
-                    localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
-                    localStorage.setItem('stuc_materiaal_kits', JSON.stringify(kits)); syncToServer();
-                    localStorage.setItem('stuc_prijs_historie', JSON.stringify(prijsHistorie));
+                    StucStorage.setItem('materialen_db', materialen); syncToServer();
+                    StucStorage.setItem('materiaal_kits', kits); syncToServer();
+                    StucStorage.setItem('prijs_historie', prijsHistorie);
                     // Loaded from server
                     return;
                 }
@@ -416,9 +417,9 @@
         }
         
         // Fallback to localStorage
-        materialen = JSON.parse(localStorage.getItem('stuc_materialen_db') || '[]');
-        kits = JSON.parse(localStorage.getItem('stuc_materiaal_kits') || '[]');
-        prijsHistorie = JSON.parse(localStorage.getItem('stuc_prijs_historie') || '[]');
+        materialen = StucStorage.getItem('materialen_db', []);
+        kits = StucStorage.getItem('materiaal_kits', []);
+        prijsHistorie = StucStorage.getItem('prijs_historie', []);
     }
 
     async function loadSuppliers() {
@@ -571,7 +572,7 @@
             showToast('Sync opgeslagen in browser', 'warning');
         }
         
-        localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
+        StucStorage.setItem('materialen_db', materialen); syncToServer();
     }
     // ============================================
     // RENDER FUNCTIONS (voeg toe aan part1 script)
@@ -913,7 +914,7 @@
             
             // Add to alerts
             alerts = [...alerts, ...compareData.alerts];
-            localStorage.setItem('stuc_alerts', JSON.stringify(alerts));
+            StucStorage.setItem('alerts', alerts);
             
             updateStats();
             showToast(`✅ ${compareData.alerts.length} afwijkingen gevonden`, compareData.alerts.length > 0 ? 'warning' : 'success');
@@ -1162,7 +1163,7 @@
             showToast('✅ Materiaal toegevoegd', 'success');
         }
         
-        localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
+        StucStorage.setItem('materialen_db', materialen); syncToServer();
         closeModal('addMaterialModal');
         resetMaterialForm();
         updateFilterOptions();
@@ -1175,7 +1176,7 @@
         
         if (confirm('Materiaal verwijderen?')) {
             materialen = materialen.filter(m => m.id !== id);
-            localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
+            StucStorage.setItem('materialen_db', materialen); syncToServer();
             closeModal('addMaterialModal');
             resetMaterialForm();
             showToast('🗑️ Materiaal verwijderd', 'info');
@@ -1453,7 +1454,7 @@
             showToast('✅ Kit aangemaakt', 'success');
         }
         
-        localStorage.setItem('stuc_materiaal_kits', JSON.stringify(kits)); syncToServer();
+        StucStorage.setItem('materiaal_kits', kits); syncToServer();
         closeModal('kitModal');
         renderContent();
     }
@@ -1464,7 +1465,7 @@
         
         if (confirm('Kit verwijderen?')) {
             kits = kits.filter(k => k.id !== id);
-            localStorage.setItem('stuc_materiaal_kits', JSON.stringify(kits)); syncToServer();
+            StucStorage.setItem('materiaal_kits', kits); syncToServer();
             closeModal('kitModal');
             showToast('🗑️ Kit verwijderd', 'info');
             renderContent();
@@ -1484,7 +1485,7 @@
         showToast(`📋 Kit "${kit.name}" klaar voor gebruik`, 'success');
         
         // Store for calculator integration
-        localStorage.setItem('stuc_selected_kit', JSON.stringify(kit));
+        StucStorage.setItem('selected_kit', kit);
     }
 
     // ============================================
@@ -1652,11 +1653,11 @@
     }
 
     function saveRecentProject(name, cost) {
-        let recent = JSON.parse(localStorage.getItem('stuc_recent_projects') || '[]');
+        let recent = StucStorage.getItem('recent_projects', []);
         recent = recent.filter(r => r.name !== name);
         recent.unshift({ name, cost, date: new Date().toISOString() });
         recent = recent.slice(0, 5);
-        localStorage.setItem('stuc_recent_projects', JSON.stringify(recent));
+        StucStorage.setItem('recent_projects', recent);
     }
 
     // ============================================
@@ -1927,7 +1928,7 @@
             }
         }
         
-        localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
+        StucStorage.setItem('materialen_db', materialen); syncToServer();
         
         let message = '✅ Import voltooid: ';
         if (added > 0) message += added + ' nieuw';
@@ -1949,7 +1950,7 @@
     function clearAllMaterials() {
         if (confirm('Weet je zeker dat je ALLE materialen wilt verwijderen? Dit kan niet ongedaan worden!')) {
             materialen = [];
-            localStorage.removeItem('stuc_materialen_db');
+            StucStorage.removeItem('materialen_db');
             showToast('Alle materialen verwijderd', 'success');
             updateFilterOptions();
             updateStats();
@@ -1959,5 +1960,6 @@
     </script>
 <script src="/data-sync.js"></script>
 <script src="/sidebar.js"></script>
+    <script src="/storage-helper.js"></script>
 </body>
 </html>

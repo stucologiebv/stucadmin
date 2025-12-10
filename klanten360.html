@@ -1196,7 +1196,7 @@
             const name = getName(selectedCustomer);
             document.getElementById('emailTo').value = selectedCustomer.email;
             document.getElementById('emailSubject').value = '';
-            document.getElementById('emailBody').value = `Geachte ${name},\n\n\n\nMet vriendelijke groet,\nStucologie B.V.`;
+            document.getElementById('emailBody').value = `Geachte ${name},\n\n\n\nMet vriendelijke groet,\n${window.companyName || 'Uw Stukadoor'}`;
             openModal('emailModal');
         }
         

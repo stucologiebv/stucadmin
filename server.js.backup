@@ -15,44 +15,6 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // ============================================
-// 🛡️ CSRF PROTECTION
-// ============================================
-const csrfTokens = new Map(); // sessionId -> token
-
-function generateCsrfToken(sessionId) {
-    const token = crypto.randomBytes(32).toString('hex');
-    csrfTokens.set(sessionId, token);
-    // Clean old tokens (older than 24h)
-    const now = Date.now();
-    for (const [key, data] of csrfTokens) {
-        if (typeof data === 'object' && data.created && now - data.created > 86400000) {
-            csrfTokens.delete(key);
-        }
-    }
-    return token;
-}
-
-function validateCsrfToken(req) {
-    // Skip CSRF for safe methods
-    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return true;
-    
-    // Skip for webhooks and API calls with secret headers
-    if (req.headers['x-webhook-secret']) return true;
-    if (req.headers['x-api-key']) return true;
-    
-    // Get session ID
-    const cookies = parseCookies ? parseCookies(req) : {};
-    const sessionId = cookies.stucadmin_session || cookies.medewerker_session;
-    if (!sessionId) return true; // No session = public endpoint
-    
-    // Check token from header or body
-    const token = req.headers['x-csrf-token'] || req.body?._csrf;
-    const validToken = csrfTokens.get(sessionId);
-    
-    return token && token === validToken;
-}
-
-// ============================================
 // ðŸ” GEAVANCEERDE BEVEILIGING
 // ============================================
 
@@ -548,73 +510,6 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // ============================================
-// SECURITY HEADERS
-// ============================================
-app.use((req, res, next) => {
-    // Content Security Policy
-    res.setHeader('Content-Security-Policy', 
-        "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net; " +
-        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://cdnjs.cloudflare.com; " +
-        "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; " +
-        "img-src 'self' data: blob: https:; " +
-        "connect-src 'self' https://api.moneybird.com https://gmail.googleapis.com https://www.googleapis.com https://nominatim.openstreetmap.org; " +
-        "frame-ancestors 'none';"
-    );
-    
-    // Other security headers
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(self), microphone=()');
-    
-    next();
-});
-
-// CSRF Protection Middleware (for state-changing requests)
-app.use((req, res, next) => {
-    // Skip CSRF for safe methods
-    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-        return next();
-    }
-    
-    // Skip for webhooks and public endpoints
-    const publicPaths = [
-        '/api/auth/login',
-        '/api/auth/register', 
-        '/api/auth/logout',
-        '/api/auth/forgot-password',
-        '/api/auth/reset-password',
-        '/api/medewerker/login',
-        '/api/medewerker/logout',
-        '/api/zzp-register',
-        '/api/offerteaanvragen/website',
-        '/api/webhook/',
-        '/api/mollie/webhook'
-    ];
-    
-    if (publicPaths.some(p => req.path.startsWith(p))) {
-        return next();
-    }
-    
-    // Skip if webhook secret provided
-    if (req.headers['x-webhook-secret']) {
-        return next();
-    }
-    
-    // For now, log CSRF violations but don't block (soft enforcement)
-    // TODO: Enable strict enforcement after frontend is updated
-    if (!validateCsrfToken(req)) {
-        console.log(`⚠️ CSRF Warning: ${req.method} ${req.path} - Token missing/invalid`);
-        // Uncomment below line to enable strict enforcement:
-        // return res.status(403).json({ error: 'CSRF token invalid' });
-    }
-    
-    next();
-});
-
-// ============================================
 // REQUEST LOGGING & PERFORMANCE MONITORING
 // ============================================
 
@@ -626,78 +521,6 @@ const requestStats = {
     byHour: new Array(24).fill(0),
     startTime: Date.now()
 };
-
-// ============================================
-// AUDIT LOGGING
-// ============================================
-const AUDIT_LOG_FILE = path.join(__dirname, '.data', 'audit-log.json');
-const auditLog = [];
-const MAX_AUDIT_ENTRIES = 10000;
-
-function logAudit(action, details, req) {
-    const cookies = parseCookies ? parseCookies(req) : {};
-    const sessionId = cookies.stucadmin_session || cookies.medewerker_session;
-    let session = null;
-    let companyId = null;
-    let username = null;
-    
-    if (sessionId && sessions.has(sessionId)) {
-        session = sessions.get(sessionId);
-        companyId = session.bedrijf_id;
-        username = session.user;
-    } else if (sessionId && typeof medewerkerSessions !== 'undefined' && medewerkerSessions.has(sessionId)) {
-        session = medewerkerSessions.get(sessionId);
-        companyId = session.companyId;
-        username = session.medewerker;
-    }
-    
-    const entry = {
-        timestamp: new Date().toISOString(),
-        action,
-        details,
-        companyId,
-        username,
-        ip: getClientIP(req),
-        userAgent: req.headers['user-agent']?.substring(0, 100),
-        path: req.path,
-        method: req.method
-    };
-    
-    auditLog.push(entry);
-    
-    // Keep log size manageable
-    if (auditLog.length > MAX_AUDIT_ENTRIES) {
-        auditLog.splice(0, 1000); // Remove oldest 1000 entries
-    }
-    
-    // Log sensitive actions to console
-    const sensitiveActions = ['LOGIN', 'LOGOUT', 'PASSWORD_CHANGE', 'DATA_DELETE', 'SETTINGS_CHANGE', 'USER_CREATE', 'IMPERSONATE'];
-    if (sensitiveActions.includes(action)) {
-        console.log(`📋 AUDIT: ${action} by ${username || 'anonymous'} (${companyId || 'no-company'})`);
-    }
-}
-
-// Save audit log periodically (every 5 minutes)
-setInterval(() => {
-    try {
-        if (auditLog.length > 0) {
-            fs.writeFileSync(AUDIT_LOG_FILE, JSON.stringify(auditLog.slice(-5000), null, 2));
-        }
-    } catch (e) {
-        console.error('Failed to save audit log:', e.message);
-    }
-}, 5 * 60 * 1000);
-
-// Load audit log on startup
-try {
-    if (fs.existsSync(AUDIT_LOG_FILE)) {
-        const data = JSON.parse(fs.readFileSync(AUDIT_LOG_FILE, 'utf8'));
-        auditLog.push(...data);
-        console.log(`📋 Loaded ${auditLog.length} audit log entries`);
-    }
-} catch (e) {
-    console.log('No existing audit log found');
-}
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -939,54 +762,6 @@ app.use((req, res, next) => {
     }
     next();
 });
-
-// Block access to server-side files and sensitive directories
-app.use((req, res, next) => {
-    const blockedPatterns = [
-        /\.js$/i,           // Block all .js files (server code)
-        /\.json$/i,         // Block JSON files (except specific ones)
-        /^\/\.env/i,        // Block .env
-        /^\/\.data/i,       // Block .data directory
-        /^\/\.git/i,        // Block .git
-        /^\/node_modules/i, // Block node_modules
-        /^\/lib\//i,        // Block lib directory
-        /\.log$/i,          // Block log files
-        /\.md$/i,           // Block markdown files
-        /\.txt$/i,          // Block txt files
-        /\.sh$/i,           // Block shell scripts
-        /\.py$/i,           // Block python scripts
-        /\.backup/i,        // Block backup files
-        /\.bak$/i           // Block .bak files
-    ];
-    
-    // Allow specific files
-    const allowedFiles = [
-        '/manifest.json',
-        '/sw.js',
-        '/sidebar.js',
-        '/storage-helper.js',
-        '/zzp-wizard.js',
-        '/data-sync.js'
-    ];
-    
-    const requestPath = req.path.toLowerCase();
-    
-    // Check if explicitly allowed
-    if (allowedFiles.includes(requestPath)) {
-        return next();
-    }
-    
-    // Check if blocked
-    for (const pattern of blockedPatterns) {
-        if (pattern.test(requestPath)) {
-            console.log(`🚫 Blocked access to: ${req.path}`);
-            return res.status(404).send('Not found');
-        }
-    }
-    
-    next();
-});
-
 app.use(express.static(path.join(__dirname)));
 
 // Root redirect
@@ -1044,7 +819,6 @@ app.post('/api/auth/login', async (req, res) => {
     // Success! Create session
     recordLoginAttempt(ip, true);
     logLogin(username, ip, true);
-    logAudit('LOGIN', { username, success: true }, req);
     
     const sessionId = crypto.randomBytes(32).toString('hex');
     sessions.set(sessionId, {
@@ -1081,7 +855,7 @@ app.post('/api/auth/login', async (req, res) => {
     });
     
     // Preload cache in background (don't wait for it)
-    preloadCache(user.bedrijf_id).catch(e => console.log('Preload error:', e.message));
+    preloadCache().catch(e => console.log('Preload error:', e.message));
 });
 
 // Change password endpoint
@@ -1355,14 +1129,10 @@ app.get('/api/auth/check', (req, res) => {
         const session = sessions.get(sessionId);
         if (Date.now() <= session.expires) {
             const user = users[session.user.toLowerCase()];
-            // Generate CSRF token for this session
-            const csrfToken = generateCsrfToken(sessionId);
             return res.json({ 
                 authenticated: true, 
                 user: session.user,
-                companyId: session.bedrijf_id,  // For localStorage isolation
-                mustChangePassword: user?.mustChangePassword || false,
-                csrfToken: csrfToken  // Include CSRF token
+                mustChangePassword: user?.mustChangePassword || false
             });
         }
         sessions.delete(sessionId);
@@ -1659,17 +1429,13 @@ app.post('/api/data/sync', requireAuth, (req, res) => {
 
 // Get all data at once (for initial load)
 app.get('/api/data/sync/all', requireAuth, (req, res) => {
-    const companyId = req.session?.bedrijf_id;
-    if (!companyId) {
-        return res.status(400).json({ success: false, error: 'Geen bedrijf geselecteerd' });
-    }
     res.json({
         success: true,
         data: {
-            materialen: loadCompanyData(companyId, 'materialen') || [],
-            opnames: loadCompanyData(companyId, 'opnames') || [],
-            projecten: loadCompanyData(companyId, 'projecten') || [],
-            settings: loadCompanyData(companyId, 'settings') || {}
+            materialen: loadData('materialen') || [],
+            opnames: loadData('opnames') || [],
+            projecten: loadData('projecten') || [],
+            settings: loadData('settings') || {}
         }
     });
 });
@@ -1708,8 +1474,6 @@ function getCredentialsFromRequest(req) {
 // Contacts
 app.get('/api/contacts', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         // Check cache first (skip if refresh=true)
         if (req.query.refresh !== 'true') {
             const cached = getCached('contacts');
@@ -1724,7 +1488,7 @@ app.get('/api/contacts', requireAuth, async (req, res) => {
         let hasMore = true;
         console.log('ðŸ”„ Fetching contacts from Moneybird...');
         while (hasMore) {
-            const contacts = await moneybirdRequest(`/contacts.json?page=${page}&per_page=100`, credentials);
+            const contacts = await moneybirdRequest(`/contacts.json?page=${page}&per_page=100`);
             console.log(`ðŸ“„ Page ${page}: ${contacts.length} contacts`);
             if (contacts.length > 0) {
                 allContacts = allContacts.concat(contacts);
@@ -1736,8 +1500,7 @@ app.get('/api/contacts', requireAuth, async (req, res) => {
         }
         
         console.log(`âœ… Total contacts loaded: ${allContacts.length}`);
-        const companyIdForCache = req.session?.bedrijf_id;
-        setCache('contacts', allContacts, companyIdForCache);
+        setCache('contacts', allContacts);
         res.json(allContacts);
     } catch (error) {
         handleApiError(res, error, 'Contacts');
@@ -1746,13 +1509,11 @@ app.get('/api/contacts', requireAuth, async (req, res) => {
 
 app.post('/api/contacts', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        clearCache('contacts', req.session?.bedrijf_id); // Clear cache when adding new contact
+        clearCache('contacts'); // Clear cache when adding new contact
         const contact = await moneybirdRequest('/contacts.json', {
             method: 'POST',
             body: JSON.stringify(req.body)
-        }, credentials);
+        });
         res.json(contact);
     } catch (error) {
         handleApiError(res, error, 'Contact create');
@@ -1761,9 +1522,7 @@ app.post('/api/contacts', requireAuth, async (req, res) => {
 
 app.get('/api/contacts/:id', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const contact = await moneybirdRequest(`/contacts/${req.params.id}.json`, credentials);
+        const contact = await moneybirdRequest(`/contacts/${req.params.id}.json`);
         res.json(contact);
     } catch (error) {
         handleApiError(res, error, 'Contact get');
@@ -1772,12 +1531,10 @@ app.get('/api/contacts/:id', requireAuth, async (req, res) => {
 
 app.patch('/api/contacts/:id', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         const contact = await moneybirdRequest(`/contacts/${req.params.id}.json`, {
             method: 'PATCH',
             body: JSON.stringify(req.body)
-        }, credentials);
+        });
         res.json(contact);
     } catch (error) {
         handleApiError(res, error, 'Contact update');
@@ -1787,8 +1544,6 @@ app.patch('/api/contacts/:id', requireAuth, async (req, res) => {
 // Invoices
 app.get('/api/invoices', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         // Check cache first
         const cached = getCached('invoices');
         if (cached) return res.json(cached);
@@ -1797,7 +1552,7 @@ app.get('/api/invoices', requireAuth, async (req, res) => {
         let page = 1;
         let hasMore = true;
         while (hasMore) {
-            const invoices = await moneybirdRequest(`/sales_invoices.json?page=${page}&per_page=100`, credentials);
+            const invoices = await moneybirdRequest(`/sales_invoices.json?page=${page}&per_page=100`);
             if (invoices.length > 0) {
                 allInvoices = allInvoices.concat(invoices);
                 page++;
@@ -1807,7 +1562,7 @@ app.get('/api/invoices', requireAuth, async (req, res) => {
             }
         }
         
-        setCache('invoices', allInvoices, req.session?.bedrijf_id);
+        setCache('invoices', allInvoices);
         res.json(allInvoices);
     } catch (error) {
         handleApiError(res, error, 'Invoices');
@@ -1816,13 +1571,11 @@ app.get('/api/invoices', requireAuth, async (req, res) => {
 
 app.post('/api/invoices', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        clearCache('invoices', req.session?.bedrijf_id); // Clear cache when adding new invoice
+        clearCache('invoices'); // Clear cache when adding new invoice
         const invoice = await moneybirdRequest('/sales_invoices.json', {
             method: 'POST',
             body: JSON.stringify(req.body)
-        }, credentials);
+        });
         res.json(invoice);
     } catch (error) {
         handleApiError(res, error, 'Invoice create');
@@ -1831,9 +1584,7 @@ app.post('/api/invoices', requireAuth, async (req, res) => {
 
 app.get('/api/invoices/:id', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const invoice = await moneybirdRequest(`/sales_invoices/${req.params.id}.json`, credentials);
+        const invoice = await moneybirdRequest(`/sales_invoices/${req.params.id}.json`);
         res.json(invoice);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -1843,9 +1594,7 @@ app.get('/api/invoices/:id', requireAuth, async (req, res) => {
 // Estimates/Quotes
 app.get('/api/estimates', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const estimates = await moneybirdRequest('/estimates.json', credentials);
+        const estimates = await moneybirdRequest('/estimates.json');
         res.json(estimates);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -1854,12 +1603,10 @@ app.get('/api/estimates', requireAuth, async (req, res) => {
 
 app.post('/api/estimates', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         const estimate = await moneybirdRequest('/estimates.json', {
             method: 'POST',
             body: JSON.stringify(req.body)
-        }, credentials);
+        });
         res.json(estimate);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -1871,8 +1618,6 @@ app.post('/api/estimates', requireAuth, async (req, res) => {
 // ============================================
 app.post('/api/offerte', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         // Haal BTW 21% rate ID op (gecached)
         const taxRateId = await getTaxRate21();
         
@@ -2035,7 +1780,7 @@ app.post('/api/offerte', requireAuth, async (req, res) => {
                 const newContact = await moneybirdRequest('/contacts.json', {
                     method: 'POST',
                     body: JSON.stringify(contactPayload)
-                }, credentials);
+                });
                 estimatePayload.estimate.contact_id = newContact.id;
             } catch (e) {
                 console.log('Contact aanmaken mislukt, offerte zonder contact:', e.message);
@@ -2046,7 +1791,7 @@ app.post('/api/offerte', requireAuth, async (req, res) => {
         const estimate = await moneybirdRequest('/estimates.json', {
             method: 'POST',
             body: JSON.stringify(estimatePayload)
-        }, credentials);
+        });
         
         console.log(`ðŸ“„ Offerte aangemaakt in Moneybird: ${estimate.estimate_id}`);
         
@@ -2066,9 +1811,7 @@ app.post('/api/offerte', requireAuth, async (req, res) => {
 // Products
 app.get('/api/products', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const products = await moneybirdRequest('/products.json', credentials);
+        const products = await moneybirdRequest('/products.json');
         res.json(products);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -2077,12 +1820,10 @@ app.get('/api/products', requireAuth, async (req, res) => {
 
 app.post('/api/products', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         const product = await moneybirdRequest('/products.json', {
             method: 'POST',
             body: JSON.stringify(req.body)
-        }, credentials);
+        });
         res.json(product);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -2092,9 +1833,7 @@ app.post('/api/products', requireAuth, async (req, res) => {
 // Purchase Invoices (basis)
 app.get('/api/purchase_invoices', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const purchases = await moneybirdRequest('/documents/purchase_invoices.json', credentials);
+        const purchases = await moneybirdRequest('/documents/purchase_invoices.json');
         res.json(purchases);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -2104,9 +1843,7 @@ app.get('/api/purchase_invoices', requireAuth, async (req, res) => {
 // Receipts
 app.get('/api/receipts', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const receipts = await moneybirdRequest('/documents/receipts.json', credentials);
+        const receipts = await moneybirdRequest('/documents/receipts.json');
         res.json(receipts);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -2116,9 +1853,7 @@ app.get('/api/receipts', requireAuth, async (req, res) => {
 // Financial Accounts
 app.get('/api/financial_accounts', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const accounts = await moneybirdRequest('/financial_accounts.json', credentials);
+        const accounts = await moneybirdRequest('/financial_accounts.json');
         res.json(accounts);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -2128,9 +1863,7 @@ app.get('/api/financial_accounts', requireAuth, async (req, res) => {
 // Ledger Accounts
 app.get('/api/ledger_accounts', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const ledgers = await moneybirdRequest('/ledger_accounts.json', credentials);
+        const ledgers = await moneybirdRequest('/ledger_accounts.json');
         res.json(ledgers);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -2140,14 +1873,12 @@ app.get('/api/ledger_accounts', requireAuth, async (req, res) => {
 // Tax Rates
 app.get('/api/tax_rates', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         // Check cache first - tax rates veranderen bijna nooit
-        const cached = getCached('taxRates', req.session?.bedrijf_id);
+        const cached = getCached('taxRates');
         if (cached) return res.json(cached);
         
-        const taxRates = await moneybirdRequest('/tax_rates.json', credentials);
-        setCache('taxRates', taxRates, req.session?.bedrijf_id);
+        const taxRates = await moneybirdRequest('/tax_rates.json');
+        setCache('taxRates', taxRates);
         res.json(taxRates);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -2176,9 +1907,7 @@ app.get('/api/cache/status', requireAuth, (req, res) => {
 // Workflows
 app.get('/api/workflows', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const workflows = await moneybirdRequest('/workflows.json', credentials);
+        const workflows = await moneybirdRequest('/workflows.json');
         res.json(workflows);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -2188,9 +1917,7 @@ app.get('/api/workflows', requireAuth, async (req, res) => {
 // Time Entries
 app.get('/api/time_entries', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const timeEntries = await moneybirdRequest('/time_entries.json', credentials);
+        const timeEntries = await moneybirdRequest('/time_entries.json');
         res.json(timeEntries);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -2199,12 +1926,10 @@ app.get('/api/time_entries', requireAuth, async (req, res) => {
 
 app.post('/api/time_entries', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         const timeEntry = await moneybirdRequest('/time_entries.json', {
             method: 'POST',
             body: JSON.stringify(req.body)
-        }, credentials);
+        });
         res.json(timeEntry);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -2214,9 +1939,7 @@ app.post('/api/time_entries', requireAuth, async (req, res) => {
 // Projects
 app.get('/api/projects', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const projects = await moneybirdRequest('/projects.json', credentials);
+        const projects = await moneybirdRequest('/projects.json');
         res.json(projects);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -2225,12 +1948,10 @@ app.get('/api/projects', requireAuth, async (req, res) => {
 
 app.post('/api/projects', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         const project = await moneybirdRequest('/projects.json', {
             method: 'POST',
             body: JSON.stringify(req.body)
-        }, credentials);
+        });
         res.json(project);
     } catch (error) {
         handleApiError(res, error, 'API');
@@ -2239,15 +1960,6 @@ app.post('/api/projects', requireAuth, async (req, res) => {
 
 // Health check met metrics (public)
 app.get('/api/health', (req, res) => {
-    // Publieke health check - alleen basis status voor load balancers/monitoring
-    res.json({ 
-        status: 'OK', 
-        timestamp: new Date().toISOString()
-    });
-});
-
-// Uitgebreide health check (alleen voor admins)
-app.get('/api/health/detailed', requireAuth, (req, res) => {
     const memUsage = process.memoryUsage();
     res.json({ 
         status: 'OK', 
@@ -2261,6 +1973,11 @@ app.get('/api/health/detailed', requireAuth, (req, res) => {
         sessions: {
             admin: sessions.size,
             medewerker: medewerkerSessions.size
+        },
+        data: {
+            materialen: materialenDB?.length || 0,
+            medewerkers: medewerkers?.length || 0,
+            projecten: projecten?.length || 0
         }
     });
 });
@@ -2302,8 +2019,6 @@ function saveProjectKosten(companyId, data) {
 // Haal alle inkoopfacturen op met filters
 app.get('/api/purchase-invoices', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         const { period, supplier } = req.query;
         const fetch = (await import('node-fetch')).default;
         
@@ -2315,16 +2030,11 @@ app.get('/api/purchase-invoices', requireAuth, async (req, res) => {
         if (period === '6m') startDate.setMonth(new Date().getMonth() - 6);
         if (period === '1y') startDate.setFullYear(new Date().getFullYear() - 1);
         
-        if (!credentials || !credentials.token || !credentials.adminId) {
-            return res.status(400).json({ error: 'Geen Moneybird credentials voor dit bedrijf' });
-        }
-        const apiUrl = `https://moneybird.com/api/v2/${credentials.adminId}`;
-        
         const response = await fetch(
-            `${apiUrl}/documents/purchase_invoices.json?filter=period:${startDate.toISOString().split('T')[0]}..${new Date().toISOString().split('T')[0]}`,
+            `${MONEYBIRD_API_URL}/documents/purchase_invoices.json?filter=period:${startDate.toISOString().split('T')[0]}..${new Date().toISOString().split('T')[0]}`,
             {
                 headers: {
-                    'Authorization': `Bearer ${credentials.token}`,
+                    'Authorization': `Bearer ${MONEYBIRD_API_TOKEN}`,
                     'Content-Type': 'application/json'
                 }
             }
@@ -2372,19 +2082,12 @@ app.get('/api/purchase-invoices', requireAuth, async (req, res) => {
 // Haal factuurregels (materialen) op van specifieke factuur
 app.get('/api/purchase-invoices/:id/details', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        if (!credentials || !credentials.token || !credentials.adminId) {
-            return res.status(400).json({ error: 'Geen Moneybird credentials voor dit bedrijf' });
-        }
-        const apiUrl = `https://moneybird.com/api/v2/${credentials.adminId}`;
-        
         const fetch = (await import('node-fetch')).default;
         const response = await fetch(
-            `${apiUrl}/documents/purchase_invoices/${req.params.id}.json`,
+            `${MONEYBIRD_API_URL}/documents/purchase_invoices/${req.params.id}.json`,
             {
                 headers: {
-                    'Authorization': `Bearer ${credentials.token}`,
+                    'Authorization': `Bearer ${MONEYBIRD_API_TOKEN}`,
                     'Content-Type': 'application/json'
                 }
             }
@@ -2426,8 +2129,6 @@ app.get('/api/purchase-invoices/:id/details', requireAuth, async (req, res) => {
 
 app.post('/api/materials/compare-prices', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         const { invoiceMaterials, databaseMaterials } = req.body;
         
         const comparisons = [];
@@ -2729,25 +2430,18 @@ app.delete('/api/material-kits/:id', requireAuth, (req, res) => {
 
 app.post('/api/projects/cost-analysis', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        if (!credentials || !credentials.token || !credentials.adminId) {
-            return res.status(400).json({ error: 'Geen Moneybird credentials voor dit bedrijf' });
-        }
-        const apiUrl = `https://moneybird.com/api/v2/${credentials.adminId}`;
-        
         const { projectName, contactId, startDate, endDate } = req.body;
         const fetch = (await import('node-fetch')).default;
         
         // Haal alle facturen op voor dit project/klant
-        let url = `${apiUrl}/documents/purchase_invoices.json`;
+        let url = `${MONEYBIRD_API_URL}/documents/purchase_invoices.json`;
         if (startDate && endDate) {
             url += `?filter=period:${startDate}..${endDate}`;
         }
         
         const response = await fetch(url, {
             headers: {
-                'Authorization': `Bearer ${credentials.token}`,
+                'Authorization': `Bearer ${MONEYBIRD_API_TOKEN}`,
                 'Content-Type': 'application/json'
             }
         });
@@ -2836,24 +2530,17 @@ app.post('/api/projects/cost-analysis', requireAuth, async (req, res) => {
 
 app.get('/api/purchase-history', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         const { months = 12, supplier, category } = req.query;
         const fetch = (await import('node-fetch')).default;
         
         const startDate = new Date();
         startDate.setMonth(startDate.getMonth() - parseInt(months));
         
-        if (!credentials || !credentials.token || !credentials.adminId) {
-            return res.status(400).json({ error: 'Geen Moneybird credentials voor dit bedrijf' });
-        }
-        const apiUrl = `https://moneybird.com/api/v2/${credentials.adminId}`;
-        
         const response = await fetch(
-            `${apiUrl}/documents/purchase_invoices.json?filter=period:${startDate.toISOString().split('T')[0]}..${new Date().toISOString().split('T')[0]}`,
+            `${MONEYBIRD_API_URL}/documents/purchase_invoices.json?filter=period:${startDate.toISOString().split('T')[0]}..${new Date().toISOString().split('T')[0]}`,
             {
                 headers: {
-                    'Authorization': `Bearer ${credentials.token}`,
+                    'Authorization': `Bearer ${MONEYBIRD_API_TOKEN}`,
                     'Content-Type': 'application/json'
                 }
             }
@@ -2927,26 +2614,18 @@ app.get('/api/purchase-history', requireAuth, async (req, res) => {
 
 app.get('/api/suppliers', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        if (!credentials || !credentials.token || !credentials.adminId) {
-            return res.status(400).json({ error: 'Geen Moneybird credentials voor dit bedrijf' });
-        }
-        const companyIdSup = req.session?.bedrijf_id;
-        const apiUrl = `https://moneybird.com/api/v2/${credentials.adminId}`;
-        
         // Check cache first - suppliers veranderen weinig
-        const cached = getCached('suppliers', companyIdSup);
+        const cached = getCached('suppliers');
         if (cached) return res.json(cached);
         
         const fetch = (await import('node-fetch')).default;
         
         // Haal eerst inkoopfacturen op om te zien welke contacten echt leveranciers zijn
         const purchaseRes = await fetch(
-            `${apiUrl}/documents/purchase_invoices.json`,
+            `${MONEYBIRD_API_URL}/documents/purchase_invoices.json`,
             {
                 headers: {
-                    'Authorization': `Bearer ${credentials.token}`,
+                    'Authorization': `Bearer ${MONEYBIRD_API_TOKEN}`,
                     'Content-Type': 'application/json'
                 }
             }
@@ -2976,7 +2655,7 @@ app.get('/api/suppliers', requireAuth, async (req, res) => {
             .sort((a, b) => a.name.localeCompare(b.name));
         
         const result = { success: true, suppliers, count: suppliers.length };
-        setCache('suppliers', result, req.session?.bedrijf_id);
+        setCache('suppliers', result);
         res.json(result);
         
     } catch (error) {
@@ -3015,28 +2694,14 @@ console.log('âœ… Materialen Pro module geladen');
 
 // Start OAuth flow - redirect to Google
 app.get('/api/google/auth', requireAuth, (req, res) => {
-    const companyId = req.session?.bedrijf_id;
     const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send');
-    // Pass companyId in state parameter for callback
-    const state = encodeURIComponent(JSON.stringify({ companyId }));
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}&response_type=code&scope=${scope}&access_type=offline&prompt=consent&state=${state}`;
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
     res.redirect(authUrl);
 });
 
 // OAuth callback - exchange code for tokens
 app.get('/api/google/callback', async (req, res) => {
-    const { code, error, state } = req.query;
-    
-    // Parse companyId from state
-    let companyId = 'default';
-    try {
-        if (state) {
-            const stateData = JSON.parse(decodeURIComponent(state));
-            companyId = stateData.companyId || 'default';
-        }
-    } catch (e) {
-        console.log('Could not parse state:', e.message);
-    }
+    const { code, error } = req.query;
     
     if (error) {
         return res.redirect('/planning.html?google_error=' + error);
@@ -3068,15 +2733,15 @@ app.get('/api/google/callback', async (req, res) => {
             return res.redirect('/planning.html?google_error=' + tokens.error);
         }
         
-        // Store tokens per company (multi-tenant)
-        googleTokens.set(companyId, {
+        // Store tokens (in production, store per user in database)
+        googleTokens.set('default', {
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token,
             expires_at: Date.now() + (tokens.expires_in * 1000)
         });
         saveGoogleTokens();
         
-        console.log(`✅ Google Calendar connected for company ${companyId}!`);
+        console.log('âœ… Google Calendar connected!');
         res.redirect('/planning.html?google_connected=true');
         
     } catch (error) {
@@ -3087,7 +2752,7 @@ app.get('/api/google/callback', async (req, res) => {
 
 // Check if Google is connected (with auto-refresh)
 app.get('/api/google/status', requireAuth, async (req, res) => {
-    const companyId = req.session?.bedrijf_id || 'default'; const tokens = googleTokens.get(companyId);
+    const tokens = googleTokens.get('default');
     
     // Geen tokens
     if (!tokens || !tokens.access_token) {
@@ -3116,14 +2781,14 @@ app.get('/api/google/status', requireAuth, async (req, res) => {
             
             const newTokens = await response.json();
             if (newTokens.access_token) {
-                googleTokens.set(companyId, {
+                googleTokens.set('default', {
                     access_token: newTokens.access_token,
                     refresh_token: tokens.refresh_token,
                     expires_at: Date.now() + (newTokens.expires_in * 1000)
                 });
                 saveGoogleTokens();
                 console.log('ðŸ”„ Google token auto-refreshed');
-                return res.json({ connected: true, expires_at: googleTokens.get(companyId).expires_at });
+                return res.json({ connected: true, expires_at: googleTokens.get('default').expires_at });
             }
         } catch (e) {
             console.error('Auto-refresh failed:', e.message);
@@ -3142,10 +2807,8 @@ app.post('/api/google/disconnect', requireAuth, (req, res) => {
 });
 
 // Refresh Google token if needed
-async function getValidGoogleToken(companyId = null) {
-    // Multi-tenant: gebruik company-specifieke key, fallback naar 'default' voor backwards compatibility
-    const tokenKey = companyId || 'default';
-    const tokens = googleTokens.get(tokenKey);
+async function getValidGoogleToken() {
+    const tokens = googleTokens.get('default');
     if (!tokens) return null;
     
     // Token still valid
@@ -3171,7 +2834,7 @@ async function getValidGoogleToken(companyId = null) {
         
         const newTokens = await response.json();
         if (newTokens.access_token) {
-            googleTokens.set(tokenKey, {
+            googleTokens.set('default', {
                 access_token: newTokens.access_token,
                 refresh_token: tokens.refresh_token,
                 expires_at: Date.now() + (newTokens.expires_in * 1000)
@@ -3188,9 +2851,7 @@ async function getValidGoogleToken(companyId = null) {
 // Get calendar events
 app.get('/api/google/events', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const token = await getValidGoogleToken(req.session?.bedrijf_id);
+        const token = await getValidGoogleToken();
         if (!token) {
             return res.status(401).json({ error: 'Google not connected', needsAuth: true });
         }
@@ -3240,12 +2901,10 @@ app.get('/api/google/events', requireAuth, async (req, res) => {
 // Create calendar event
 app.post('/api/google/events', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         console.log('ðŸ“… Creating Google Calendar event...');
         console.log('ðŸ“… Request body:', JSON.stringify(req.body));
         
-        const token = await getValidGoogleToken(req.session?.bedrijf_id);
+        const token = await getValidGoogleToken();
         if (!token) {
             console.log('âŒ No valid Google token');
             return res.status(401).json({ error: 'Google not connected', needsAuth: true });
@@ -3328,9 +2987,7 @@ app.post('/api/google/events', requireAuth, async (req, res) => {
 // Update calendar event
 app.put('/api/google/events/:id', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const token = await getValidGoogleToken(req.session?.bedrijf_id);
+        const token = await getValidGoogleToken();
         if (!token) {
             return res.status(401).json({ error: 'Google not connected', needsAuth: true });
         }
@@ -3382,9 +3039,7 @@ app.put('/api/google/events/:id', requireAuth, async (req, res) => {
 // Delete calendar event
 app.delete('/api/google/events/:id', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const token = await getValidGoogleToken(req.session?.bedrijf_id);
+        const token = await getValidGoogleToken();
         if (!token) {
             return res.status(401).json({ error: 'Google not connected', needsAuth: true });
         }
@@ -3421,9 +3076,7 @@ console.log('ðŸ“… Google Calendar module geladen');
 // Get emails for a specific contact (by email address)
 app.get('/api/gmail/messages', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const token = await getValidGoogleToken(req.session?.bedrijf_id);
+        const token = await getValidGoogleToken();
         if (!token) {
             return res.status(401).json({ error: 'Google not connected', needsAuth: true });
         }
@@ -3498,9 +3151,7 @@ app.get('/api/gmail/messages', requireAuth, async (req, res) => {
 // Get single email with full body
 app.get('/api/gmail/message/:id', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
-        const token = await getValidGoogleToken(req.session?.bedrijf_id);
+        const token = await getValidGoogleToken();
         if (!token) {
             return res.status(401).json({ error: 'Google not connected', needsAuth: true });
         }
@@ -3578,7 +3229,7 @@ app.post('/api/gmail/send-manstaat', requireAuth, async (req, res) => {
     }
     
     try {
-        const accessToken = await getValidGoogleToken(req.session?.bedrijf_id);
+        const accessToken = await getValidGoogleToken();
         if (!accessToken) {
             return res.status(401).json({ error: 'Google niet verbonden' });
         }
@@ -3650,7 +3301,7 @@ app.post('/api/gmail/send', requireAuth, async (req, res) => {
     }
     
     try {
-        const accessToken = await getValidGoogleToken(req.session?.bedrijf_id);
+        const accessToken = await getValidGoogleToken();
         if (!accessToken) {
             return res.status(401).json({ error: 'Google niet verbonden', needsAuth: true });
         }
@@ -3852,13 +3503,6 @@ function requireAnyAuth(req, res, next) {
         if (Date.now() <= session.expires) {
             req.user = session.user;
             req.isAdmin = true;
-            // Set req.session for consistency with requireAuth
-            req.session = {
-                id: adminSessionId,
-                username: session.user,
-                bedrijf_id: session.bedrijf_id || 'default',
-                role: session.role || 'user'
-            };
             return next();
         }
     }
@@ -3871,11 +3515,6 @@ function requireAnyAuth(req, res, next) {
             req.medewerker = session.medewerker;
             req.medewerkerId = session.medewerkerId;
             req.isAdmin = false;
-            // Set req.session for multi-tenant data access
-            req.session = {
-                bedrijf_id: session.companyId
-            };
-            req.companyId = session.companyId;
             return next();
         }
     }
@@ -4122,7 +3761,7 @@ app.put('/api/projecten/:id', requireAuth, (req, res) => {
         updated: new Date().toISOString()
     };
     
-    saveCompanyData(companyId, 'projecten', projecten);
+    saveProjecten(projecten);
     console.log(`ðŸ—ï¸ Project bijgewerkt: ${projecten[index].titel}`);
     res.json({ success: true, project: projecten[index] });
 });
@@ -4141,7 +3780,7 @@ app.delete('/api/projecten/:id', requireAuth, (req, res) => {
     }
     
     const removed = projecten.splice(index, 1)[0];
-    saveCompanyData(companyId, 'projecten', projecten);
+    saveProjecten(projecten);
     console.log(`ðŸ—‘ï¸ Project verwijderd: ${removed.titel}`);
     res.json({ success: true });
 });
@@ -4295,21 +3934,8 @@ app.get('/api/medewerker/lijst', (req, res) => {
     requests.push(now);
     medewerkerLijstRequests.set(ip, requests);
     
-    // Multi-tenant: companyId is required
-    const companyId = req.query.companyId;
-    if (!companyId) {
-        return res.status(400).json({ error: 'companyId is verplicht' });
-    }
-    
-    // Validate companyId exists
-    const companies = loadData('companies') || [];
-    if (!companies.find(c => c.id === companyId)) {
-        return res.status(404).json({ error: 'Bedrijf niet gevonden' });
-    }
-    
-    const companyMedewerkers = loadCompanyData(companyId, 'medewerkers') || [];
-    const actieveMedewerkers = companyMedewerkers
-        .filter(m => m.actief !== false)
+    const actieveMedewerkers = medewerkers
+        .filter(m => m.actief)
         .map(m => ({ id: m.id, naam: m.naam }));
     res.json(actieveMedewerkers);
 });
@@ -4317,13 +3943,11 @@ app.get('/api/medewerker/lijst', (req, res) => {
 // Get projecten for medewerker (simplified list)
 app.get('/api/medewerker/projecten', requireMedewerkerAuth, (req, res) => {
     try {
-        // Multi-tenant: use company-specific data
-        const companyId = req.companyId;
-        if (!companyId) {
-            return res.status(400).json({ error: 'Geen bedrijf context' });
+        const projectenFile = path.join(__dirname, '.data', 'projecten.json');
+        let projecten = [];
+        if (fs.existsSync(projectenFile)) {
+            projecten = JSON.parse(fs.readFileSync(projectenFile, 'utf8'));
         }
-        
-        const projecten = loadCompanyData(companyId, 'projecten') || [];
         // Return only active projects with basic info
         const activeProjecten = projecten
             .filter(p => p.status !== 'afgerond')
@@ -4341,14 +3965,13 @@ app.get('/api/medewerker/projecten', requireMedewerkerAuth, (req, res) => {
 
 // Get mijn uren (medewerker)
 app.get('/api/medewerker/uren', requireMedewerkerAuth, (req, res) => {
-    const companyId = req.companyId;
-    if (!companyId) {
-        return res.status(400).json({ error: 'Geen bedrijf context' });
-    }
-    const uren = loadCompanyData(companyId, 'uren') || [];
+    console.log(`ðŸ“Š Uren opvragen voor: ${req.medewerker} (${req.medewerkerId}), totaal uren in db: ${uren.length}`);
     const mijnUren = uren.filter(u => u.medewerkerId === req.medewerkerId);
+    console.log(`ðŸ“Š Gevonden: ${mijnUren.length} uren`);
     res.json(mijnUren);
 });
+
+// Add uren (medewerker)
 app.post('/api/medewerker/uren', requireMedewerkerAuth, (req, res) => {
     console.log(`ðŸ“¥ POST /api/medewerker/uren van ${req.medewerker}`);
     console.log(`ðŸ“‹ Body:`, JSON.stringify({ datum: req.body.datum, begintijd: req.body.begintijd, eindtijd: req.body.eindtijd, totaalUren: req.body.totaalUren }));
@@ -4456,13 +4079,7 @@ app.post('/api/medewerker/uren', requireMedewerkerAuth, (req, res) => {
 
 // Update uren (medewerker - only own entries from today)
 app.put('/api/medewerker/uren/:id', requireMedewerkerAuth, (req, res) => {
-    const companyId = req.companyId;
-    if (!companyId) {
-        return res.status(400).json({ error: 'Geen bedrijf context' });
-    }
-    
     const { id } = req.params;
-    const uren = loadCompanyData(companyId, 'uren') || [];
     const index = uren.findIndex(u => u.id === id && u.medewerkerId === req.medewerkerId);
     
     if (index === -1) {
@@ -4488,19 +4105,13 @@ app.put('/api/medewerker/uren/:id', requireMedewerkerAuth, (req, res) => {
     const totaalMinuten = (eind - begin) / 60000 - uren[index].pauze;
     uren[index].totaalUren = Math.round(totaalMinuten / 60 * 100) / 100;
     
-    saveCompanyData(companyId, 'uren', uren);
+    saveUren(uren);
     res.json({ success: true, uren: uren[index] });
 });
 
 // Delete uren (medewerker - only own entries from today)
 app.delete('/api/medewerker/uren/:id', requireMedewerkerAuth, (req, res) => {
-    const companyId = req.companyId;
-    if (!companyId) {
-        return res.status(400).json({ error: 'Geen bedrijf context' });
-    }
-    
     const { id } = req.params;
-    const uren = loadCompanyData(companyId, 'uren') || [];
     const index = uren.findIndex(u => u.id === id && u.medewerkerId === req.medewerkerId);
     
     if (index === -1) {
@@ -4513,7 +4124,7 @@ app.delete('/api/medewerker/uren/:id', requireMedewerkerAuth, (req, res) => {
     }
     
     uren.splice(index, 1);
-    saveCompanyData(companyId, 'uren', uren);
+    saveUren(uren);
     res.json({ success: true });
 });
 
@@ -4527,7 +4138,7 @@ console.log('ðŸ‘· Medewerkers & Uren module geladen');
 // GET opdrachten voor ingelogde ZZP'er
 app.get('/api/medewerker/opdrachten', requireMedewerkerAuth, (req, res) => {
     try {
-        const companyId = req.companyId;
+        const companyId = req.medewerkerSession?.bedrijf_id;
         if (!companyId) {
             return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
         }
@@ -4548,7 +4159,7 @@ app.put('/api/medewerker/opdrachten/:id', requireMedewerkerAuth, (req, res) => {
         const { id } = req.params;
         const { status, opmerking } = req.body;
         
-        const companyId = req.companyId;
+        const companyId = req.medewerkerSession?.bedrijf_id;
         if (!companyId) {
             return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
         }
@@ -4794,8 +4405,6 @@ async function generateContractPDF(zzper, company, contractType, signature, outp
 // Verstuur ZZP uitnodiging
 app.post('/api/zzp-invite', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         const companyId = req.session?.bedrijf_id;
         if (!companyId) {
             return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
@@ -5328,55 +4937,20 @@ function schatM2(bericht) {
     return match ? parseInt(match[1]) : null;
 }
 
-// Get alle offerteaanvragen (admin) - gefilterd per bedrijf
+// Get alle offerteaanvragen (admin)
 app.get('/api/offerteaanvragen', requireAuth, async (req, res) => {
-    try { 
-        const companyId = req.session?.bedrijf_id;
-        console.log(`📋 GET /api/offerteaanvragen - companyId: ${companyId}, user: ${req.session?.username}`);
-        
-        const data = await fs.promises.readFile('/home/info/stucadmin-data/offerteaanvragen.json', 'utf8'); 
-        const allAanvragen = JSON.parse(data);
-        // Filter op bedrijf - als geen companyId in aanvraag, toon alleen voor originele Stucologie
-        const filtered = allAanvragen.filter(a => {
-            if (a.companyId) return a.companyId === companyId;
-            // Legacy aanvragen zonder companyId alleen voor Stucologie
-            return companyId === 'comp_1765303193963_c53a745a';
-        });
-        
-        console.log(`📋 Returning ${filtered.length} of ${allAanvragen.length} aanvragen for ${companyId}`);
-        res.json(filtered); 
-    } catch(e) { 
-        console.error('Error loading offerteaanvragen:', e);
-        res.json([]); 
-    }
+    try { const data = await fs.promises.readFile('/home/info/stucadmin-data/offerteaanvragen.json', 'utf8'); res.json(JSON.parse(data)); } catch(e) { res.json([]); }
 });
 
 // Nieuwe offerteaanvraag (admin/webhook)
 app.post('/api/offerteaanvragen', (req, res) => {
     // Check of het een webhook is (geen auth) of admin request (met auth)
-    const webhookSecret = process.env.WEBHOOK_SECRET;
-    if (!webhookSecret) {
-        console.error('⚠️ WEBHOOK_SECRET niet geconfigureerd in .env!');
-    }
+    const webhookSecret = process.env.WEBHOOK_SECRET || 'stucadmin-webhook-2024';
     const isWebhook = req.headers['x-webhook-secret'] === webhookSecret;
-    const cookies = parseCookies(req);
-    const session = sessions.get(cookies.stucadmin_session);
+    const session = sessions.get(req.cookies?.stucadmin_session);
     
     if (!isWebhook && !session) {
         return res.status(401).json({ error: 'Niet geautoriseerd' });
-    }
-    
-    // Multi-tenant: bepaal companyId
-    let companyId = null;
-    if (session) {
-        companyId = session.bedrijf_id;
-    } else if (isWebhook && req.body.companyId) {
-        // Webhook moet companyId meesturen
-        companyId = req.body.companyId;
-    }
-    
-    if (!companyId) {
-        return res.status(400).json({ error: 'companyId is verplicht' });
     }
     
     const { naam, email, telefoon, adres, bericht, type, bron } = req.body;
@@ -5387,7 +4961,6 @@ app.post('/api/offerteaanvragen', (req, res) => {
     
     const newAanvraag = {
         id: Date.now().toString(),
-        companyId: companyId,  // Multi-tenant: store company ID
         naam: naam || 'Onbekend',
         email: email || '',
         telefoon: telefoon || '',
@@ -5407,17 +4980,14 @@ app.post('/api/offerteaanvragen', (req, res) => {
     offerteaanvragen.push(newAanvraag);
     saveOfferteaanvragen(offerteaanvragen);
     
-    console.log(`📩 Nieuwe offerteaanvraag voor ${companyId}: ${newAanvraag.naam} (${newAanvraag.type})`);
+    console.log(`ðŸ“© Nieuwe offerteaanvraag: ${newAanvraag.naam} (${newAanvraag.type})`);
     res.json({ success: true, aanvraag: newAanvraag });
 });
 
 // Update offerteaanvraag (admin)
 app.put('/api/offerteaanvragen/:id', requireAuth, (req, res) => {
     const { id } = req.params;
-    const companyId = req.session?.bedrijf_id;
-    
-    // Multi-tenant: alleen aanvragen van eigen bedrijf kunnen worden gewijzigd
-    const index = offerteaanvragen.findIndex(a => a.id === id && (a.companyId === companyId || (!a.companyId && companyId === 'comp_1765303193963_c53a745a')));
+    const index = offerteaanvragen.findIndex(a => a.id === id);
     
     if (index === -1) {
         return res.status(404).json({ error: 'Aanvraag niet gevonden' });
@@ -5438,10 +5008,7 @@ app.put('/api/offerteaanvragen/:id', requireAuth, (req, res) => {
 // Delete offerteaanvraag (admin)
 app.delete('/api/offerteaanvragen/:id', requireAuth, (req, res) => {
     const { id } = req.params;
-    const companyId = req.session?.bedrijf_id;
-    
-    // Multi-tenant: alleen aanvragen van eigen bedrijf kunnen worden verwijderd
-    const index = offerteaanvragen.findIndex(a => a.id === id && (a.companyId === companyId || (!a.companyId && companyId === 'comp_1765303193963_c53a745a')));
+    const index = offerteaanvragen.findIndex(a => a.id === id);
     
     if (index === -1) {
         return res.status(404).json({ error: 'Aanvraag niet gevonden' });
@@ -6231,20 +5798,11 @@ app.options('/api/offerteaanvragen/website', (req, res) => {
 // Haal alle unieke locaties uit uren met clustering
 app.get('/api/locaties/overzicht', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-        const companyId = req.session?.bedrijf_id;
-        if (!companyId) {
-            return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
-        }
-
         const locaties = [];
         const CLUSTER_RADIUS = 100; // meters - locaties binnen 100m worden geclusterd
         
-        // Multi-tenant: laad company-specifieke uren
-        const companyUren = loadCompanyData(companyId, 'uren') || [];
-        
         // Loop door alle uren met locatie
-        for (const u of companyUren) {
+        for (const u of uren) {
             const locs = [];
             if (u.startLocation?.lat) locs.push({ ...u.startLocation, type: 'start' });
             if (u.endLocation?.lat) locs.push({ ...u.endLocation, type: 'end' });
@@ -6297,8 +5855,8 @@ app.get('/api/locaties/overzicht', requireAuth, async (req, res) => {
         // Sorteer op aantal bezoeken (meest bezocht eerst)
         locaties.sort((a, b) => b.bezoeken.length - a.bezoeken.length);
         
-        // Laad bestaande koppelingen (company-specific)
-        const koppelingenFile = path.join(__dirname, '.data', 'companies', companyId, 'locatie-klant-koppelingen.json');
+        // Laad bestaande koppelingen
+        const koppelingenFile = path.join(__dirname, '.data', 'locatie-klant-koppelingen.json');
         let koppelingen = {};
         if (fs.existsSync(koppelingenFile)) {
             koppelingen = JSON.parse(fs.readFileSync(koppelingenFile, 'utf8'));
@@ -6339,8 +5897,6 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
 // Zoek klant-suggesties voor een locatie
 app.get('/api/locaties/suggesties/:lat/:lng', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         const { lat, lng } = req.params;
         const targetLat = parseFloat(lat);
         const targetLng = parseFloat(lng);
@@ -6444,17 +6000,9 @@ function geocodeCacheGet(key) {
 // Koppel locatie aan klant
 app.post('/api/locaties/koppel', requireAuth, (req, res) => {
     try {
-        const companyId = req.session?.bedrijf_id;
-        if (!companyId) {
-            return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
-        }
-        
         const { lat, lng, klantId, klantNaam, klantAdres } = req.body;
         
-        // Multi-tenant: company-specific koppelingen
-        const companyDir = path.join(__dirname, '.data', 'companies', companyId);
-        if (!fs.existsSync(companyDir)) fs.mkdirSync(companyDir, { recursive: true });
-        const koppelingenFile = path.join(companyDir, 'locatie-klant-koppelingen.json');
+        const koppelingenFile = path.join(__dirname, '.data', 'locatie-klant-koppelingen.json');
         let koppelingen = {};
         if (fs.existsSync(koppelingenFile)) {
             koppelingen = JSON.parse(fs.readFileSync(koppelingenFile, 'utf8'));
@@ -6481,15 +6029,9 @@ app.post('/api/locaties/koppel', requireAuth, (req, res) => {
 // Ontkoppel locatie van klant
 app.delete('/api/locaties/koppel/:lat/:lng', requireAuth, (req, res) => {
     try {
-        const companyId = req.session?.bedrijf_id;
-        if (!companyId) {
-            return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
-        }
-        
         const { lat, lng } = req.params;
         
-        // Multi-tenant: company-specific koppelingen
-        const koppelingenFile = path.join(__dirname, '.data', 'companies', companyId, 'locatie-klant-koppelingen.json');
+        const koppelingenFile = path.join(__dirname, '.data', 'locatie-klant-koppelingen.json');
         let koppelingen = {};
         if (fs.existsSync(koppelingenFile)) {
             koppelingen = JSON.parse(fs.readFileSync(koppelingenFile, 'utf8'));
@@ -6509,8 +6051,6 @@ app.delete('/api/locaties/koppel/:lat/:lng', requireAuth, (req, res) => {
 // Reverse geocode een locatie
 app.get('/api/locaties/adres/:lat/:lng', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         const { lat, lng } = req.params;
         const fetch = (await import('node-fetch')).default;
         
@@ -7038,8 +6578,6 @@ app.delete('/api/company', requireAuth, (req, res) => {
 // Subscribe to plan (Mollie)
 app.post('/api/subscribe', requireAuth, async (req, res) => {
     try {
-        const credentials = getCredentialsFromRequest(req);
-
         const { planId } = req.body;
         const plans = loadData('plans') || [];
         const plan = plans.find(p => p.id === planId);
@@ -7542,114 +7080,3 @@ setInterval(checkTrialReminders, 60 * 60 * 1000);
 
 // Run once on startup (after 10 seconds)
 setTimeout(checkTrialReminders, 10000);
-
-// ============================================
-// SUPER ADMIN ENDPOINTS
-// ============================================
-
-// Super admin bedrijf IDs (StucAdmin eigenaren) - alleen deze bedrijven hebben super admin toegang
-const SUPER_ADMIN_COMPANY_IDS = ['comp_1765303193963_c53a745a']; // Stucologie
-
-function isSuperAdmin(req) {
-    const cookies = parseCookies(req);
-    const sessionId = cookies.stucadmin_session;
-    const session = sessions.get(sessionId);
-    console.log('isSuperAdmin check:', { sessionId: sessionId?.substring(0,10), hasSession: !!session, bedrijf_id: session?.bedrijf_id });
-    if (!session) return false;
-    // Check of het bedrijf_id in de super admin lijst staat
-    return SUPER_ADMIN_COMPANY_IDS.includes(session.bedrijf_id);
-}
-
-function requireSuperAdmin(req, res, next) {
-    const isSuper = isSuperAdmin(req);
-    const cookies = parseCookies(req);
-    console.log('SuperAdmin check:', { isSuper, cookies: !!cookies.stucadmin_session });
-    if (!isSuper) {
-        return res.status(403).json({ error: 'Geen toegang - alleen voor super admins' });
-    }
-    next();
-}
-
-// Check super admin status
-app.get('/api/superadmin/check', requireAuth, (req, res) => {
-    res.json({ authorized: isSuperAdmin(req) });
-});
-
-// Get audit log (super admin only)
-app.get('/api/superadmin/audit-log', requireAuth, requireSuperAdmin, (req, res) => {
-    const { limit = 100, action, companyId } = req.query;
-    
-    let filtered = auditLog.slice(-parseInt(limit));
-    
-    if (action) {
-        filtered = filtered.filter(e => e.action === action);
-    }
-    if (companyId) {
-        filtered = filtered.filter(e => e.companyId === companyId);
-    }
-    
-    res.json({
-        total: auditLog.length,
-        returned: filtered.length,
-        entries: filtered.reverse() // Most recent first
-    });
-});
-
-// Get all companies
-app.get('/api/superadmin/companies', requireAuth, requireSuperAdmin, (req, res) => {
-    try {
-        const companies = loadData('companies') || [];
-        
-        // Enrich with integration status
-        const enriched = companies.map(c => ({
-            ...c,
-            hasMoneybird: !!getMoneyBirdCredentials(c.id, null),
-            hasGoogle: googleTokens.has(c.id),
-            userCount: (loadCompanyData(c.id, 'medewerkers') || []).length + 1
-        }));
-        
-        res.json(enriched);
-    } catch (e) {
-        console.error('Super admin companies error:', e);
-        res.status(500).json({ error: 'Kon bedrijven niet laden' });
-    }
-});
-
-// Impersonate a company (login as them)
-app.post('/api/superadmin/impersonate', requireAuth, requireSuperAdmin, (req, res) => {
-    const { companyId } = req.body;
-    const companies = loadData('companies') || [];
-    const company = companies.find(c => c.id === companyId);
-    
-    if (!company) {
-        return res.status(404).json({ error: 'Bedrijf niet gevonden' });
-    }
-    
-    // Set session to this company
-    req.session.bedrijf_id = company.id;
-    req.session.bedrijf_naam = company.naam || company.name;
-    req.session.impersonating = true;
-    req.session.originalEmail = req.session.email;
-    
-    logAudit('IMPERSONATE', { targetCompanyId: companyId, targetCompanyName: company.naam || company.name }, req);
-    res.json({ success: true, company: company.naam || company.name });
-});
-
-// Stop impersonating
-app.post('/api/superadmin/stop-impersonate', requireAuth, (req, res) => {
-    if (req.session.impersonating && req.session.originalEmail) {
-        // Find original company
-        const companies = loadData('companies') || [];
-        const originalCompany = companies.find(c => c.email === req.session.originalEmail);
-        
-        if (originalCompany) {
-            req.session.bedrijf_id = originalCompany.id;
-            req.session.bedrijf_naam = originalCompany.naam || originalCompany.name;
-        }
-        
-        delete req.session.impersonating;
-        delete req.session.originalEmail;
-    }
-    res.json({ success: true });
-});
-
