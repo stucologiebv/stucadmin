@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registreren - StucAdmin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: linear-gradient(135deg, #f97316 0%, #ea580c 50%, #c2410c 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .register-card { background: white; border-radius: 24px; padding: 40px; width: 100%; max-width: 480px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+        .input-field { background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; width: 100%; font-size: 16px; transition: all 0.2s; }
+        .input-field:focus { outline: none; border-color: #f97316; background: white; }
+        .btn-register { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 14px 28px; border-radius: 12px; font-weight: 600; border: none; cursor: pointer; width: 100%; font-size: 16px; transition: all 0.2s; }
+        .btn-register:hover { background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); }
+        .btn-register:disabled { background: #ccc; cursor: not-allowed; }
+        .error-msg { background: #fef2f2; color: #dc2626; padding: 12px 16px; border-radius: 10px; margin-bottom: 20px; display: none; }
+        .success-msg { background: #f0fdf4; color: #16a34a; padding: 12px 16px; border-radius: 10px; margin-bottom: 20px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="register-card">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">StucAdmin</h1>
+            <p class="text-gray-500">Start je 14 dagen gratis proefperiode</p>
+        </div>
+        
+        <div id="errorMsg" class="error-msg"></div>
+        <div id="successMsg" class="success-msg"></div>
+        
+        <form id="registerForm" onsubmit="register(event)">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Bedrijfsnaam *</label>
+                <input type="text" id="bedrijfsnaam" class="input-field" placeholder="Jouw Stukadoors- of Schildersbedrijf" required>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                <input type="email" id="email" class="input-field" placeholder="info@jouwbedrijf.nl" required>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Telefoonnummer</label>
+                <input type="tel" id="telefoon" class="input-field" placeholder="06-12345678">
+            </div>
+            
+            <hr class="my-6 border-gray-200">
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Gebruikersnaam *</label>
+                <input type="text" id="username" class="input-field" placeholder="admin" required>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Wachtwoord *</label>
+                <input type="password" id="password" class="input-field" placeholder="Minimaal 8 tekens" required minlength="8">
+            </div>
+            
+            <button type="submit" id="registerBtn" class="btn-register">
+                Gratis Registreren
+            </button>
+        </form>
+        
+        <p class="text-center text-gray-500 text-sm mt-6">
+            Heb je al een account? <a href="/login.html" class="text-orange-600 font-medium hover:underline">Inloggen</a>
+        </p>
+    </div>
+
+    <script>
+        async function register(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('registerBtn');
+            const errorMsg = document.getElementById('errorMsg');
+            const successMsg = document.getElementById('successMsg');
+            
+            btn.disabled = true;
+            btn.textContent = 'Bezig...';
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+            
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        bedrijfsnaam: document.getElementById('bedrijfsnaam').value,
+                        email: document.getElementById('email').value,
+                        telefoon: document.getElementById('telefoon').value,
+                        username: document.getElementById('username').value,
+                        password: document.getElementById('password').value
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    successMsg.textContent = '✅ Registratie geslaagd! Je wordt doorgestuurd...';
+                    successMsg.style.display = 'block';
+                    document.getElementById('registerForm').style.display = 'none';
+                    
+                    // Auto-login en naar onboarding
+                    const loginRes = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: document.getElementById('username').value,
+                            password: document.getElementById('password').value
+                        })
+                    });
+                    
+                    if (loginRes.ok) {
+                        window.location.href = '/onboarding.html';
+                    } else {
+                        window.location.href = '/login.html';
+                    }
+                } else {
+                    throw new Error(data.error || 'Registratie mislukt');
+                }
+            } catch (err) {
+                errorMsg.textContent = err.message;
+                errorMsg.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Gratis Registreren';
+            }
+        }
+    </script>
+</body>
+</html>

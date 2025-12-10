@@ -1,0 +1,147 @@
+/* StucAdmin Responsive Styles */
+
+/* Mobile menu button */
+.mobile-menu-btn {
+    display: none;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 200;
+    background: #6366f1;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    width: 44px;
+    height: 44px;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+/* Sidebar overlay for mobile */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 90;
+}
+
+/* Mobile styles */
+@media (max-width: 1024px) {
+    .mobile-menu-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 100;
+    }
+    
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    
+    .sidebar-overlay.open {
+        display: block;
+    }
+    
+    main, .main-content {
+        margin-left: 0 !important;
+        padding: 70px 16px 16px 16px !important;
+    }
+    
+    /* Stack grids on mobile */
+    .grid-cols-2, .grid-cols-3, .grid-cols-4 {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .col-span-2, .col-span-3 {
+        grid-column: span 1 !important;
+    }
+    
+    /* Responsive tables */
+    .data-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    /* Larger touch targets */
+    .btn-primary, .btn-secondary, .btn-success, .btn-warning, .btn-moneybird {
+        min-height: 44px;
+        padding: 12px 20px;
+    }
+    
+    .input-field, select {
+        min-height: 44px;
+        font-size: 16px !important; /* Prevents zoom on iOS */
+    }
+    
+    .nav-item {
+        padding: 14px 16px;
+    }
+    
+    /* Modal fullscreen on mobile */
+    .modal-content {
+        max-width: 100% !important;
+        width: 100% !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+        margin: 0;
+    }
+    
+    .modal-overlay {
+        align-items: flex-end;
+    }
+    
+    /* Service rows stack */
+    .service-row {
+        grid-template-columns: 1fr !important;
+        gap: 8px;
+    }
+    
+    .service-row > div {
+        text-align: left !important;
+    }
+    
+    /* Result cards full width */
+    .result-card, .material-card {
+        margin-bottom: 16px;
+    }
+    
+    /* Header adjustments */
+    header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 12px;
+    }
+    
+    header h1 {
+        font-size: 1.5rem !important;
+    }
+    
+    /* KPI cards */
+    .kpi-value {
+        font-size: 1.5rem !important;
+    }
+}
+
+/* Small mobile */
+@media (max-width: 480px) {
+    main, .main-content {
+        padding: 60px 12px 12px 12px !important;
+    }
+    
+    .card {
+        padding: 16px !important;
+        border-radius: 12px !important;
+    }
+    
+    .result-value {
+        font-size: 2rem !important;
+    }
+}

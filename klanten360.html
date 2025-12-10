@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Klanten 360 Pro | StucAdmin Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="/sidebar.js"></script>
+    <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; margin: 0; padding: 0; overflow-x: hidden; }
+        
+        /* Mobile */
+        .mobile-header { display: none; position: fixed; top: 0; left: 0; right: 0; height: 60px; background: white; border-bottom: 1px solid #e5e7eb; z-index: 150; padding: 0 16px; align-items: center; gap: 12px; }
+        .mobile-menu-btn { background: #6366f1; color: white; border: none; border-radius: 10px; width: 40px; height: 40px; font-size: 18px; cursor: pointer; flex-shrink: 0; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        
+        /* Main Layout */
+        .main-content { display: flex; height: 100vh; }
+        
+        /* Customer List Panel */
+        .customer-panel { 
+            width: 380px; 
+            background: white; 
+            border-right: 1px solid #e5e7eb; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            flex-shrink: 0; 
+            position: relative;
+            transition: margin-left 0.3s ease, transform 0.3s ease;
+        }
+        .customer-panel.collapsed { 
+            margin-left: -380px; 
+        }
+        .panel-toggle { 
+            position: absolute; 
+            right: -44px; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            width: 44px; 
+            height: 80px; 
+            background: white; 
+            border: 1px solid #e5e7eb; 
+            border-left: none; 
+            border-radius: 0 12px 12px 0; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 18px; 
+            color: #6366f1; 
+            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+            z-index: 10;
+            transition: background 0.2s;
+        }
+        .panel-toggle:hover { background: #f8fafc; }
+        .customer-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .customer-item { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: all 0.15s; }
+        .customer-item:hover { background: #f8fafc; }
+        .customer-item:active { background: #f1f5f9; }
+        .customer-item.active { background: linear-gradient(135deg, #eff6ff, #f5f3ff); border-left: 4px solid #6366f1; }
+        
+        /* Customer Detail Panel */
+        .detail-panel { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #f8fafc; }
+        .detail-content { padding: 24px; max-width: 1200px; }
+        
+        /* Cards */
+        .card { background: white; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; font-weight: 600; display: flex; align-items: center; justify-content: space-between; background: #fafbfc; }
+        .card-body { padding: 20px; }
+        
+        /* Buttons */
+        .btn { padding: 10px 16px; border-radius: 10px; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; font-size: 14px; min-height: 44px; }
+        .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; }
+        .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .btn-warning { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; }
+        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e5e7eb; }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn:active { transform: scale(0.98); }
+        .btn-sm { padding: 8px 12px; font-size: 13px; min-height: 36px; }
+        .btn-icon { width: 44px; padding: 0; }
+        
+        /* Form Elements */
+        .input-field { width: 100%; padding: 12px 16px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; min-height: 44px; transition: border-color 0.2s; }
+        .input-field:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+        select.input-field { background: white; cursor: pointer; }
+        
+        /* Search Box */
+        .search-container { padding: 16px; border-bottom: 1px solid #e5e7eb; background: #fafbfc; }
+        .search-box { background: white; border: 2px solid #e5e7eb; border-radius: 12px; display: flex; align-items: center; overflow: hidden; transition: border-color 0.2s; }
+        .search-box:focus-within { border-color: #6366f1; }
+        .search-box input { border: none; background: none; outline: none; flex: 1; padding: 12px 16px; font-size: 14px; min-height: 44px; }
+        .search-box .search-icon { padding: 0 12px; color: #9ca3af; }
+        .search-clear { background: none; border: none; color: #9ca3af; padding: 12px; cursor: pointer; font-size: 18px; }
+        
+        /* Badges */
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+        .badge-vip { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #b45309; }
+        .badge-actief { background: #dcfce7; color: #16a34a; }
+        .badge-lead { background: #e0e7ff; color: #4f46e5; }
+        .badge-warning { background: #fef3c7; color: #d97706; }
+        .badge-danger { background: #fee2e2; color: #dc2626; }
+        
+        /* Quick Actions Grid */
+        .quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .quick-btn { padding: 16px 12px; border-radius: 12px; cursor: pointer; text-align: center; transition: all 0.2s; border: 2px solid #e5e7eb; background: white; min-height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+        .quick-btn:hover { border-color: #6366f1; background: #f8fafc; transform: translateY(-2px); }
+        .quick-btn:active { transform: scale(0.98); }
+        .quick-btn-icon { font-size: 24px; }
+        .quick-btn-label { font-weight: 600; font-size: 12px; color: #374151; }
+        
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: white; border-radius: 12px; padding: 16px; text-align: center; border: 1px solid #e5e7eb; }
+        .stat-value { font-size: 24px; font-weight: 700; color: #1e293b; }
+        .stat-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+        
+        /* Timeline */
+        .timeline { position: relative; }
+        .timeline-item { position: relative; padding-left: 32px; padding-bottom: 20px; }
+        .timeline-item:not(:last-child)::before { content: ''; position: absolute; left: 11px; top: 24px; bottom: 0; width: 2px; background: #e5e7eb; }
+        .timeline-dot { position: absolute; left: 0; top: 4px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 3px solid white; box-shadow: 0 0 0 2px #e5e7eb; }
+        .timeline-dot.afspraak { background: #3b82f6; }
+        .timeline-dot.offerte { background: #8b5cf6; }
+        .timeline-dot.factuur { background: #10b981; }
+        .timeline-dot.email { background: #ec4899; }
+        .timeline-dot.notitie { background: #f59e0b; }
+        .timeline-dot.telefoon { background: #14b8a6; }
+        
+        /* Modals */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; display: none; align-items: center; justify-content: center; padding: 16px; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; border-radius: 20px; width: 100%; max-width: 500px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
+        .modal-header { padding: 20px; border-bottom: 1px solid #e5e7eb; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; }
+        .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+        .modal-footer { padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; background: #fafbfc; }
+        .modal-close { background: none; border: none; font-size: 24px; color: #9ca3af; cursor: pointer; padding: 4px; }
+        
+        /* Toast */
+        .toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 14px 24px; border-radius: 12px; z-index: 500; display: none; font-weight: 500; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .toast.show { display: block; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(20px); } }
+        
+        /* Loading */
+        .loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: #64748b; }
+        .spinner { width: 24px; height: 24px; border: 3px solid #e5e7eb; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Empty State */
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: #9ca3af; text-align: center; }
+        .empty-state-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.5; }
+        .empty-state-title { font-size: 18px; font-weight: 600; color: #64748b; margin-bottom: 8px; }
+        
+        /* Reminder Badge */
+        .reminder-indicator { position: relative; }
+        .reminder-indicator::after { content: ''; position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; background: #ef4444; border-radius: 50%; border: 2px solid white; }
+</style>
+</head>
+<body>
+    <!-- Mobile Header -->
+    <div class="mobile-header">
+        <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+        <div style="flex:1; font-weight: 700; font-size: 16px;">🎯 Klanten 360</div>
+        <button class="mobile-menu-btn" onclick="toggleCustomerPanel()" id="listToggleBtn">👥</button>
+    </div>
+    
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
+    <!-- Sidebar wordt geladen door sidebar.js -->
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <div class="main-content" id="mainContent">
+        <!-- Customer List Panel -->
+        <div class="customer-panel" id="customerPanel">
+            <button class="panel-toggle" id="panelToggle" onclick="togglePanel()" title="Klantenlijst tonen/verbergen">
+                <span id="toggleIcon">◀</span>
+            </button>
+            <div class="search-container">
+                <h2 style="font-weight: 700; font-size: 18px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    🎯 Klanten Hub
+                    <span id="customerCount" class="badge badge-actief" style="font-size: 12px;">0</span>
+                </h2>
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Zoek op naam, email, telefoon..." autocomplete="off">
+                    <button class="search-clear" onclick="clearSearch()" id="searchClear" style="display:none;">✕</button>
+                </div>
+            </div>
+            <div class="customer-list" id="customerList">
+                <div class="loading"><div class="spinner"></div>Klanten laden...</div>
+            </div>
+        </div>
+
+        <!-- Customer Detail Panel -->
+        <div class="detail-panel" id="detailPanel">
+            <div class="empty-state" id="emptyState">
+                <div class="empty-state-icon">👈</div>
+                <div class="empty-state-title">Selecteer een klant</div>
+                <p>Kies een klant uit de lijst om alle details te zien</p>
+            </div>
+            <div class="detail-content" id="detailContent" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Afspraak Modal -->
+    <div class="modal-overlay" id="afspraakModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span>📅 Afspraak Inplannen</span>
+                <button class="modal-close" onclick="closeModal('afspraakModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Titel *</label>
+                        <input type="text" id="afspraakTitel" class="input-field" placeholder="bijv. Opname stucwerk">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Datum *</label>
+                            <input type="date" id="afspraakDatum" class="input-field">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Tijd *</label>
+                            <input type="time" id="afspraakTijd" class="input-field" value="09:00">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Duur</label>
+                        <select id="afspraakDuur" class="input-field">
+                            <option value="30">30 minuten</option>
+                            <option value="60" selected>1 uur</option>
+                            <option value="90">1,5 uur</option>
+                            <option value="120">2 uur</option>
+                            <option value="180">3 uur</option>
+                            <option value="240">4 uur (halve dag)</option>
+                            <option value="480">8 uur (hele dag)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Locatie</label>
+                        <input type="text" id="afspraakLocatie" class="input-field" placeholder="Adres klant">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Omschrijving</label>
+                        <textarea id="afspraakOmschrijving" class="input-field" rows="2" placeholder="Extra details..."></textarea>
+                    </div>
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="afspraakInvite" checked style="width: 20px; height: 20px;">
+                            <span><strong>📧 Uitnodiging sturen naar klant</strong><br><small style="color: #64748b;">Klant ontvangt email met afspraak details</small></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal('afspraakModal')" class="btn btn-secondary flex-1">Annuleren</button>
+                <button onclick="saveAfspraak()" class="btn btn-success flex-1">📅 Inplannen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notitie Modal -->
+    <div class="modal-overlay" id="notitieModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span>📝 Notitie Toevoegen</span>
+                <button class="modal-close" onclick="closeModal('notitieModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Type</label>
+                        <select id="notitieType" class="input-field">
+                            <option value="notitie">📝 Notitie</option>
+                            <option value="telefoon">📞 Telefoongesprek</option>
+                            <option value="email">📧 Email contact</option>
+                            <option value="bezoek">🏠 Bezoek</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Notitie *</label>
+                        <textarea id="notitieText" class="input-field" rows="4" placeholder="Schrijf je notitie..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal('notitieModal')" class="btn btn-secondary flex-1">Annuleren</button>
+                <button onclick="saveNotitie()" class="btn btn-success flex-1">💾 Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reminder Modal -->
+    <div class="modal-overlay" id="reminderModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span>🔔 Herinnering Instellen</span>
+                <button class="modal-close" onclick="closeModal('reminderModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Titel *</label>
+                        <input type="text" id="reminderTitel" class="input-field" placeholder="bijv. Nabellen offerte">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Datum *</label>
+                            <input type="date" id="reminderDatum" class="input-field">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Tijd</label>
+                            <input type="time" id="reminderTijd" class="input-field" value="09:00">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Notitie</label>
+                        <textarea id="reminderNotitie" class="input-field" rows="2" placeholder="Extra details..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal('reminderModal')" class="btn btn-secondary flex-1">Annuleren</button>
+                <button onclick="saveReminder()" class="btn btn-warning flex-1">🔔 Instellen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Modal -->
+    <div class="modal-overlay" id="emailModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span>📧 Email Versturen</span>
+                <button class="modal-close" onclick="closeModal('emailModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Aan</label>
+                        <input type="email" id="emailTo" class="input-field" readonly style="background: #f8fafc;">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Onderwerp *</label>
+                        <input type="text" id="emailSubject" class="input-field" placeholder="Onderwerp...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Bericht *</label>
+                        <textarea id="emailBody" class="input-field" rows="6" placeholder="Uw bericht..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal('emailModal')" class="btn btn-secondary flex-1">Annuleren</button>
+                <button onclick="sendEmail()" class="btn btn-success flex-1">📧 Versturen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Customer Modal -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <span>✏️ Klant Bewerken</span>
+                <button class="modal-close" onclick="closeModal('editModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="space-y-4">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Voornaam</label>
+                            <input type="text" id="editFirstname" class="input-field">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Achternaam</label>
+                            <input type="text" id="editLastname" class="input-field">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Bedrijfsnaam</label>
+                        <input type="text" id="editCompany" class="input-field">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Email</label>
+                        <input type="email" id="editEmail" class="input-field">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Telefoon</label>
+                        <input type="tel" id="editPhone" class="input-field">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Adres</label>
+                        <input type="text" id="editAddress" class="input-field" placeholder="Straat + huisnummer">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px;">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Postcode</label>
+                            <input type="text" id="editZipcode" class="input-field">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Plaats</label>
+                            <input type="text" id="editCity" class="input-field">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal('editModal')" class="btn btn-secondary flex-1">Annuleren</button>
+                <button onclick="saveCustomerEdit()" class="btn btn-primary flex-1">💾 Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Customer Modal -->
+    <div class="modal-overlay" id="newCustomerModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <span>➕ Nieuwe Klant</span>
+                <button class="modal-close" onclick="closeModal('newCustomerModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="space-y-4">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Voornaam</label>
+                            <input type="text" id="newFirstname" class="input-field">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Achternaam</label>
+                            <input type="text" id="newLastname" class="input-field">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Bedrijfsnaam</label>
+                        <input type="text" id="newCompany" class="input-field">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Email *</label>
+                        <input type="email" id="newEmail" class="input-field" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Telefoon</label>
+                        <input type="tel" id="newPhone" class="input-field">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Adres</label>
+                        <input type="text" id="newAddress" class="input-field" placeholder="Straat + huisnummer">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px;">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Postcode</label>
+                            <input type="text" id="newZipcode" class="input-field">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Plaats</label>
+                            <input type="text" id="newCity" class="input-field">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal('newCustomerModal')" class="btn btn-secondary flex-1">Annuleren</button>
+                <button onclick="createNewCustomer()" class="btn btn-success flex-1">➕ Aanmaken</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Koppeling Modal -->
+    <div class="modal-overlay" id="koppelingModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <span>👷 Team Koppelen</span>
+                <button class="modal-close" onclick="closeModal('koppelingModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">👤 Medewerkers</label>
+                        <div id="medewerkerCheckboxes" style="max-height: 200px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px;">
+                            <div class="loading"><div class="spinner"></div>Laden...</div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">🤝 ZZP'ers</label>
+                        <div id="zzperCheckboxes" style="max-height: 200px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px;">
+                            <div class="loading"><div class="spinner"></div>Laden...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal('koppelingModal')" class="btn btn-secondary flex-1">Annuleren</button>
+                <button onclick="saveKoppeling()" class="btn btn-success flex-1">💾 Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* MOBILE RESPONSIVE */
+        @media (max-width: 1024px) {
+            .mobile-header { display: flex; }
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            .main-content { margin-left: 0; padding-top: 60px; flex-direction: column; height: calc(100vh - 60px); }
+            .customer-panel { 
+                width: 100%; 
+                height: 100%; 
+                position: fixed; 
+                top: 60px; 
+                left: 0; 
+                right: 0; 
+                bottom: 0;
+                z-index: 50;
+                transition: transform 0.3s ease;
+            }
+            .customer-panel.hidden { transform: translateX(-100%); }
+            .detail-panel { 
+                width: 100%; 
+                height: 100%;
+                position: fixed;
+                top: 60px;
+                left: 0;
+                right: 0;
+                bottom: 0;
+            }
+            .detail-content { padding: 16px; padding-bottom: 100px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .quick-grid { grid-template-columns: repeat(2, 1fr); }
+            .modal { margin: 16px; max-height: calc(100vh - 32px); }
+            .customer-item { padding: 16px; }
+        }
+        
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .stat-card { padding: 12px; }
+            .stat-value { font-size: 20px; }
+            .quick-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .quick-btn { padding: 12px 8px; min-height: 70px; }
+            .quick-btn-icon { font-size: 20px; }
+            .quick-btn-label { font-size: 11px; }
+        }
+    </style>
+
+    <script>
+        // ===== STATE =====
+        let customers = [];
+        let invoices = [];
+        let estimates = [];
+        let events = [];
+        let reminders = [];
+        let selectedCustomer = null;
+        let googleConnected = false;
+        let isMobile = window.innerWidth <= 1024;
+        
+        // ===== INITIALIZATION =====
+        document.addEventListener('DOMContentLoaded', async () => {
+            checkMobile();
+            window.addEventListener('resize', checkMobile);
+            
+            // Modal click handlers
+            document.querySelectorAll('.modal-overlay').forEach(m => {
+                m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); });
+            });
+            
+            await checkGoogleStatus();
+            await loadAllData();
+            
+            // Auto-select from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const customerId = urlParams.get('id');
+            if (customerId) {
+                setTimeout(() => selectCustomer(customerId), 500);
+            }
+        });
+        
+        function checkMobile() {
+            isMobile = window.innerWidth <= 1024;
+        }
+        
+        // ===== SIDEBAR =====
+        // Sidebar wordt geladen door sidebar.js
+        
+        function toggleMenu() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.querySelector('.sidebar-overlay').classList.toggle('open');
+        }
+        
+        function togglePanel() {
+            const panel = document.getElementById('customerPanel');
+            const icon = document.getElementById('toggleIcon');
+            panel.classList.toggle('collapsed');
+            icon.textContent = panel.classList.contains('collapsed') ? '▶' : '◀';
+        }
+        
+        function showPanel() {
+            const panel = document.getElementById('customerPanel');
+            const icon = document.getElementById('toggleIcon');
+            panel.classList.remove('collapsed');
+            icon.textContent = '◀';
+        }
+        
+        function hidePanel() {
+            const panel = document.getElementById('customerPanel');
+            const icon = document.getElementById('toggleIcon');
+            panel.classList.add('collapsed');
+            icon.textContent = '▶';
+        }
+        
+        function toggleCustomerPanel() {
+            const panel = document.getElementById('customerPanel');
+            panel.classList.toggle('hidden');
+            document.getElementById('listToggleBtn').textContent = panel.classList.contains('hidden') ? '👥' : '✕';
+        }
+        
+        function logout() {
+            fetch('/api/auth/logout', { method: 'POST' }).then(() => location.href = '/login.html');
+        }
+        
+        // ===== DATA LOADING =====
+        async function checkGoogleStatus() {
+            try {
+                const res = await fetch('/api/google/status');
+                const data = await res.json();
+                googleConnected = data.connected;
+            } catch (e) {
+                googleConnected = false;
+            }
+        }
+        
+        async function loadAllData() {
+            try {
+                const [c, i, e, ev, rem] = await Promise.all([
+                    fetch('/api/contacts').then(r => r.ok ? r.json() : []),
+                    fetch('/api/invoices').then(r => r.ok ? r.json() : []),
+                    fetch('/api/estimates').then(r => r.ok ? r.json() : []),
+                    googleConnected ? fetch('/api/google/events').then(r => r.ok ? r.json() : { events: [] }) : Promise.resolve({ events: [] }),
+                    fetch('/api/klant-reminders').then(r => r.ok ? r.json() : [])
+                ]);
+                
+                customers = Array.isArray(c) ? c : [];
+                invoices = Array.isArray(i) ? i : [];
+                estimates = Array.isArray(e) ? e : [];
+                events = Array.isArray(ev.events) ? ev.events : (Array.isArray(ev) ? ev : []);
+                reminders = Array.isArray(rem) ? rem : [];
+                
+                document.getElementById('customerCount').textContent = customers.length;
+                renderCustomerList();
+                
+            } catch (e) {
+                console.error('Error loading data:', e);
+                showToast('Fout bij laden data', 'error');
+            }
+        }
+        
+        // ===== SEARCH =====
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            document.getElementById('searchClear').style.display = e.target.value ? 'block' : 'none';
+            renderCustomerList();
+        });
+        
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchClear').style.display = 'none';
+            renderCustomerList();
+        }
+        
+        // ===== CUSTOMER LIST =====
+        function renderCustomerList() {
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            const list = document.getElementById('customerList');
+            
+            let filtered = customers.filter(c => {
+                if (!search) return true;
+                const name = getName(c).toLowerCase();
+                const email = (c.email || '').toLowerCase();
+                const phone = (c.phone || '').toLowerCase();
+                const company = (c.company_name || '').toLowerCase();
+                return name.includes(search) || email.includes(search) || phone.includes(search) || company.includes(search);
+            });
+            
+            // Sort: customers with reminders first, then alphabetically
+            filtered.sort((a, b) => {
+                const aHasReminder = reminders.some(r => r.contactId === a.id && !r.done);
+                const bHasReminder = reminders.some(r => r.contactId === b.id && !r.done);
+                if (aHasReminder && !bHasReminder) return -1;
+                if (!aHasReminder && bHasReminder) return 1;
+                return getName(a).localeCompare(getName(b));
+            });
+            
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state" style="padding: 40px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">🔍</div>
+                        <div class="empty-state-title">Geen klanten gevonden</div>
+                        <button onclick="showNewCustomerModal()" class="btn btn-primary" style="margin-top: 16px;">➕ Nieuwe klant</button>
+                        <p style="color: #64748b; font-size: 14px; margin-top: 20px; max-width: 320px; line-height: 1.5;">
+                            💡 <strong>Tip:</strong> Koppel je boekhouding via <a href="/instellingen.html" style="color: #6366f1; text-decoration: underline;">Instellingen</a> om bestaande contacten automatisch te importeren.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Render alleen eerste 100 voor performance
+            const displayList = filtered.slice(0, 100);
+            
+            list.innerHTML = displayList.map(c => {
+                const name = getName(c);
+                const hasActiveReminder = reminders.some(r => r.contactId === c.id && !r.done && new Date(r.datum) <= new Date());
+                const invoiceCount = invoices.filter(inv => inv.contact_id === c.id).length;
+                const totalRevenue = invoices.filter(inv => inv.contact_id === c.id && inv.state === 'paid')
+                    .reduce((sum, inv) => sum + parseFloat(inv.total_price_incl_tax_base || 0), 0);
+                
+                return `
+                    <div class="customer-item ${selectedCustomer?.id === c.id ? 'active' : ''}" onclick="selectCustomer('${c.id}')">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+                                    ${esc(name)}
+                                    ${hasActiveReminder ? '<span style="color: #ef4444;">🔔</span>' : ''}
+                                </div>
+                                <div style="font-size: 13px; color: #64748b; margin-top: 2px;">${esc(c.email || 'Geen email')}</div>
+                                ${c.phone ? `<div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">📞 ${esc(c.phone)}</div>` : ''}
+                            </div>
+                            ${totalRevenue > 0 ? `<span class="badge badge-actief">€${formatNum(totalRevenue)}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            if (filtered.length > 100) {
+                list.innerHTML += `<div style="padding: 16px; text-align: center; color: #64748b; font-size: 13px; background: #f8fafc; border-top: 1px solid #e5e7eb;">
+                    📋 ${filtered.length - 100} meer klanten - gebruik zoeken om te vinden
+                </div>`;
+            }
+        }
+
+        // ===== SELECT CUSTOMER =====
+        async function selectCustomer(id) {
+            selectedCustomer = customers.find(c => c.id === id);
+            if (!selectedCustomer) return;
+            
+            renderCustomerList();
+            
+            // Hide panel after selection
+            if (isMobile) {
+                document.getElementById('customerPanel').classList.add('hidden');
+                document.getElementById('listToggleBtn').textContent = '👥';
+            } else {
+                // Desktop: collapse panel to give more space
+                hidePanel();
+            }
+            
+            // Update URL
+            history.replaceState(null, '', `?id=${id}`);
+            
+            // Load customer-specific data
+            const [notes, custReminders, koppelingen] = await Promise.all([
+                fetch(`/api/klant-notes/${id}`).then(r => r.ok ? r.json() : []),
+                fetch(`/api/klant-reminders?contactId=${id}`).then(r => r.ok ? r.json() : []),
+                fetch(`/api/klant-koppelingen/${id}`).then(r => r.ok ? r.json() : { medewerkers: [], zzpers: [] })
+            ]);
+            
+            renderCustomerDetail(selectedCustomer, notes, custReminders, koppelingen);
+            
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('detailContent').style.display = 'block';
+        }
+        
+        function renderCustomerDetail(c, notes, custReminders, koppelingen) {
+            const name = getName(c);
+            const custInvoices = invoices.filter(i => i.contact_id === c.id);
+            const custEstimates = estimates.filter(e => e.contact_id === c.id);
+            const custEvents = events.filter(e => {
+                if (e.attendees?.some(a => a.email === c.email)) return true;
+                if (e.title?.toLowerCase().includes(name.toLowerCase())) return true;
+                return false;
+            });
+            
+            // Stats
+            const totalRevenue = custInvoices.filter(i => i.state === 'paid').reduce((s, i) => s + parseFloat(i.total_price_incl_tax_base || 0), 0);
+            const openAmount = custInvoices.filter(i => i.state === 'open' || i.state === 'pending').reduce((s, i) => s + parseFloat(i.total_price_incl_tax_base || 0), 0);
+            const estimateTotal = custEstimates.reduce((s, e) => s + parseFloat(e.total_price_incl_tax_base || 0), 0);
+            
+            // Active reminders
+            const activeReminders = custReminders.filter(r => !r.done);
+            const overdueReminders = activeReminders.filter(r => new Date(r.datum) <= new Date());
+            
+            // Build timeline
+            let timeline = [];
+            custInvoices.forEach(i => timeline.push({ 
+                type: 'factuur', 
+                date: i.invoice_date || i.created_at, 
+                title: `Factuur ${i.invoice_id || '#'}`, 
+                subtitle: `€${formatNum(i.total_price_incl_tax_base)} - ${getInvoiceStatus(i.state)}`,
+                link: `https://moneybird.com/463906598304089814/sales_invoices/${i.id}`
+            }));
+            custEstimates.forEach(e => timeline.push({ 
+                type: 'offerte', 
+                date: e.estimate_date || e.created_at, 
+                title: `Offerte ${e.estimate_id || '#'}`, 
+                subtitle: `€${formatNum(e.total_price_incl_tax_base)}`,
+                link: `https://moneybird.com/463906598304089814/estimates/${e.id}`
+            }));
+            custEvents.forEach(e => timeline.push({ 
+                type: 'afspraak', 
+                date: e.start, 
+                title: e.title || 'Afspraak', 
+                subtitle: formatDateTime(e.start)
+            }));
+            notes.forEach(n => timeline.push({ 
+                type: n.type || 'notitie', 
+                date: n.created, 
+                title: n.text.substring(0, 50) + (n.text.length > 50 ? '...' : ''),
+                subtitle: `door ${n.createdBy || 'onbekend'}`,
+                full: n.text,
+                noteId: n.id
+            }));
+            
+            timeline.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            const content = document.getElementById('detailContent');
+            content.innerHTML = `
+                <!-- Header -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <h1 style="font-size: 24px; font-weight: 700; color: #1e293b; margin: 0 0 4px 0;">${esc(name)}</h1>
+                        ${c.company_name && c.firstname ? `<div style="color: #64748b; margin-bottom: 4px;">${esc(c.company_name)}</div>` : ''}
+                        <div style="color: #64748b; font-size: 14px;">
+                            ${c.email ? `<a href="mailto:${c.email}" style="color: #6366f1;">📧 ${esc(c.email)}</a>` : '<span style="color: #cbd5e1;">Geen email</span>'}
+                        </div>
+                        ${c.phone ? `<div style="margin-top: 4px;"><a href="tel:${c.phone}" style="color: #6366f1;">📞 ${esc(c.phone)}</a></div>` : ''}
+                        ${c.address1 ? `<div style="color: #94a3b8; font-size: 13px; margin-top: 8px;">📍 ${esc(c.address1)}, ${esc(c.zipcode)} ${esc(c.city)}</div>` : ''}
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button onclick="showPanel()" class="btn btn-primary btn-sm">👥 Klanten</button>
+                        <button onclick="showEditModal()" class="btn btn-secondary btn-sm">✏️ Bewerken</button>
+                        <a href="https://moneybird.com/463906598304089814/contacts/${c.id}" target="_blank" class="btn btn-secondary btn-sm">💰 Moneybird</a>
+                    </div>
+                </div>
+                
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: #10b981;">€${formatNum(totalRevenue)}</div>
+                        <div class="stat-label">Totale omzet</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" style="color: ${openAmount > 0 ? '#f59e0b' : '#64748b'};">€${formatNum(openAmount)}</div>
+                        <div class="stat-label">Openstaand</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${custInvoices.length}</div>
+                        <div class="stat-label">Facturen</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${custEstimates.length}</div>
+                        <div class="stat-label">Offertes</div>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">⚡ Snelle Acties</div>
+                    <div class="card-body">
+                        <div class="quick-grid">
+                            <div class="quick-btn" onclick="showAfspraakModal()">
+                                <div class="quick-btn-icon">📅</div>
+                                <div class="quick-btn-label">Afspraak</div>
+                            </div>
+                            <div class="quick-btn" onclick="openWhatsApp()">
+                                <div class="quick-btn-icon">💬</div>
+                                <div class="quick-btn-label">WhatsApp</div>
+                            </div>
+                            <div class="quick-btn" onclick="showReminderModal()">
+                                <div class="quick-btn-icon ${overdueReminders.length > 0 ? 'reminder-indicator' : ''}">🔔</div>
+                                <div class="quick-btn-label">Herinnering</div>
+                            </div>
+                            <div class="quick-btn" onclick="showNotitieModal()">
+                                <div class="quick-btn-icon">📝</div>
+                                <div class="quick-btn-label">Notitie</div>
+                            </div>
+                            <div class="quick-btn" onclick="showEmailModal()">
+                                <div class="quick-btn-icon">📧</div>
+                                <div class="quick-btn-label">Email</div>
+                            </div>
+                            <div class="quick-btn" onclick="callCustomer()">
+                                <div class="quick-btn-icon">📞</div>
+                                <div class="quick-btn-label">Bellen</div>
+                            </div>
+                            <div class="quick-btn" onclick="showKoppelingModal()">
+                                <div class="quick-btn-icon">👷</div>
+                                <div class="quick-btn-label">Team</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Gekoppeld Team -->
+                ${renderTeamSection(koppelingen)}
+                
+                <!-- Active Reminders -->
+                ${activeReminders.length > 0 ? `
+                    <div class="card" style="border-color: ${overdueReminders.length > 0 ? '#fecaca' : '#e5e7eb'};">
+                        <div class="card-header" style="background: ${overdueReminders.length > 0 ? '#fef2f2' : '#fafbfc'};">
+                            🔔 Herinneringen (${activeReminders.length})
+                        </div>
+                        <div class="card-body" style="padding: 0;">
+                            ${activeReminders.map(r => {
+                                const isOverdue = new Date(r.datum) <= new Date();
+                                return `
+                                    <div style="padding: 14px 20px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: ${isOverdue ? '#fef2f2' : 'white'};">
+                                        <div>
+                                            <div style="font-weight: 600; color: ${isOverdue ? '#dc2626' : '#1e293b'};">${esc(r.titel)}</div>
+                                            <div style="font-size: 13px; color: #64748b;">${formatDate(r.datum)} ${r.tijd || ''}</div>
+                                            ${r.notitie ? `<div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">${esc(r.notitie)}</div>` : ''}
+                                        </div>
+                                        <div style="display: flex; gap: 8px;">
+                                            <button onclick="markReminderDone('${r.id}')" class="btn btn-success btn-sm">✓</button>
+                                            <button onclick="deleteReminder('${r.id}')" class="btn btn-secondary btn-sm" style="color: #ef4444;">✕</button>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <!-- Upcoming Events -->
+                ${custEvents.filter(e => new Date(e.start) >= new Date()).length > 0 ? `
+                    <div class="card">
+                        <div class="card-header">📅 Komende Afspraken</div>
+                        <div class="card-body" style="padding: 0;">
+                            ${custEvents.filter(e => new Date(e.start) >= new Date()).slice(0, 3).map(e => `
+                                <div style="padding: 14px 20px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-weight: 600;">${esc(e.title)}</div>
+                                        <div style="font-size: 13px; color: #64748b;">${formatDateTime(e.start)}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                <!-- Timeline -->
+                <div class="card">
+                    <div class="card-header">📜 Tijdlijn</div>
+                    <div class="card-body">
+                        ${timeline.length > 0 ? `
+                            <div class="timeline">
+                                ${timeline.slice(0, 20).map(t => `
+                                    <div class="timeline-item">
+                                        <div class="timeline-dot ${t.type}">${getTimelineIcon(t.type)}</div>
+                                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+                                            <div style="flex: 1;">
+                                                <div style="font-weight: 500; color: #1e293b;">
+                                                    ${t.link ? `<a href="${t.link}" target="_blank" style="color: inherit; text-decoration: none;">${esc(t.title)} ↗</a>` : esc(t.title)}
+                                                </div>
+                                                <div style="font-size: 13px; color: #64748b;">${esc(t.subtitle || '')}</div>
+                                                ${t.full ? `<div style="font-size: 12px; color: #94a3b8; margin-top: 4px; white-space: pre-wrap;">${esc(t.full)}</div>` : ''}
+                                            </div>
+                                            <div style="font-size: 12px; color: #94a3b8; white-space: nowrap;">${formatDate(t.date)}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<div style="text-align: center; color: #94a3b8; padding: 20px;">Nog geen activiteit</div>'}
+                    </div>
+                </div>
+            `;
+        }
+
+        // ===== MODAL FUNCTIONS =====
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        
+        // ===== AFSPRAAK =====
+        function showAfspraakModal() {
+            if (!selectedCustomer) return;
+            if (!googleConnected) {
+                showToast('Google Calendar niet verbonden. Ga naar Instellingen.', 'error');
+                return;
+            }
+            
+            const name = getName(selectedCustomer);
+            document.getElementById('afspraakTitel').value = `Afspraak ${name}`;
+            document.getElementById('afspraakDatum').value = getTomorrow();
+            document.getElementById('afspraakTijd').value = '09:00';
+            document.getElementById('afspraakDuur').value = '60';
+            document.getElementById('afspraakLocatie').value = selectedCustomer.address1 
+                ? `${selectedCustomer.address1}, ${selectedCustomer.zipcode || ''} ${selectedCustomer.city || ''}`.trim() 
+                : '';
+            document.getElementById('afspraakOmschrijving').value = '';
+            document.getElementById('afspraakInvite').checked = !!selectedCustomer.email;
+            
+            openModal('afspraakModal');
+        }
+        
+        async function saveAfspraak() {
+            const titel = document.getElementById('afspraakTitel').value.trim();
+            const datum = document.getElementById('afspraakDatum').value;
+            const tijd = document.getElementById('afspraakTijd').value;
+            const duur = parseInt(document.getElementById('afspraakDuur').value);
+            const locatie = document.getElementById('afspraakLocatie').value.trim();
+            const omschrijving = document.getElementById('afspraakOmschrijving').value.trim();
+            const sendInvite = document.getElementById('afspraakInvite').checked && selectedCustomer.email;
+            
+            if (!titel || !datum || !tijd) {
+                showToast('Vul titel, datum en tijd in', 'error');
+                return;
+            }
+            
+            // Format: 2025-12-07T09:00:00 (local time, server adds timezone)
+            const startDateTime = `${datum}T${tijd}:00`;
+            
+            // Calculate end time
+            const [hours, minutes] = tijd.split(':').map(Number);
+            const endMinutes = hours * 60 + minutes + duur;
+            const endHours = Math.floor(endMinutes / 60) % 24;
+            const endMins = endMinutes % 60;
+            const endDateTime = `${datum}T${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}:00`;
+            
+            try {
+                const eventData = {
+                    title: titel,
+                    location: locatie,
+                    description: omschrijving,
+                    start: startDateTime,
+                    end: endDateTime,
+                    attendees: sendInvite ? [{ email: selectedCustomer.email }] : []
+                };
+                
+                console.log('Sending event:', eventData);
+                
+                const res = await fetch('/api/google/events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(eventData)
+                });
+                
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.error || 'Fout bij aanmaken');
+                
+                closeModal('afspraakModal');
+                showToast(`✅ Afspraak ingepland!${sendInvite ? ' 📧 Uitnodiging verstuurd.' : ''}`);
+                
+                // Add note about appointment
+                await fetch(`/api/klant-notes/${selectedCustomer.id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: `Afspraak ingepland: ${titel} op ${formatDate(datum)} ${tijd}`, type: 'afspraak' })
+                });
+                
+                // Reload
+                await loadAllData();
+                selectCustomer(selectedCustomer.id);
+                
+            } catch (e) {
+                console.error(e);
+                showToast('Fout bij inplannen: ' + e.message, 'error');
+            }
+        }
+        
+        // ===== NOTITIE =====
+        function showNotitieModal() {
+            if (!selectedCustomer) return;
+            document.getElementById('notitieType').value = 'notitie';
+            document.getElementById('notitieText').value = '';
+            openModal('notitieModal');
+        }
+        
+        async function saveNotitie() {
+            const type = document.getElementById('notitieType').value;
+            const text = document.getElementById('notitieText').value.trim();
+            
+            if (!text) {
+                showToast('Vul een notitie in', 'error');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`/api/klant-notes/${selectedCustomer.id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, type })
+                });
+                
+                if (!res.ok) throw new Error('Fout bij opslaan');
+                
+                closeModal('notitieModal');
+                showToast('✅ Notitie opgeslagen');
+                selectCustomer(selectedCustomer.id);
+                
+            } catch (e) {
+                showToast('Fout: ' + e.message, 'error');
+            }
+        }
+        
+        // ===== REMINDER =====
+        function showReminderModal() {
+            if (!selectedCustomer) return;
+            document.getElementById('reminderTitel').value = '';
+            document.getElementById('reminderDatum').value = getTomorrow();
+            document.getElementById('reminderTijd').value = '09:00';
+            document.getElementById('reminderNotitie').value = '';
+            openModal('reminderModal');
+        }
+        
+        async function saveReminder() {
+            const titel = document.getElementById('reminderTitel').value.trim();
+            const datum = document.getElementById('reminderDatum').value;
+            const tijd = document.getElementById('reminderTijd').value;
+            const notitie = document.getElementById('reminderNotitie').value.trim();
+            
+            if (!titel || !datum) {
+                showToast('Vul titel en datum in', 'error');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/klant-reminders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contactId: selectedCustomer.id,
+                        contactName: getName(selectedCustomer),
+                        titel, datum, tijd, notitie
+                    })
+                });
+                
+                if (!res.ok) throw new Error('Fout bij opslaan');
+                
+                closeModal('reminderModal');
+                showToast('✅ Herinnering ingesteld');
+                
+                // Reload reminders
+                reminders = await fetch('/api/klant-reminders').then(r => r.json());
+                selectCustomer(selectedCustomer.id);
+                renderCustomerList();
+                
+            } catch (e) {
+                showToast('Fout: ' + e.message, 'error');
+            }
+        }
+        
+        async function markReminderDone(id) {
+            try {
+                await fetch(`/api/klant-reminders/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ done: true })
+                });
+                
+                showToast('✅ Herinnering afgerond');
+                reminders = await fetch('/api/klant-reminders').then(r => r.json());
+                selectCustomer(selectedCustomer.id);
+                renderCustomerList();
+            } catch (e) {
+                showToast('Fout: ' + e.message, 'error');
+            }
+        }
+        
+        async function deleteReminder(id) {
+            if (!confirm('Herinnering verwijderen?')) return;
+            
+            try {
+                await fetch(`/api/klant-reminders/${id}`, { method: 'DELETE' });
+                showToast('Herinnering verwijderd');
+                reminders = await fetch('/api/klant-reminders').then(r => r.json());
+                selectCustomer(selectedCustomer.id);
+                renderCustomerList();
+            } catch (e) {
+                showToast('Fout: ' + e.message, 'error');
+            }
+        }
+        
+        // ===== EMAIL =====
+        function showEmailModal() {
+            if (!selectedCustomer?.email) {
+                showToast('Klant heeft geen emailadres', 'error');
+                return;
+            }
+            
+            const name = getName(selectedCustomer);
+            document.getElementById('emailTo').value = selectedCustomer.email;
+            document.getElementById('emailSubject').value = '';
+            document.getElementById('emailBody').value = `Geachte ${name},\n\n\n\nMet vriendelijke groet,\nStucologie B.V.`;
+            openModal('emailModal');
+        }
+        
+        async function sendEmail() {
+            const to = document.getElementById('emailTo').value;
+            const subject = document.getElementById('emailSubject').value.trim();
+            const body = document.getElementById('emailBody').value.trim();
+            
+            if (!subject || !body) {
+                showToast('Vul onderwerp en bericht in', 'error');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to, subject, body })
+                });
+                
+                if (!res.ok) throw new Error('Verzenden mislukt');
+                
+                closeModal('emailModal');
+                showToast('✅ Email verstuurd!');
+                
+                // Add note
+                await fetch(`/api/klant-notes/${selectedCustomer.id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: `Email verstuurd: ${subject}`, type: 'email' })
+                });
+                
+                selectCustomer(selectedCustomer.id);
+                
+            } catch (e) {
+                showToast('Fout: ' + e.message, 'error');
+            }
+        }
+        
+        // ===== CALL =====
+        function callCustomer() {
+            if (!selectedCustomer?.phone) {
+                showToast('Klant heeft geen telefoonnummer', 'error');
+                return;
+            }
+            window.location.href = `tel:${selectedCustomer.phone}`;
+        }
+        
+        // ===== WHATSAPP =====
+        function openWhatsApp() {
+            if (!selectedCustomer?.phone) {
+                showToast('Klant heeft geen telefoonnummer', 'error');
+                return;
+            }
+            // Clean phone number: remove spaces, dashes, and add country code if needed
+            let phone = selectedCustomer.phone.replace(/[\s\-\(\)]/g, '');
+            if (phone.startsWith('0')) {
+                phone = '31' + phone.substring(1); // Dutch country code
+            } else if (phone.startsWith('+')) {
+                phone = phone.substring(1);
+            }
+            window.open(`https://wa.me/${phone}`, '_blank');
+        }
+        
+        // ===== KOPPELING =====
+        let allMedewerkers = [];
+        let allZzpers = [];
+        let currentKoppelingen = { medewerkers: [], zzpers: [] };
+        
+        async function showKoppelingModal() {
+            if (!selectedCustomer) return;
+            
+            // Load medewerkers, zzpers and current koppelingen
+            const [medewerkers, zzpers, koppelingen] = await Promise.all([
+                fetch('/api/medewerkers').then(r => r.ok ? r.json() : []),
+                fetch('/api/zzpers').then(r => r.ok ? r.json() : []),
+                fetch(`/api/klant-koppelingen/${selectedCustomer.id}`).then(r => r.ok ? r.json() : { medewerkers: [], zzpers: [] })
+            ]);
+            
+            allMedewerkers = Array.isArray(medewerkers) ? medewerkers.filter(m => m.actief !== false) : [];
+            allZzpers = Array.isArray(zzpers) ? zzpers.filter(z => z.actief !== false) : [];
+            currentKoppelingen = koppelingen;
+            
+            // Render medewerker checkboxes
+            const medContainer = document.getElementById('medewerkerCheckboxes');
+            if (allMedewerkers.length === 0) {
+                medContainer.innerHTML = '<div style="color: #94a3b8; text-align: center; padding: 8px;">Geen medewerkers gevonden</div>';
+            } else {
+                medContainer.innerHTML = allMedewerkers.map(m => {
+                    const isChecked = currentKoppelingen.medewerkers?.some(km => km.id === m.id);
+                    return `
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 8px; cursor: pointer; border-radius: 8px; transition: background 0.2s;" 
+                               onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                            <input type="checkbox" class="med-checkbox" data-id="${m.id}" data-naam="${esc(m.naam)}" ${isChecked ? 'checked' : ''} 
+                                   style="width: 20px; height: 20px; cursor: pointer;">
+                            <span style="font-weight: 500;">${esc(m.naam)}</span>
+                        </label>
+                    `;
+                }).join('');
+            }
+            
+            // Render zzper checkboxes
+            const zzpContainer = document.getElementById('zzperCheckboxes');
+            if (allZzpers.length === 0) {
+                zzpContainer.innerHTML = '<div style="color: #94a3b8; text-align: center; padding: 8px;">Geen ZZP\'ers gevonden</div>';
+            } else {
+                zzpContainer.innerHTML = allZzpers.map(z => {
+                    const isChecked = currentKoppelingen.zzpers?.some(kz => kz.id === z.id);
+                    return `
+                        <label style="display: flex; align-items: center; gap: 10px; padding: 8px; cursor: pointer; border-radius: 8px; transition: background 0.2s;"
+                               onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                            <input type="checkbox" class="zzp-checkbox" data-id="${z.id}" data-naam="${esc(z.naam)}" data-spec="${esc(z.specialisatie || '')}" ${isChecked ? 'checked' : ''}
+                                   style="width: 20px; height: 20px; cursor: pointer;">
+                            <span>
+                                <span style="font-weight: 500;">${esc(z.naam)}</span>
+                                ${z.specialisatie ? `<span style="color: #64748b; font-size: 12px;"> - ${esc(z.specialisatie)}</span>` : ''}
+                            </span>
+                        </label>
+                    `;
+                }).join('');
+            }
+            
+            openModal('koppelingModal');
+        }
+        
+        async function saveKoppeling() {
+            const medewerkers = [];
+            const zzpers = [];
+            
+            document.querySelectorAll('.med-checkbox:checked').forEach(cb => {
+                medewerkers.push({ id: cb.dataset.id, naam: cb.dataset.naam });
+            });
+            
+            document.querySelectorAll('.zzp-checkbox:checked').forEach(cb => {
+                zzpers.push({ id: cb.dataset.id, naam: cb.dataset.naam, specialisatie: cb.dataset.spec });
+            });
+            
+            try {
+                const res = await fetch(`/api/klant-koppelingen/${selectedCustomer.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ medewerkers, zzpers })
+                });
+                
+                if (!res.ok) throw new Error('Fout bij opslaan');
+                
+                closeModal('koppelingModal');
+                showToast('✅ Team gekoppeld');
+                selectCustomer(selectedCustomer.id);
+                
+            } catch (e) {
+                showToast('Fout: ' + e.message, 'error');
+            }
+        }
+
+        // ===== EDIT CUSTOMER =====
+        function showEditModal() {
+            if (!selectedCustomer) return;
+            
+            document.getElementById('editFirstname').value = selectedCustomer.firstname || '';
+            document.getElementById('editLastname').value = selectedCustomer.lastname || '';
+            document.getElementById('editCompany').value = selectedCustomer.company_name || '';
+            document.getElementById('editEmail').value = selectedCustomer.email || '';
+            document.getElementById('editPhone').value = selectedCustomer.phone || '';
+            document.getElementById('editAddress').value = selectedCustomer.address1 || '';
+            document.getElementById('editZipcode').value = selectedCustomer.zipcode || '';
+            document.getElementById('editCity').value = selectedCustomer.city || '';
+            
+            openModal('editModal');
+        }
+        
+        async function saveCustomerEdit() {
+            const data = {
+                contact: {
+                    firstname: document.getElementById('editFirstname').value.trim(),
+                    lastname: document.getElementById('editLastname').value.trim(),
+                    company_name: document.getElementById('editCompany').value.trim(),
+                    email: document.getElementById('editEmail').value.trim(),
+                    phone: document.getElementById('editPhone').value.trim(),
+                    address1: document.getElementById('editAddress').value.trim(),
+                    zipcode: document.getElementById('editZipcode').value.trim(),
+                    city: document.getElementById('editCity').value.trim()
+                }
+            };
+            
+            try {
+                const res = await fetch(`/api/contacts/${selectedCustomer.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || 'Fout bij opslaan');
+                }
+                
+                closeModal('editModal');
+                showToast('✅ Klant bijgewerkt');
+                
+                // Reload all data
+                await loadAllData();
+                selectCustomer(selectedCustomer.id);
+                
+            } catch (e) {
+                showToast('Fout: ' + e.message, 'error');
+            }
+        }
+        
+        // ===== NEW CUSTOMER =====
+        function showNewCustomerModal() {
+            document.getElementById('newFirstname').value = '';
+            document.getElementById('newLastname').value = '';
+            document.getElementById('newCompany').value = '';
+            document.getElementById('newEmail').value = '';
+            document.getElementById('newPhone').value = '';
+            document.getElementById('newAddress').value = '';
+            document.getElementById('newZipcode').value = '';
+            document.getElementById('newCity').value = '';
+            
+            openModal('newCustomerModal');
+        }
+        
+        async function createNewCustomer() {
+            const email = document.getElementById('newEmail').value.trim();
+            
+            if (!email) {
+                showToast('Email is verplicht', 'error');
+                return;
+            }
+            
+            const data = {
+                contact: {
+                    firstname: document.getElementById('newFirstname').value.trim(),
+                    lastname: document.getElementById('newLastname').value.trim(),
+                    company_name: document.getElementById('newCompany').value.trim(),
+                    email: email,
+                    phone: document.getElementById('newPhone').value.trim(),
+                    address1: document.getElementById('newAddress').value.trim(),
+                    zipcode: document.getElementById('newZipcode').value.trim(),
+                    city: document.getElementById('newCity').value.trim(),
+                    country: 'NL'
+                }
+            };
+            
+            try {
+                const res = await fetch('/api/contacts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || 'Fout bij aanmaken');
+                }
+                
+                const newContact = await res.json();
+                
+                closeModal('newCustomerModal');
+                showToast('✅ Klant aangemaakt');
+                
+                // Reload and select new customer
+                await loadAllData();
+                if (newContact.id) {
+                    selectCustomer(newContact.id);
+                }
+                
+            } catch (e) {
+                showToast('Fout: ' + e.message, 'error');
+            }
+        }
+        
+        // ===== RENDER HELPERS =====
+        function renderTeamSection(koppelingen) {
+            if (!koppelingen || ((!koppelingen.medewerkers || koppelingen.medewerkers.length === 0) && (!koppelingen.zzpers || koppelingen.zzpers.length === 0))) {
+                return '';
+            }
+            
+            let html = `
+                <div class="card">
+                    <div class="card-header">
+                        👷 Gekoppeld Team
+                        <button onclick="showKoppelingModal()" class="btn btn-secondary btn-sm">✏️ Wijzigen</button>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+            `;
+            
+            if (koppelingen.medewerkers && koppelingen.medewerkers.length > 0) {
+                koppelingen.medewerkers.forEach(m => {
+                    html += `
+                        <div style="padding: 12px 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 20px;">👤</span>
+                            <div>
+                                <div style="font-weight: 600;">${esc(m.naam)}</div>
+                                <div style="font-size: 12px; color: #64748b;">Medewerker</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            if (koppelingen.zzpers && koppelingen.zzpers.length > 0) {
+                koppelingen.zzpers.forEach(z => {
+                    html += `
+                        <div style="padding: 12px 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 12px;">
+                            <span style="font-size: 20px;">🤝</span>
+                            <div>
+                                <div style="font-weight: 600;">${esc(z.naam)}</div>
+                                <div style="font-size: 12px; color: #64748b;">ZZP'er${z.specialisatie ? ' - ' + esc(z.specialisatie) : ''}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += `
+                    </div>
+                </div>
+            `;
+            
+            return html;
+        }
+        
+        // ===== UTILITIES =====
+        function getName(c) {
+            if (!c) return 'Onbekend';
+            if (c.company_name) return c.company_name;
+            return `${c.firstname || ''} ${c.lastname || ''}`.trim() || 'Onbekend';
+        }
+        
+        function formatNum(n) {
+            return parseFloat(n || 0).toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        }
+        
+        function formatDate(d) {
+            if (!d) return '-';
+            return new Date(d).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+        
+        function formatDateTime(d) {
+            if (!d) return '-';
+            return new Date(d).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        }
+        
+        function getTomorrow() {
+            const d = new Date();
+            d.setDate(d.getDate() + 1);
+            return d.toISOString().split('T')[0];
+        }
+        
+        function getInvoiceStatus(state) {
+            const statuses = {
+                'draft': 'Concept',
+                'open': 'Open',
+                'pending': 'In afwachting',
+                'paid': 'Betaald',
+                'late': 'Te laat',
+                'uncollectible': 'Oninbaar'
+            };
+            return statuses[state] || state;
+        }
+        
+        function getTimelineIcon(type) {
+            const icons = {
+                'factuur': '💰',
+                'offerte': '📄',
+                'afspraak': '📅',
+                'email': '📧',
+                'notitie': '📝',
+                'telefoon': '📞',
+                'bezoek': '🏠'
+            };
+            return icons[type] || '📌';
+        }
+        
+        function esc(t) {
+            if (!t) return '';
+            const d = document.createElement('div');
+            d.textContent = t;
+            return d.innerHTML;
+        }
+        
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.style.background = type === 'error' ? '#dc2626' : '#1e293b';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+    </script>
+    <script src="/sidebar.js"></script>
+</body>
+</html>

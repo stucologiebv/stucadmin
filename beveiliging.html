@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beveiliging - StucAdmin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/sidebar.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f5f7fa; }
+        main { padding: 24px; }
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+        .btn { padding: 12px 24px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-danger:hover { background: #dc2626; }
+        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; width: 100%; font-size: 16px; }
+        .input-field:focus { outline: none; border-color: #6366f1; }
+        .alert { padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; }
+        .alert-success { background: #d1fae5; color: #065f46; }
+        .alert-error { background: #fee2e2; color: #991b1b; }
+        .alert-warning { background: #fef3c7; color: #92400e; }
+        .login-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f1f5f9; }
+        .login-item:last-child { border-bottom: none; }
+        .session-item { background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 8px; }
+        .session-current { background: #d1fae5; border: 1px solid #10b981; }
+        @media (max-width: 1024px) {
+            .sidebar { display: none; }
+            main { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="p-4 border-b border-gray-100">
+            <img src="/logo-stucologie.jpg" alt="Stucologie B.V." style="max-width: 180px; height: auto;">
+        </div>
+        <nav class="flex-1 p-4 overflow-y-auto">
+            <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+            <a href="omzet.html" class="nav-item">💹 Omzet</a>
+            <a href="crm.html" class="nav-item">👥 Klanten</a>
+            <a href="planning.html" class="nav-item">📅 Planning</a>
+            <a href="opname.html" class="nav-item">📋 Opname</a>
+                <a href="offerteaanvragen.html" class="nav-item">📩 Offertes</a>
+                <a href="zzp-inhuur.html" class="nav-item">🤝 ZZP Inhuur</a>
+            <a href="uren.html" class="nav-item">⏱️ Uren</a>
+            <a href="calculator.html" class="nav-item">🧮 Calculator</a>
+            <a href="materials.html" class="nav-item">📊 Inkoop Analyse</a>
+            <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
+            <div class="border-t border-gray-200 my-4"></div>
+            <a href="beveiliging.html" class="nav-item active">🔐 Beveiliging</a>
+        </nav>
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button>
+        </div>
+    </aside>
+
+    <main class="max-w-4xl">
+        <header class="mb-6">
+            <h1 class="text-2xl font-bold">🔐 Beveiliging</h1>
+            <p class="text-gray-500">Beheer je wachtwoord en bekijk login activiteit</p>
+        </header>
+
+        <div id="alerts"></div>
+
+        <!-- Password must change warning -->
+        <div id="mustChangeAlert" class="alert alert-warning hidden">
+            <strong>⚠️ Wachtwoord wijzigen vereist!</strong><br>
+            Je gebruikt nog het standaard wachtwoord. Wijzig dit voor je veiligheid.
+        </div>
+
+        <!-- Change Password -->
+        <div class="card">
+            <h2 class="text-lg font-bold mb-4">🔑 Wachtwoord wijzigen</h2>
+            
+            <form onsubmit="changePassword(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Huidig wachtwoord</label>
+                    <input type="password" id="currentPassword" class="input-field" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nieuw wachtwoord</label>
+                    <input type="password" id="newPassword" class="input-field" required minlength="8">
+                    <p class="text-xs text-gray-500 mt-1">Minimaal 8 karakters</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Bevestig nieuw wachtwoord</label>
+                    <input type="password" id="confirmPassword" class="input-field" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Wachtwoord wijzigen</button>
+            </form>
+        </div>
+
+        <!-- Security Status -->
+        <div class="card">
+            <h2 class="text-lg font-bold mb-4">📊 Beveiligingsstatus</h2>
+            <div id="securityStatus" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="text-center p-4 bg-gray-50 rounded-lg">
+                    <div class="text-2xl font-bold text-indigo-600" id="activeSessions">-</div>
+                    <div class="text-sm text-gray-500">Actieve sessies</div>
+                </div>
+                <div class="text-center p-4 bg-gray-50 rounded-lg">
+                    <div class="text-2xl font-bold text-green-600" id="sessionDuration">-</div>
+                    <div class="text-sm text-gray-500">Sessie duur</div>
+                </div>
+                <div class="text-center p-4 bg-gray-50 rounded-lg">
+                    <div class="text-2xl font-bold text-orange-600" id="failedAttempts">-</div>
+                    <div class="text-sm text-gray-500">Mislukte pogingen</div>
+                </div>
+                <div class="text-center p-4 bg-gray-50 rounded-lg">
+                    <div class="text-2xl font-bold text-gray-600" id="currentIP">-</div>
+                    <div class="text-sm text-gray-500">Jouw IP</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Sessions -->
+        <div class="card">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold">💻 Actieve Sessies</h2>
+                <button onclick="logoutAll()" class="btn btn-danger text-sm">Alle sessies beëindigen</button>
+            </div>
+            <div id="sessionsList">
+                <p class="text-gray-400">Laden...</p>
+            </div>
+        </div>
+
+        <!-- Login History -->
+        <div class="card">
+            <h2 class="text-lg font-bold mb-4">📜 Recente Login Activiteit</h2>
+            <div id="loginHistory">
+                <p class="text-gray-400">Laden...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
+
+        function showAlert(message, type = 'success') {
+            const alerts = document.getElementById('alerts');
+            alerts.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => alerts.innerHTML = '', 5000);
+        }
+
+        async function changePassword(e) {
+            e.preventDefault();
+            
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) {
+                showAlert('Nieuwe wachtwoorden komen niet overeen', 'error');
+                return;
+            }
+            
+            if (newPassword.length < 8) {
+                showAlert('Wachtwoord moet minimaal 8 karakters zijn', 'error');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/auth/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok) {
+                    showAlert('✅ Wachtwoord succesvol gewijzigd!', 'success');
+                    document.getElementById('mustChangeAlert').classList.add('hidden');
+                    e.target.reset();
+                } else {
+                    showAlert(data.error || 'Er ging iets mis', 'error');
+                }
+            } catch (err) {
+                showAlert('Verbindingsfout', 'error');
+            }
+        }
+
+        async function loadSecurityStatus() {
+            try {
+                const res = await fetch('/api/auth/security-status');
+                const data = await res.json();
+                
+                document.getElementById('activeSessions').textContent = data.activeSessions;
+                document.getElementById('sessionDuration').textContent = data.sessionDuration;
+                document.getElementById('failedAttempts').textContent = data.failedAttempts + '/' + data.maxAttempts;
+                document.getElementById('currentIP').textContent = data.currentIP.substring(0, 15);
+            } catch (e) {
+                console.error('Could not load security status');
+            }
+        }
+
+        async function loadSessions() {
+            try {
+                const res = await fetch('/api/auth/sessions');
+                const sessions = await res.json();
+                
+                const container = document.getElementById('sessionsList');
+                
+                if (sessions.length === 0) {
+                    container.innerHTML = '<p class="text-gray-400">Geen actieve sessies</p>';
+                    return;
+                }
+                
+                container.innerHTML = sessions.map(s => `
+                    <div class="session-item ${s.current ? 'session-current' : ''}">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="font-medium">${s.user}</span>
+                                ${s.current ? '<span class="ml-2 text-xs bg-green-600 text-white px-2 py-1 rounded">Huidige sessie</span>' : ''}
+                            </div>
+                            <span class="text-sm text-gray-500">${s.ip}</span>
+                        </div>
+                        <div class="text-xs text-gray-400 mt-1">
+                            Aangemaakt: ${new Date(s.created).toLocaleString('nl-NL')} • 
+                            Verloopt: ${new Date(s.expires).toLocaleString('nl-NL')}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Could not load sessions');
+            }
+        }
+
+        async function loadLoginHistory() {
+            try {
+                const res = await fetch('/api/auth/login-history');
+                const history = await res.json();
+                
+                const container = document.getElementById('loginHistory');
+                
+                if (history.length === 0) {
+                    container.innerHTML = '<p class="text-gray-400">Geen login geschiedenis</p>';
+                    return;
+                }
+                
+                container.innerHTML = history.map(h => `
+                    <div class="login-item">
+                        <div>
+                            <span class="${h.success ? 'text-green-600' : 'text-red-600'}">${h.success ? '✅' : '❌'}</span>
+                            <span class="font-medium ml-2">${h.username}</span>
+                            ${h.reason ? `<span class="text-xs text-gray-400 ml-2">(${h.reason})</span>` : ''}
+                        </div>
+                        <div class="text-sm text-gray-500">
+                            ${h.ip} • ${new Date(h.timestamp).toLocaleString('nl-NL')}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Could not load login history');
+            }
+        }
+
+        async function logoutAll() {
+            if (!confirm('Weet je zeker dat je alle sessies wilt beëindigen? Je wordt uitgelogd.')) {
+                return;
+            }
+            
+            try {
+                await fetch('/api/auth/logout-all', { method: 'POST' });
+                window.location.href = '/login.html';
+            } catch (e) {
+                showAlert('Kon sessies niet beëindigen', 'error');
+            }
+        }
+
+        // Check if password must be changed
+        async function checkMustChangePassword() {
+            try {
+                const res = await fetch('/api/auth/check');
+                const data = await res.json();
+                
+                if (data.mustChangePassword) {
+                    document.getElementById('mustChangeAlert').classList.remove('hidden');
+                }
+            } catch (e) {}
+        }
+
+        // Init
+        loadSecurityStatus();
+        loadSessions();
+        loadLoginHistory();
+        checkMustChangePassword();
+        
+        // Refresh every 30 seconds
+        setInterval(() => {
+            loadSecurityStatus();
+            loadSessions();
+        }, 30000);
+    </script>
+<script src="/data-sync.js"></script>
+</body>
+</html>

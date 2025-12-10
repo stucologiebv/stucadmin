@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract Ondertekenen - StucAdmin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', -apple-system, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .card { background: white; border-radius: 20px; box-shadow: 0 25px 50px rgba(0,0,0,0.15); }
+        .step { display: none; }
+        .step.active { display: block; }
+        .step-indicator { display: flex; gap: 8px; margin-bottom: 24px; }
+        .step-dot { width: 12px; height: 12px; border-radius: 50%; background: #e2e8f0; }
+        .step-dot.active { background: #6366f1; }
+        .step-dot.done { background: #22c55e; }
+        .form-input { width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 16px; transition: all 0.2s; }
+        .form-input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+        .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 14px 28px; border-radius: 12px; font-weight: 600; border: none; cursor: pointer; width: 100%; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 14px 28px; border-radius: 12px; font-weight: 600; border: none; cursor: pointer; }
+        .signature-pad { border: 2px dashed #e2e8f0; border-radius: 12px; background: #fafafa; cursor: crosshair; touch-action: none; }
+        .contract-box { background: #f8fafc; border-radius: 12px; padding: 20px; max-height: 400px; overflow-y: auto; font-size: 14px; line-height: 1.7; }
+    </style>
+</head>
+<body class="p-4">
+    <div class="max-w-lg mx-auto py-8">
+        <!-- Header -->
+        <div class="text-center text-white mb-8">
+            <h1 class="text-2xl font-bold mb-2">📝 Contract Ondertekenen</h1>
+            <p class="opacity-90" id="companyName">Laden...</p>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="card p-8 text-center">
+            <div class="text-4xl mb-4">⏳</div>
+            <p class="text-gray-600">Uitnodiging laden...</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="card p-8 text-center" style="display: none;">
+            <div class="text-4xl mb-4">❌</div>
+            <p class="text-gray-600" id="errorMessage">Deze link is niet geldig of verlopen.</p>
+        </div>
+
+        <!-- Already Signed State -->
+        <div id="signedState" class="card p-8 text-center" style="display: none;">
+            <div class="text-4xl mb-4">✅</div>
+            <h2 class="text-xl font-bold mb-2">Contract is al ondertekend!</h2>
+            <p class="text-gray-600">Je hebt dit contract al ondertekend. De opdrachtgever heeft een bevestiging ontvangen.</p>
+        </div>
+
+        <!-- Main Form -->
+        <div id="mainForm" class="card" style="display: none;">
+            <!-- Step Indicators -->
+            <div class="p-6 border-b">
+                <div class="step-indicator justify-center">
+                    <div class="step-dot active" id="dot1"></div>
+                    <div class="step-dot" id="dot2"></div>
+                    <div class="step-dot" id="dot3"></div>
+                </div>
+                <h2 class="text-xl font-bold text-center" id="stepTitle">Jouw Gegevens</h2>
+            </div>
+
+            <!-- Step 1: Personal Info -->
+            <div class="step active p-6" id="step1">
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Voornaam *</label>
+                            <input type="text" id="voornaam" class="form-input" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Achternaam *</label>
+                            <input type="text" id="achternaam" class="form-input" required>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Bedrijfsnaam *</label>
+                        <input type="text" id="bedrijfsnaam" class="form-input" placeholder="Jouw BV of eenmanszaak">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Email *</label>
+                        <input type="email" id="email" class="form-input" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Telefoon *</label>
+                        <input type="tel" id="telefoon" class="form-input" placeholder="06-12345678">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Adres *</label>
+                        <input type="text" id="adres" class="form-input" placeholder="Straat en huisnummer">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Postcode *</label>
+                            <input type="text" id="postcode" class="form-input" placeholder="1234AB">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Plaats *</label>
+                            <input type="text" id="plaats" class="form-input">
+                        </div>
+                    </div>
+                </div>
+                <button onclick="nextStep(2)" class="btn-primary mt-6">Volgende →</button>
+            </div>
+
+            <!-- Step 2: Business Info -->
+            <div class="step p-6" id="step2">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">KVK-nummer *</label>
+                        <input type="text" id="kvk" class="form-input" placeholder="12345678">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">BTW-nummer *</label>
+                        <input type="text" id="btw" class="form-input" placeholder="NL123456789B01">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">IBAN *</label>
+                        <input type="text" id="iban" class="form-input" placeholder="NL00BANK0123456789">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Uurtarief (€) *</label>
+                        <input type="number" id="uurtarief" class="form-input" placeholder="45">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button onclick="prevStep(1)" class="btn-secondary flex-1">← Terug</button>
+                    <button onclick="nextStep(3)" class="btn-primary flex-1">Volgende →</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Contract & Signature -->
+            <div class="step p-6" id="step3">
+                <div class="contract-box mb-4" id="contractText">
+                    <!-- Contract wordt hier geladen -->
+                </div>
+                <label class="flex items-start gap-3 mb-4 cursor-pointer">
+                    <input type="checkbox" id="acceptContract" class="mt-1 w-5 h-5">
+                    <span class="text-sm">Ik heb het contract gelezen en ga akkoord met de voorwaarden</span>
+                </label>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Handtekening</label>
+                    <canvas id="signaturePad" class="signature-pad w-full" height="150"></canvas>
+                    <button onclick="clearSignature()" class="text-sm text-indigo-600 mt-2">Wissen</button>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="prevStep(2)" class="btn-secondary flex-1">← Terug</button>
+                    <button onclick="submitContract()" class="btn-primary flex-1">✅ Ondertekenen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success State -->
+        <div id="successState" class="card p-8 text-center" style="display: none;">
+            <div class="text-6xl mb-4">🎉</div>
+            <h2 class="text-2xl font-bold mb-2 text-green-600">Contract Ondertekend!</h2>
+            <p class="text-gray-600 mb-4">Bedankt! Je contract is succesvol ondertekend en verstuurd.</p>
+            <p class="text-gray-500 text-sm">Je ontvangt een kopie per email. De opdrachtgever is op de hoogte gebracht.</p>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        let inviteData = null;
+        let currentStep = 1;
+        let signatureCanvas, signatureCtx;
+        let isDrawing = false;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!token) {
+                showError('Geen geldige link. Gebruik de link uit de uitnodigingsmail.');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`/api/zzp/invite/${token}`);
+                if (!res.ok) {
+                    const err = await res.json();
+                    if (err.signed) {
+                        document.getElementById('loadingState').style.display = 'none';
+                        document.getElementById('signedState').style.display = 'block';
+                        return;
+                    }
+                    throw new Error(err.error || 'Ongeldige link');
+                }
+                inviteData = await res.json();
+                
+                document.getElementById('companyName').textContent = inviteData.companyName || 'StucAdmin';
+                document.getElementById('email').value = inviteData.email;
+                if (inviteData.name) document.getElementById('voornaam').value = inviteData.name;
+                
+                // Load contract template
+                loadContract();
+                
+                // Setup signature pad
+                setupSignaturePad();
+                
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('mainForm').style.display = 'block';
+            } catch (e) {
+                showError(e.message);
+            }
+        });
+
+        function showError(msg) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorMessage').textContent = msg;
+            document.getElementById('errorState').style.display = 'block';
+        }
+
+        function nextStep(step) {
+            if (step === 2 && !validateStep1()) return;
+            if (step === 3 && !validateStep2()) return;
+            
+            document.getElementById(`step${currentStep}`).classList.remove('active');
+            document.getElementById(`step${step}`).classList.add('active');
+            document.getElementById(`dot${currentStep}`).classList.remove('active');
+            document.getElementById(`dot${currentStep}`).classList.add('done');
+            document.getElementById(`dot${step}`).classList.add('active');
+            
+            currentStep = step;
+            const titles = ['', 'Jouw Gegevens', 'Bedrijfsgegevens', 'Contract Ondertekenen'];
+            document.getElementById('stepTitle').textContent = titles[step];
+            
+            if (step === 3) updateContractWithData();
+        }
+
+        function prevStep(step) {
+            document.getElementById(`step${currentStep}`).classList.remove('active');
+            document.getElementById(`step${step}`).classList.add('active');
+            document.getElementById(`dot${currentStep}`).classList.remove('active');
+            document.getElementById(`dot${step}`).classList.remove('done');
+            document.getElementById(`dot${step}`).classList.add('active');
+            currentStep = step;
+            const titles = ['', 'Jouw Gegevens', 'Bedrijfsgegevens', 'Contract Ondertekenen'];
+            document.getElementById('stepTitle').textContent = titles[step];
+        }
+
+        function validateStep1() {
+            const fields = ['voornaam', 'achternaam', 'telefoon', 'adres', 'postcode', 'plaats'];
+            for (const f of fields) {
+                if (!document.getElementById(f).value.trim()) {
+                    alert('Vul alle verplichte velden in');
+                    document.getElementById(f).focus();
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function validateStep2() {
+            const fields = ['kvk', 'btw', 'iban', 'uurtarief'];
+            for (const f of fields) {
+                if (!document.getElementById(f).value.trim()) {
+                    alert('Vul alle verplichte velden in');
+                    document.getElementById(f).focus();
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function loadContract() {
+            document.getElementById('contractText').innerHTML = `
+                <h3 class="font-bold text-lg mb-3">Modelovereenkomst - Geen werkgeversgezag (Wet DBA)</h3>
+                <p class="mb-2"><strong>Opdrachtgever:</strong> ${inviteData.companyName || '[Bedrijf]'}</p>
+                <p class="mb-4"><strong>Opdrachtnemer:</strong> <span id="contractNaam">[Wordt ingevuld]</span></p>
+                
+                <p class="mb-3">Partijen verklaren hierbij een overeenkomst van opdracht aan te gaan, waarbij geen sprake is van een gezagsverhouding. De opdrachtnemer verricht werkzaamheden als zelfstandig ondernemer.</p>
+                
+                <h4 class="font-bold mt-4 mb-2">Artikel 1 - Opdracht</h4>
+                <p class="mb-3">De opdrachtnemer zal voor de opdrachtgever werkzaamheden verrichten op het gebied van stukadoors- en/of schilderwerkzaamheden.</p>
+                
+                <h4 class="font-bold mt-4 mb-2">Artikel 2 - Geen gezagsverhouding</h4>
+                <p class="mb-3">De opdrachtnemer is vrij in de wijze waarop hij de werkzaamheden uitvoert. Er is geen sprake van een gezagsverhouding.</p>
+                
+                <h4 class="font-bold mt-4 mb-2">Artikel 3 - Vergoeding</h4>
+                <p class="mb-3">De vergoeding bedraagt €<span id="contractTarief">[tarief]</span> per uur, exclusief BTW.</p>
+                
+                <h4 class="font-bold mt-4 mb-2">Artikel 4 - Duur</h4>
+                <p class="mb-3">Deze overeenkomst wordt aangegaan voor onbepaalde tijd en kan door beide partijen met inachtneming van een redelijke termijn worden opgezegd.</p>
+                
+                <p class="mt-4 text-sm text-gray-500">Datum: ${new Date().toLocaleDateString('nl-NL')}</p>
+            `;
+        }
+
+        function updateContractWithData() {
+            const naam = `${document.getElementById('voornaam').value} ${document.getElementById('achternaam').value}`;
+            const bedrijf = document.getElementById('bedrijfsnaam').value;
+            document.getElementById('contractNaam').textContent = bedrijf ? `${naam} (${bedrijf})` : naam;
+            document.getElementById('contractTarief').textContent = document.getElementById('uurtarief').value || '[tarief]';
+        }
+
+        function setupSignaturePad() {
+            signatureCanvas = document.getElementById('signaturePad');
+            signatureCtx = signatureCanvas.getContext('2d');
+            signatureCanvas.width = signatureCanvas.offsetWidth;
+            
+            signatureCanvas.addEventListener('mousedown', startDrawing);
+            signatureCanvas.addEventListener('mousemove', draw);
+            signatureCanvas.addEventListener('mouseup', stopDrawing);
+            signatureCanvas.addEventListener('mouseout', stopDrawing);
+            
+            signatureCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e.touches[0]); });
+            signatureCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); });
+            signatureCanvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = signatureCanvas.getBoundingClientRect();
+            signatureCtx.beginPath();
+            signatureCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = signatureCanvas.getBoundingClientRect();
+            signatureCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            signatureCtx.strokeStyle = '#1e293b';
+            signatureCtx.lineWidth = 2;
+            signatureCtx.lineCap = 'round';
+            signatureCtx.stroke();
+        }
+
+        function stopDrawing() { isDrawing = false; }
+        function clearSignature() { signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height); }
+
+        function isSignatureEmpty() {
+            const pixels = signatureCtx.getImageData(0, 0, signatureCanvas.width, signatureCanvas.height).data;
+            for (let i = 3; i < pixels.length; i += 4) {
+                if (pixels[i] > 0) return false;
+            }
+            return true;
+        }
+
+        async function submitContract() {
+            if (!document.getElementById('acceptContract').checked) {
+                alert('Je moet akkoord gaan met het contract');
+                return;
+            }
+            if (isSignatureEmpty()) {
+                alert('Plaats je handtekening');
+                return;
+            }
+
+            const data = {
+                token: token,
+                voornaam: document.getElementById('voornaam').value,
+                achternaam: document.getElementById('achternaam').value,
+                bedrijfsnaam: document.getElementById('bedrijfsnaam').value,
+                email: document.getElementById('email').value,
+                telefoon: document.getElementById('telefoon').value,
+                adres: document.getElementById('adres').value,
+                postcode: document.getElementById('postcode').value,
+                plaats: document.getElementById('plaats').value,
+                kvk: document.getElementById('kvk').value,
+                btw: document.getElementById('btw').value,
+                iban: document.getElementById('iban').value,
+                uurtarief: document.getElementById('uurtarief').value,
+                handtekening: signatureCanvas.toDataURL('image/png'),
+                signedAt: new Date().toISOString()
+            };
+
+            try {
+                const res = await fetch('/api/zzp/sign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (res.ok) {
+                    document.getElementById('mainForm').style.display = 'none';
+                    document.getElementById('successState').style.display = 'block';
+                } else {
+                    const err = await res.json();
+                    alert('Fout: ' + (err.error || 'Kon contract niet versturen'));
+                }
+            } catch (e) {
+                alert('Er ging iets mis. Probeer opnieuw.');
+            }
+        }
+    </script>
+</body>
+</html>

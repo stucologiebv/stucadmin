@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instellingen - StucAdmin</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html';});</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/sidebar.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f8fafc; }
+        .main-content { padding: 32px; }
+        
+        .tab-btn { padding: 12px 24px; font-weight: 500; color: #64748b; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .tab-btn:hover { color: #1e293b; }
+        .tab-btn.active { color: #f97316; border-bottom-color: #f97316; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px; }
+        .form-label { display: block; font-weight: 500; color: #374151; margin-bottom: 6px; font-size: 14px; }
+        .form-input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; transition: all 0.2s; }
+        .form-input:focus { outline: none; border-color: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,0.1); }
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 8px; font-weight: 500; transition: all 0.2s; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-danger { background: #fee2e2; color: #dc2626; padding: 10px 20px; border-radius: 8px; font-weight: 500; transition: all 0.2s; }
+        .btn-danger:hover { background: #fecaca; }
+        
+        .integration-card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: space-between; }
+        .integration-card.connected { border-color: #10b981; background: #f0fdf4; }
+        .integration-card.selected { border-color: #f97316; background: #fff7ed; }
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-connected { background: #d1fae5; color: #059669; }
+        .status-disconnected { background: #f3f4f6; color: #6b7280; }
+        
+        .provider-logo { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+        
+        .plan-card { border: 2px solid #e5e7eb; border-radius: 16px; padding: 24px; text-align: center; transition: all 0.2s; }
+        .plan-card.current { border-color: #f97316; background: #fff7ed; }
+        .plan-card:hover { border-color: #f97316; }
+        
+        .user-row { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid #f1f5f9; }
+        .user-row:last-child { border-bottom: none; }
+        
+        .toast { position: fixed; bottom: 24px; right: 24px; padding: 16px 24px; border-radius: 12px; color: white; font-weight: 500; z-index: 1000; animation: slideIn 0.3s; }
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        @keyframes slideIn { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .config-panel { margin-top: 16px; background: #f8fafc; border-radius: 12px; padding: 20px; display: none; }
+        .config-panel.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-900">⚙️ Instellingen</h1>
+            <p class="text-gray-500 mt-1">Beheer je bedrijfsgegevens, integraties en account</p>
+        </div>
+
+        <!-- Tip Banner -->
+        <div class="bg-gradient-to-r from-gray-50 to-slate-50 border border-gray-200 rounded-xl p-3 mb-6 flex items-center gap-3">
+            <span class="text-xl">🔗</span>
+            <p class="text-sm text-gray-700"><strong>Centrale configuratie</strong> — Koppel hier je boekhouding, Google Agenda en andere tools. Alles synchroniseert automatisch met de rest van StucAdmin.</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex border-b border-gray-200 mb-6">
+            <button class="tab-btn active" onclick="switchTab('bedrijf')">🏢 Bedrijf</button>
+            <button class="tab-btn" onclick="switchTab('integraties')">🔗 Integraties</button>
+            <button class="tab-btn" onclick="switchTab('abonnement')">💳 Abonnement</button>
+            <button class="tab-btn" onclick="switchTab('gebruikers')">👥 Gebruikers</button>
+            <button class="tab-btn" onclick="switchTab('account')">👤 Account</button>
+        </div>
+
+        <!-- Tab: Bedrijfsgegevens -->
+        <div id="tab-bedrijf" class="tab-content active">
+            <div class="card">
+                <h2 class="text-xl font-bold text-gray-900 mb-6">Bedrijfsgegevens</h2>
+                <form id="bedrijfForm" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Bedrijfsnaam</label>
+                            <input type="text" id="bedrijfNaam" class="form-input" placeholder="Jouw Stukadoorsbedrijf">
+                        </div>
+                        <div>
+                            <label class="form-label">Email</label>
+                            <input type="email" id="bedrijfEmail" class="form-input" placeholder="info@bedrijf.nl">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Telefoon</label>
+                            <input type="tel" id="bedrijfTelefoon" class="form-input" placeholder="06-12345678">
+                        </div>
+                        <div>
+                            <label class="form-label">Website</label>
+                            <input type="url" id="bedrijfWebsite" class="form-input" placeholder="https://www.bedrijf.nl">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label">Adres</label>
+                        <input type="text" id="bedrijfAdres" class="form-input" placeholder="Straatnaam 123, 1234 AB Plaats">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">KVK-nummer</label>
+                            <input type="text" id="bedrijfKvk" class="form-input" placeholder="12345678">
+                        </div>
+                        <div>
+                            <label class="form-label">BTW-nummer</label>
+                            <input type="text" id="bedrijfBtw" class="form-input" placeholder="NL123456789B01">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label">IBAN</label>
+                        <input type="text" id="bedrijfIban" class="form-input" placeholder="NL00 BANK 0000 0000 00">
+                    </div>
+                    <hr class="my-4">
+                    <h3 class="font-semibold text-gray-700 mb-3">📧 Email signature</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Contactpersoon naam</label>
+                            <input type="text" id="bedrijfContactNaam" class="form-input" placeholder="Jan Jansen">
+                        </div>
+                        <div>
+                            <label class="form-label">Functie</label>
+                            <input type="text" id="bedrijfContactFunctie" class="form-input" placeholder="Directeur">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Mobiel nummer</label>
+                            <input type="tel" id="bedrijfMobiel" class="form-input" placeholder="06-12345678">
+                        </div>
+                        <div>
+                            <label class="form-label">Primaire kleur (hex)</label>
+                            <input type="text" id="bedrijfKleur" class="form-input" placeholder="#e67e22">
+                        </div>
+                    </div>
+                    <h4 class="font-medium text-gray-600 mt-4 mb-2">Social media (optioneel)</h4>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="form-label">Facebook URL</label>
+                            <input type="url" id="bedrijfFacebook" class="form-input" placeholder="https://facebook.com/...">
+                        </div>
+                        <div>
+                            <label class="form-label">Instagram URL</label>
+                            <input type="url" id="bedrijfInstagram" class="form-input" placeholder="https://instagram.com/...">
+                        </div>
+                        <div>
+                            <label class="form-label">LinkedIn URL</label>
+                            <input type="url" id="bedrijfLinkedin" class="form-input" placeholder="https://linkedin.com/...">
+                        </div>
+                    </div>
+                    <div class="pt-4">
+                        <button type="submit" class="btn-primary">💾 Opslaan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tab: Integraties -->
+        <div id="tab-integraties" class="tab-content">
+            <!-- Boekhouding sectie -->
+            <div class="card">
+                <h2 class="text-xl font-bold text-gray-900 mb-2">📊 Boekhouding</h2>
+                <p class="text-gray-500 text-sm mb-6">Koppel je boekhoudsoftware om klanten en facturen te synchroniseren. Je kunt één boekhoudpakket tegelijk actief hebben.</p>
+                
+                <div class="space-y-3" id="accountingProviders">
+                    <!-- Moneybird -->
+                    <div class="integration-card" id="card-moneybird" onclick="selectProvider('moneybird')">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                                <svg viewBox="0 0 24 24" class="w-8 h-8 text-white" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900">Moneybird</h3>
+                                <p class="text-sm text-gray-500">Populair in Nederland, eenvoudig te gebruiken</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="status-badge status-disconnected" id="status-moneybird">Niet verbonden</span>
+                        </div>
+                    </div>
+
+                    <!-- Exact Online -->
+                    <div class="integration-card" id="card-exact" onclick="selectProvider('exact')">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">E</div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900">Exact Online</h3>
+                                <p class="text-sm text-gray-500">Complete ERP oplossing voor groeiende bedrijven</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="status-badge status-disconnected" id="status-exact">Niet verbonden</span>
+                        </div>
+                    </div>
+
+                    <!-- Snelstart -->
+                    <div class="integration-card" id="card-snelstart" onclick="selectProvider('snelstart')">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
+                                <svg viewBox="0 0 24 24" class="w-8 h-8 text-white" fill="currentColor"><path d="M13 3L4 14h7l-2 7 9-11h-7l2-7z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900">Snelstart</h3>
+                                <p class="text-sm text-gray-500">Betaalbare boekhouding voor ZZP en MKB</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="status-badge status-disconnected" id="status-snelstart">Niet verbonden</span>
+                        </div>
+                    </div>
+
+                    <!-- e-Boekhouden -->
+                    <div class="integration-card" id="card-eboekhouden" onclick="selectProvider('eboekhouden')">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">eB</div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900">e-Boekhouden</h3>
+                                <p class="text-sm text-gray-500">Online boekhouden met uitgebreide rapportages</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="status-badge status-disconnected" id="status-eboekhouden">Niet verbonden</span>
+                        </div>
+                    </div>
+
+                    <!-- Visma eAccounting -->
+                    <div class="integration-card" id="card-visma" onclick="selectProvider('visma')">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">V</div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900">Visma eAccounting</h3>
+                                <p class="text-sm text-gray-500">Krachtige boekhouding met veel integraties</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="status-badge status-disconnected" id="status-visma">Niet verbonden</span>
+                        </div>
+                    </div>
+
+                    <!-- Jortt -->
+                    <div class="integration-card" id="card-jortt" onclick="selectProvider('jortt')">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-teal-500 rounded-lg flex items-center justify-center">
+                                <svg viewBox="0 0 24 24" class="w-7 h-7 text-white" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900">Jortt</h3>
+                                <p class="text-sm text-gray-500">Slimme boekhouding met automatische BTW</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="status-badge status-disconnected" id="status-jortt">Niet verbonden</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Config panels voor elke provider -->
+                <div id="config-moneybird" class="config-panel">
+                    <h3 class="font-semibold text-gray-900 mb-4">Moneybird configureren</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="form-label">Personal Access Token</label>
+                            <input type="password" id="moneybird-token" class="form-input" placeholder="Plak je Moneybird token hier">
+                            <p class="text-xs text-gray-500 mt-1">Vind je token op: Moneybird → Instellingen → Developers → Personal Access Tokens</p>
+                        </div>
+                        <div>
+                            <label class="form-label">Administratie ID</label>
+                            <input type="text" id="moneybird-admin-id" class="form-input" placeholder="Je administratie ID">
+                            <p class="text-xs text-gray-500 mt-1">Je vindt dit in de URL: moneybird.com/<strong>XXXXXXX</strong>/...</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn-primary" onclick="saveAccountingConfig('moneybird')">Opslaan & Verbinden</button>
+                            <button class="btn-danger hidden" id="disconnect-moneybird" onclick="disconnectAccounting('moneybird')">Ontkoppelen</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="config-exact" class="config-panel">
+                    <h3 class="font-semibold text-gray-900 mb-4">Exact Online configureren</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="form-label">Client ID</label>
+                            <input type="text" id="exact-client-id" class="form-input" placeholder="Je Exact Online Client ID">
+                        </div>
+                        <div>
+                            <label class="form-label">Client Secret</label>
+                            <input type="password" id="exact-client-secret" class="form-input" placeholder="Je Client Secret">
+                        </div>
+                        <div>
+                            <label class="form-label">Divisie Code</label>
+                            <input type="text" id="exact-division" class="form-input" placeholder="Je divisie code (6 cijfers)">
+                            <p class="text-xs text-gray-500 mt-1">Je vindt dit in Exact Online onder Mijn Exact → Bedrijf</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn-primary" onclick="saveAccountingConfig('exact')">Opslaan & Verbinden</button>
+                            <button class="btn-danger hidden" id="disconnect-exact" onclick="disconnectAccounting('exact')">Ontkoppelen</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="config-snelstart" class="config-panel">
+                    <h3 class="font-semibold text-gray-900 mb-4">Snelstart configureren</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="form-label">API Sleutel</label>
+                            <input type="password" id="snelstart-api-key" class="form-input" placeholder="Je Snelstart API sleutel">
+                            <p class="text-xs text-gray-500 mt-1">Vraag je API sleutel aan via Snelstart support</p>
+                        </div>
+                        <div>
+                            <label class="form-label">Klantnummer</label>
+                            <input type="text" id="snelstart-customer-id" class="form-input" placeholder="Je Snelstart klantnummer">
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn-primary" onclick="saveAccountingConfig('snelstart')">Opslaan & Verbinden</button>
+                            <button class="btn-danger hidden" id="disconnect-snelstart" onclick="disconnectAccounting('snelstart')">Ontkoppelen</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="config-eboekhouden" class="config-panel">
+                    <h3 class="font-semibold text-gray-900 mb-4">e-Boekhouden configureren</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="form-label">Gebruikersnaam</label>
+                            <input type="text" id="eboekhouden-username" class="form-input" placeholder="Je e-Boekhouden gebruikersnaam">
+                        </div>
+                        <div>
+                            <label class="form-label">Security Code 1</label>
+                            <input type="password" id="eboekhouden-code1" class="form-input" placeholder="Security Code 1">
+                        </div>
+                        <div>
+                            <label class="form-label">Security Code 2</label>
+                            <input type="password" id="eboekhouden-code2" class="form-input" placeholder="Security Code 2">
+                            <p class="text-xs text-gray-500 mt-1">Vind je codes onder: Beheer → Instellingen → API/Koppelingen</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn-primary" onclick="saveAccountingConfig('eboekhouden')">Opslaan & Verbinden</button>
+                            <button class="btn-danger hidden" id="disconnect-eboekhouden" onclick="disconnectAccounting('eboekhouden')">Ontkoppelen</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="config-visma" class="config-panel">
+                    <h3 class="font-semibold text-gray-900 mb-4">Visma eAccounting configureren</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="form-label">Client ID</label>
+                            <input type="text" id="visma-client-id" class="form-input" placeholder="Je Visma Client ID">
+                        </div>
+                        <div>
+                            <label class="form-label">Client Secret</label>
+                            <input type="password" id="visma-client-secret" class="form-input" placeholder="Je Client Secret">
+                        </div>
+                        <div>
+                            <label class="form-label">Company ID</label>
+                            <input type="text" id="visma-company-id" class="form-input" placeholder="Je Company ID">
+                            <p class="text-xs text-gray-500 mt-1">Maak een app aan op developer.visma.com</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn-primary" onclick="saveAccountingConfig('visma')">Opslaan & Verbinden</button>
+                            <button class="btn-danger hidden" id="disconnect-visma" onclick="disconnectAccounting('visma')">Ontkoppelen</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="config-jortt" class="config-panel">
+                    <h3 class="font-semibold text-gray-900 mb-4">Jortt configureren</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="form-label">Client ID</label>
+                            <input type="text" id="jortt-client-id" class="form-input" placeholder="Je Jortt Client ID">
+                        </div>
+                        <div>
+                            <label class="form-label">Client Secret</label>
+                            <input type="password" id="jortt-client-secret" class="form-input" placeholder="Je Client Secret">
+                            <p class="text-xs text-gray-500 mt-1">Maak een app aan op app.jortt.nl → Instellingen → API</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn-primary" onclick="saveAccountingConfig('jortt')">Opslaan & Verbinden</button>
+                            <button class="btn-danger hidden" id="disconnect-jortt" onclick="disconnectAccounting('jortt')">Ontkoppelen</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Google Calendar sectie -->
+            <div class="card">
+                <h2 class="text-xl font-bold text-gray-900 mb-2">📅 Planning</h2>
+                <p class="text-gray-500 text-sm mb-6">Synchroniseer je planning met je agenda</p>
+                
+                <div class="integration-card" id="googleCard">
+                    <div class="flex items-center gap-4">
+                        <svg class="w-12 h-12" viewBox="0 0 48 48"><path fill="#4285F4" d="M24 4c6.08 0 11.36 2.64 15.08 6.84l-6.48 6.48C30.4 14.88 27.36 13.6 24 13.6c-5.72 0-10.56 3.88-12.28 9.12l-7.04-5.48C7.92 10.36 15.36 4 24 4z"/><path fill="#34A853" d="M10.4 28.72c-.64-1.92-1-3.96-1-6.08s.36-4.16 1-6.08l7.04 5.48c-.4 1.2-.64 2.48-.64 3.8s.24 2.6.64 3.8l-7.04 5.48z"/><path fill="#FBBC05" d="M24 44c-8.64 0-16.08-6.36-19.32-13.24l7.04-5.48c1.72 5.24 6.56 9.12 12.28 9.12 3.08 0 5.84-1.04 8.08-2.84l6.64 6.64C35.2 41.56 29.84 44 24 44z"/><path fill="#EA4335" d="M44 24c0 2.4-.4 4.72-1.12 6.88l-6.64-6.64c.36-.96.56-2.04.56-3.24 0-1.2-.2-2.28-.56-3.24l6.48-6.48C43.6 14.56 44 19.04 44 24z"/></svg>
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Google Calendar</h3>
+                            <p class="text-sm text-gray-500">Synchroniseer projecten met je agenda</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="status-badge status-disconnected" id="googleStatus">Niet verbonden</span>
+                        <button class="btn-primary" id="googleConnectBtn" onclick="connectGoogle()">Verbinden</button>
+                        <button class="btn-danger hidden" id="googleDisconnectBtn" onclick="disconnectGoogle()">Ontkoppelen</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Abonnement -->
+        <div id="tab-abonnement" class="tab-content">
+            <div class="card mb-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-2">Huidig Abonnement</h2>
+                <div class="flex items-center gap-4 mb-4">
+                    <span class="text-3xl font-bold text-orange-500" id="currentPlanName">Trial</span>
+                    <span class="status-badge status-connected" id="planStatus">Actief</span>
+                </div>
+                <p class="text-gray-600" id="planExpiry">Je proefperiode verloopt over 14 dagen</p>
+            </div>
+
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Beschikbare plannen</h3>
+            <div class="grid grid-cols-4 gap-4" id="plansGrid">
+            </div>
+        </div>
+
+        <!-- Tab: Gebruikers -->
+        <div id="tab-gebruikers" class="tab-content">
+            <div class="card">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900">Gebruikers</h2>
+                        <p class="text-gray-500 text-sm" id="userLimit">0 van 3 gebruikers</p>
+                    </div>
+                    <button class="btn-primary" onclick="showAddUserModal()">+ Gebruiker toevoegen</button>
+                </div>
+                <div id="usersList"></div>
+            </div>
+        </div>
+
+        <!-- Tab: Account -->
+        <div id="tab-account" class="tab-content">
+            <div class="card mb-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-6">Wachtwoord wijzigen</h2>
+                <form id="passwordForm" class="space-y-4 max-w-md">
+                    <div>
+                        <label class="form-label">Huidig wachtwoord</label>
+                        <input type="password" id="currentPassword" class="form-input" placeholder="••••••••">
+                    </div>
+                    <div>
+                        <label class="form-label">Nieuw wachtwoord</label>
+                        <input type="password" id="newPassword" class="form-input" placeholder="Minimaal 8 karakters">
+                    </div>
+                    <div>
+                        <label class="form-label">Bevestig nieuw wachtwoord</label>
+                        <input type="password" id="confirmPassword" class="form-input" placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn-primary">Wachtwoord wijzigen</button>
+                </form>
+            </div>
+
+            <div class="card border-red-200">
+                <h2 class="text-xl font-bold text-red-600 mb-4">⚠️ Gevarenzone</h2>
+                <p class="text-gray-600 mb-4">Let op: deze acties kunnen niet ongedaan worden gemaakt.</p>
+                <button class="btn-danger" onclick="confirmDeleteAccount()">Account verwijderen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">Gebruiker toevoegen</h3>
+            <form id="addUserForm" class="space-y-4">
+                <div>
+                    <label class="form-label">Naam</label>
+                    <input type="text" id="newUserNaam" class="form-input" placeholder="Volledige naam" required>
+                </div>
+                <div>
+                    <label class="form-label">Gebruikersnaam</label>
+                    <input type="text" id="newUserUsername" class="form-input" placeholder="gebruikersnaam" required>
+                </div>
+                <div>
+                    <label class="form-label">Wachtwoord</label>
+                    <input type="password" id="newUserPassword" class="form-input" placeholder="Minimaal 8 karakters" required>
+                </div>
+                <div>
+                    <label class="form-label">Rol</label>
+                    <select id="newUserRole" class="form-input">
+                        <option value="medewerker">Medewerker</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" class="btn-primary flex-1">Toevoegen</button>
+                    <button type="button" class="btn-secondary flex-1" onclick="closeAddUserModal()">Annuleren</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let companyData = {};
+        let currentPlan = 'trial';
+        let users = [];
+        let selectedProvider = null;
+
+        const providers = ['moneybird', 'exact', 'snelstart', 'eboekhouden', 'visma', 'jortt'];
+
+        // Tab switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+            document.getElementById(`tab-${tab}`).classList.add('active');
+        }
+
+        // Toast
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Load company data
+        async function loadCompanyData() {
+            try {
+                const res = await fetch('/api/company');
+                if (res.ok) {
+                    companyData = await res.json();
+                    fillCompanyForm();
+                    updateAccountingStatus();
+                }
+            } catch (e) {
+                console.error('Error loading company:', e);
+            }
+        }
+
+        function fillCompanyForm() {
+            document.getElementById('bedrijfNaam').value = companyData.naam || '';
+            document.getElementById('bedrijfEmail').value = companyData.email || '';
+            document.getElementById('bedrijfTelefoon').value = companyData.telefoon || '';
+            document.getElementById('bedrijfWebsite').value = companyData.website || '';
+            document.getElementById('bedrijfAdres').value = companyData.adres || '';
+            document.getElementById('bedrijfKvk').value = companyData.kvk || '';
+            document.getElementById('bedrijfBtw').value = companyData.btw || '';
+            document.getElementById('bedrijfIban').value = companyData.iban || '';
+            document.getElementById('bedrijfContactNaam').value = companyData.contactNaam || '';
+            document.getElementById('bedrijfContactFunctie').value = companyData.contactFunctie || '';
+            document.getElementById('bedrijfMobiel').value = companyData.mobiel || '';
+            document.getElementById('bedrijfKleur').value = companyData.kleur || '#6366f1';
+            document.getElementById('bedrijfFacebook').value = companyData.facebook || '';
+            document.getElementById('bedrijfInstagram').value = companyData.instagram || '';
+            document.getElementById('bedrijfLinkedin').value = companyData.linkedin || '';
+            currentPlan = companyData.plan || 'trial';
+            updatePlanDisplay();
+        }
+
+        // Save company
+        document.getElementById('bedrijfForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                naam: document.getElementById('bedrijfNaam').value,
+                email: document.getElementById('bedrijfEmail').value,
+                telefoon: document.getElementById('bedrijfTelefoon').value,
+                website: document.getElementById('bedrijfWebsite').value,
+                adres: document.getElementById('bedrijfAdres').value,
+                kvk: document.getElementById('bedrijfKvk').value,
+                btw: document.getElementById('bedrijfBtw').value,
+                iban: document.getElementById('bedrijfIban').value,
+                contactNaam: document.getElementById('bedrijfContactNaam').value,
+                contactFunctie: document.getElementById('bedrijfContactFunctie').value,
+                mobiel: document.getElementById('bedrijfMobiel').value,
+                kleur: document.getElementById('bedrijfKleur').value,
+                facebook: document.getElementById('bedrijfFacebook').value,
+                instagram: document.getElementById('bedrijfInstagram').value,
+                linkedin: document.getElementById('bedrijfLinkedin').value
+            };
+            try {
+                const res = await fetch(`/api/companies/${companyData.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    showToast('Bedrijfsgegevens opgeslagen!');
+                    loadCompanyData();
+                } else {
+                    showToast('Fout bij opslaan', 'error');
+                }
+            } catch (e) {
+                showToast('Fout bij opslaan', 'error');
+            }
+        });
+
+        // Accounting provider selection
+        function selectProvider(provider) {
+            // Hide all config panels
+            providers.forEach(p => {
+                document.getElementById(`config-${p}`).classList.remove('active');
+                document.getElementById(`card-${p}`).classList.remove('selected');
+            });
+            
+            // Show selected
+            document.getElementById(`config-${provider}`).classList.add('active');
+            document.getElementById(`card-${provider}`).classList.add('selected');
+            selectedProvider = provider;
+        }
+
+        function updateAccountingStatus() {
+            providers.forEach(provider => {
+                const card = document.getElementById(`card-${provider}`);
+                const status = document.getElementById(`status-${provider}`);
+                const disconnectBtn = document.getElementById(`disconnect-${provider}`);
+                
+                const providerKey = `accounting_${provider}`;
+                const providerData = companyData[providerKey];
+                const isConnected = providerData?.connected;
+                
+                if (isConnected) {
+                    card.classList.add('connected');
+                    status.textContent = 'Verbonden';
+                    status.className = 'status-badge status-connected';
+                    if (disconnectBtn) disconnectBtn.classList.remove('hidden');
+                    
+                    // Fill in the saved values
+                    if (provider === 'moneybird' && providerData) {
+                        document.getElementById('moneybird-token').value = providerData.token || '';
+                        document.getElementById('moneybird-admin-id').value = providerData.adminId || '';
+                    }
+                } else {
+                    card.classList.remove('connected');
+                    status.textContent = 'Niet verbonden';
+                    status.className = 'status-badge status-disconnected';
+                    if (disconnectBtn) disconnectBtn.classList.add('hidden');
+                }
+            });
+        }
+
+        async function saveAccountingConfig(provider) {
+            let config = {};
+            
+            switch(provider) {
+                case 'moneybird':
+                    config = {
+                        token: document.getElementById('moneybird-token').value,
+                        adminId: document.getElementById('moneybird-admin-id').value
+                    };
+                    if (!config.token || !config.adminId) {
+                        showToast('Vul alle velden in', 'error');
+                        return;
+                    }
+                    break;
+                case 'exact':
+                    config = {
+                        clientId: document.getElementById('exact-client-id').value,
+                        clientSecret: document.getElementById('exact-client-secret').value,
+                        division: document.getElementById('exact-division').value
+                    };
+                    break;
+                case 'snelstart':
+                    config = {
+                        apiKey: document.getElementById('snelstart-api-key').value,
+                        customerId: document.getElementById('snelstart-customer-id').value
+                    };
+                    break;
+                case 'eboekhouden':
+                    config = {
+                        username: document.getElementById('eboekhouden-username').value,
+                        code1: document.getElementById('eboekhouden-code1').value,
+                        code2: document.getElementById('eboekhouden-code2').value
+                    };
+                    break;
+                case 'visma':
+                    config = {
+                        clientId: document.getElementById('visma-client-id').value,
+                        clientSecret: document.getElementById('visma-client-secret').value,
+                        companyId: document.getElementById('visma-company-id').value
+                    };
+                    break;
+                case 'jortt':
+                    config = {
+                        clientId: document.getElementById('jortt-client-id').value,
+                        clientSecret: document.getElementById('jortt-client-secret').value
+                    };
+                    break;
+            }
+
+            try {
+                const res = await fetch(`/api/company/accounting/${provider}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                if (res.ok) {
+                    showToast(`${provider.charAt(0).toUpperCase() + provider.slice(1)} gekoppeld!`);
+                    loadCompanyData();
+                } else {
+                    const err = await res.json();
+                    showToast(err.error || 'Fout bij koppelen', 'error');
+                }
+            } catch (e) {
+                showToast('Fout bij koppelen', 'error');
+            }
+        }
+
+        async function disconnectAccounting(provider) {
+            if (!confirm(`Weet je zeker dat je ${provider} wilt ontkoppelen?`)) return;
+            
+            try {
+                const res = await fetch(`/api/company/accounting/${provider}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast(`${provider.charAt(0).toUpperCase() + provider.slice(1)} ontkoppeld`);
+                    loadCompanyData();
+                }
+            } catch (e) {
+                showToast('Fout bij ontkoppelen', 'error');
+            }
+        }
+
+        // Google Calendar
+        async function checkGoogleStatus() {
+            try {
+                const res = await fetch('/api/google/status');
+                const data = await res.json();
+                const card = document.getElementById('googleCard');
+                const status = document.getElementById('googleStatus');
+                const connectBtn = document.getElementById('googleConnectBtn');
+                const disconnectBtn = document.getElementById('googleDisconnectBtn');
+
+                if (data.connected) {
+                    card.classList.add('connected');
+                    status.textContent = 'Verbonden';
+                    status.className = 'status-badge status-connected';
+                    connectBtn.classList.add('hidden');
+                    disconnectBtn.classList.remove('hidden');
+                } else {
+                    card.classList.remove('connected');
+                    status.textContent = 'Niet verbonden';
+                    status.className = 'status-badge status-disconnected';
+                    connectBtn.classList.remove('hidden');
+                    disconnectBtn.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('Error checking Google status:', e);
+            }
+        }
+
+        function connectGoogle() {
+            window.location.href = '/api/google/auth?redirect=/instellingen.html';
+        }
+
+        async function disconnectGoogle() {
+            if (!confirm('Weet je zeker dat je Google Calendar wilt ontkoppelen?')) return;
+            try {
+                const res = await fetch('/api/google/disconnect', { method: 'POST' });
+                if (res.ok) {
+                    showToast('Google Calendar ontkoppeld');
+                    checkGoogleStatus();
+                }
+            } catch (e) {
+                showToast('Fout bij ontkoppelen', 'error');
+            }
+        }
+
+        // Plans
+        async function loadPlans() {
+            try {
+                const res = await fetch('/api/plans');
+                const plans = await res.json();
+                const grid = document.getElementById('plansGrid');
+                grid.innerHTML = plans.map(plan => `
+                    <div class="plan-card ${currentPlan === plan.id ? 'current' : ''}">
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">${plan.naam}</h3>
+                        <div class="text-3xl font-bold text-orange-500 mb-2">
+                            ${plan.prijs === 0 ? 'Gratis' : '€' + plan.prijs}
+                            ${plan.prijs > 0 ? '<span class="text-sm text-gray-500">/maand</span>' : ''}
+                        </div>
+                        <ul class="text-sm text-gray-600 mb-4 space-y-1">
+                            <li>👥 ${plan.maxUsers === -1 ? 'Onbeperkt' : plan.maxUsers} gebruikers</li>
+                            <li>📧 ${plan.support}</li>
+                        </ul>
+                        ${currentPlan === plan.id 
+                            ? '<span class="text-orange-500 font-semibold">Huidig plan</span>'
+                            : plan.id !== 'trial' 
+                                ? `<button class="btn-primary w-full" onclick="upgradeToPlan('${plan.id}')">Upgraden</button>`
+                                : ''
+                        }
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Error loading plans:', e);
+            }
+        }
+
+        function updatePlanDisplay() {
+            const planNames = { trial: 'Trial', starter: 'Starter', professional: 'Professional', enterprise: 'Enterprise' };
+            document.getElementById('currentPlanName').textContent = planNames[currentPlan] || currentPlan;
+            if (companyData.trialEnds && currentPlan === 'trial') {
+                const days = Math.ceil((new Date(companyData.trialEnds) - new Date()) / (1000 * 60 * 60 * 24));
+                document.getElementById('planExpiry').textContent = `Je proefperiode verloopt over ${days} dagen`;
+            } else {
+                document.getElementById('planExpiry').textContent = 'Je abonnement is actief';
+            }
+        }
+
+        async function upgradeToPlan(planId) {
+            try {
+                const res = await fetch('/api/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ planId })
+                });
+                const data = await res.json();
+                if (data.checkoutUrl) {
+                    window.location.href = data.checkoutUrl;
+                } else {
+                    showToast('Fout bij starten betaling', 'error');
+                }
+            } catch (e) {
+                showToast('Fout bij starten betaling', 'error');
+            }
+        }
+
+        // Users
+        async function loadUsers() {
+            try {
+                const res = await fetch('/api/company/users');
+                if (res.ok) {
+                    users = await res.json();
+                    renderUsers();
+                }
+            } catch (e) {
+                console.error('Error loading users:', e);
+            }
+        }
+
+        function renderUsers() {
+            const planLimits = { trial: 1, starter: 3, professional: 10, enterprise: -1 };
+            const limit = planLimits[currentPlan] || 1;
+            document.getElementById('userLimit').textContent = `${users.length} van ${limit === -1 ? '∞' : limit} gebruikers`;
+
+            const list = document.getElementById('usersList');
+            list.innerHTML = users.map(user => `
+                <div class="user-row">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-semibold">
+                            ${user.naam ? user.naam.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-900">${user.naam || user.username}</div>
+                            <div class="text-sm text-gray-500">${user.username} • ${user.role}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="status-badge ${user.role === 'admin' ? 'status-connected' : 'bg-gray-100 text-gray-600'}">${user.role}</span>
+                        ${user.role !== 'admin' ? `<button class="text-red-500 hover:text-red-700" onclick="deleteUser('${user.username}')">🗑️</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showAddUserModal() {
+            document.getElementById('addUserModal').classList.remove('hidden');
+            document.getElementById('addUserModal').classList.add('flex');
+        }
+
+        function closeAddUserModal() {
+            document.getElementById('addUserModal').classList.add('hidden');
+            document.getElementById('addUserModal').classList.remove('flex');
+            document.getElementById('addUserForm').reset();
+        }
+
+        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                naam: document.getElementById('newUserNaam').value,
+                username: document.getElementById('newUserUsername').value,
+                password: document.getElementById('newUserPassword').value,
+                role: document.getElementById('newUserRole').value
+            };
+            try {
+                const res = await fetch('/api/company/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    showToast('Gebruiker toegevoegd!');
+                    closeAddUserModal();
+                    loadUsers();
+                } else {
+                    const err = await res.json();
+                    showToast(err.error || 'Fout bij toevoegen', 'error');
+                }
+            } catch (e) {
+                showToast('Fout bij toevoegen', 'error');
+            }
+        });
+
+        async function deleteUser(username) {
+            if (!confirm(`Weet je zeker dat je ${username} wilt verwijderen?`)) return;
+            try {
+                const res = await fetch(`/api/company/users/${username}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast('Gebruiker verwijderd');
+                    loadUsers();
+                }
+            } catch (e) {
+                showToast('Fout bij verwijderen', 'error');
+            }
+        }
+
+        // Password
+        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newPwd = document.getElementById('newPassword').value;
+            const confirm = document.getElementById('confirmPassword').value;
+            if (newPwd !== confirm) {
+                showToast('Wachtwoorden komen niet overeen', 'error');
+                return;
+            }
+            if (newPwd.length < 8) {
+                showToast('Wachtwoord moet minimaal 8 karakters zijn', 'error');
+                return;
+            }
+            try {
+                const res = await fetch('/api/auth/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        currentPassword: document.getElementById('currentPassword').value, 
+                        newPassword: newPwd 
+                    })
+                });
+                if (res.ok) {
+                    showToast('Wachtwoord gewijzigd!');
+                    document.getElementById('passwordForm').reset();
+                } else {
+                    const err = await res.json();
+                    showToast(err.error || 'Fout bij wijzigen', 'error');
+                }
+            } catch (e) {
+                showToast('Fout bij wijzigen', 'error');
+            }
+        });
+
+        // Delete account
+        async function confirmDeleteAccount() {
+            const confirmed = prompt('Typ "VERWIJDEREN" om je account permanent te verwijderen:');
+            if (confirmed !== 'VERWIJDEREN') return;
+            try {
+                const res = await fetch('/api/company', { method: 'DELETE' });
+                if (res.ok) {
+                    alert('Je account is verwijderd.');
+                    window.location.href = '/login.html';
+                }
+            } catch (e) {
+                showToast('Fout bij verwijderen', 'error');
+            }
+        }
+
+        // Logout
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCompanyData();
+            checkGoogleStatus();
+            loadPlans();
+            loadUsers();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Projecten - StucAdmin</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <link rel="apple-touch-icon" href="/logo-stucadmin.svg">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/sidebar.js"></script>
+    <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
+        body { background: #f5f7fa; }
+        
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        
+        main { padding: 32px; min-height: 100vh; }
+        
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; margin-bottom: 20px; }
+        .card-header { padding: 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+        .card-body { padding: 20px; }
+        
+        .stat-card { border-radius: 16px; padding: 24px; color: white; }
+        .stat-card.purple { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+        .stat-card.green { background: linear-gradient(135deg, #10b981, #059669); }
+        .stat-card.orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .stat-card.blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .stat-card.red { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .stat-value { font-size: 32px; font-weight: 800; }
+        .stat-label { opacity: 0.9; font-size: 14px; margin-top: 4px; }
+        
+        .tab-bar { display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 12px; margin-bottom: 24px; overflow-x: auto; }
+        .tab-btn { padding: 12px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; background: none; color: #64748b; white-space: nowrap; }
+        .tab-btn.active { background: white; color: #6366f1; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        
+        .btn { padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; }
+        .btn-secondary { background: #f1f5f9; color: #475569; }
+        .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 13px; }
+        
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th { text-align: left; padding: 14px 16px; font-size: 12px; font-weight: 600; text-transform: uppercase; color: #64748b; background: #f8fafc; }
+        .data-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .data-table tr:hover { background: #f8fafc; }
+        
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+        .badge-vast { background: #dbeafe; color: #1d4ed8; }
+        .badge-zzp { background: #fef3c7; color: #b45309; }
+        .badge-green { background: #dcfce7; color: #16a34a; }
+        .badge-orange { background: #fef3c7; color: #b45309; }
+        .badge-red { background: #fee2e2; color: #dc2626; }
+        .badge-gray { background: #f1f5f9; color: #64748b; }
+        
+        .input-field { width: 100%; padding: 12px 16px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; }
+        .input-field:focus { outline: none; border-color: #6366f1; }
+        
+        /* Searchable Dropdown */
+        .searchable-dropdown { position: relative; }
+        .searchable-dropdown .dropdown-list { 
+            position: absolute; top: 100%; left: 0; right: 0; 
+            background: white; border: 2px solid #e5e7eb; border-radius: 10px; 
+            max-height: 250px; overflow-y: auto; z-index: 300; 
+            display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            margin-top: 4px;
+        }
+        .searchable-dropdown.open .dropdown-list { display: block; }
+        .searchable-dropdown .dropdown-item { 
+            padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9;
+            display: flex; flex-direction: column; gap: 2px;
+        }
+        .searchable-dropdown .dropdown-item:last-child { border-bottom: none; }
+        .searchable-dropdown .dropdown-item:hover { background: #f1f5f9; }
+        .searchable-dropdown .dropdown-item .item-name { font-weight: 500; color: #1f2937; }
+        .searchable-dropdown .dropdown-item .item-address { font-size: 12px; color: #6b7280; }
+        .searchable-dropdown .no-results { padding: 14px; text-align: center; color: #9ca3af; font-size: 14px; }
+        .selected-badge { 
+            display: inline-flex; align-items: center; gap: 8px; 
+            background: #eef2ff; color: #4f46e5; padding: 6px 12px; 
+            border-radius: 8px; font-size: 13px; margin-top: 8px;
+        }
+        .selected-badge button { 
+            background: none; border: none; color: #6366f1; cursor: pointer; font-size: 16px; line-height: 1;
+        }
+        .selected-badge button:hover { color: #ef4444; }
+        
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; border-radius: 20px; padding: 24px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; }
+        
+        .doc-upload-card { border: 2px dashed #e5e7eb; border-radius: 12px; padding: 16px; text-align: center; transition: all 0.2s; cursor: pointer; }
+        .doc-upload-card:hover { border-color: #6366f1; background: #f8fafc; }
+        .doc-upload-card.has-file { border-style: solid; border-color: #10b981; background: #f0fdf4; }
+        .doc-upload-card.expired { border-color: #ef4444; background: #fef2f2; }
+        .doc-upload-card.warning { border-color: #f59e0b; background: #fffbeb; }
+        
+        .doc-preview { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px; }
+        .doc-preview-pdf { background: #fee2e2; display: flex; align-items: center; justify-content: center; font-size: 40px; }
+        
+        .upload-actions { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+        
+        .alert-banner { padding: 16px 20px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; }
+        .alert-banner.warning { background: #fef3c7; border: 1px solid #f59e0b; color: #92400e; }
+        .alert-banner.danger { background: #fee2e2; border: 1px solid #ef4444; color: #991b1b; }
+        
+        .camera-preview { width: 100%; max-width: 400px; border-radius: 12px; }
+        
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            main { margin-left: 0; padding: 70px 16px 24px; }
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
+    <!-- Sidebar wordt geladen door sidebar.js -->
+
+    <main>
+        <div id="alertBanner" style="display: none;"></div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">🏗️ Projecten</h1>
+                <p class="text-gray-500">Overzicht van projecten, medewerkers en uren</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="copyPortalLink()" class="btn btn-secondary btn-sm">🔗 Portal Link</button>
+                <button onclick="showAddMedewerker()" class="btn btn-primary btn-sm">➕ Medewerker</button>
+            </div>
+        </div>
+
+        <!-- Tip Banner -->
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-xl p-3 mb-4 flex items-center gap-3">
+            <span class="text-xl">⏱️</span>
+            <p class="text-sm text-green-700"><strong>Uren tracking</strong> — Medewerkers kunnen via de <a href="#" onclick="copyPortalLink(); return false;" class="underline font-medium">Portal Link</a> zelf inklokken met GPS-locatie. Uren verschijnen automatisch hier.</p>
+        </div>
+
+        <div class="tab-bar">
+            <button class="tab-btn active" onclick="showTab('projecten', this)">🏗️ Projecten</button>
+            <button class="tab-btn" onclick="showTab('medewerkers', this)">👷 Medewerkers</button>
+            <button class="tab-btn" onclick="showTab('documenten', this)">📋 Documenten</button>
+            <button class="tab-btn" onclick="showTab('uren', this)">📊 Uren</button>
+            <button class="tab-btn" onclick="showTab('manstaat', this)">📄 Manstaat</button>
+            <button class="tab-btn" onclick="showTab('locaties', this)">📍 Locaties</button>
+        </div>
+
+        <!-- Tab: Medewerkers -->
+        <div id="tab-medewerkers" class="tab-content" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="font-bold text-lg">👷 Medewerkers</h2>
+                </div>
+                <div class="card-body p-0 overflow-x-auto">
+                    <table class="data-table">
+                        <thead><tr><th>Naam</th><th>Type</th><th>Telefoon</th><th>Documenten</th><th>Uren week</th><th>Acties</th></tr></thead>
+                        <tbody id="medewerkersTabel"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Documenten -->
+        <div id="tab-documenten" class="tab-content" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="font-bold text-lg">📋 Documenten Overzicht</h2>
+                    <select id="docFilter" class="input-field" style="width: auto;" onchange="renderDocumentenOverzicht()">
+                        <option value="all">Alle</option>
+                        <option value="expired">Verlopen</option>
+                        <option value="warning">Bijna verlopen</option>
+                        <option value="missing">Ontbrekend</option>
+                    </select>
+                </div>
+                <div class="card-body p-0 overflow-x-auto">
+                    <table class="data-table">
+                        <thead><tr><th>Medewerker</th><th>Kopie ID</th><th>Contract</th><th>VCA</th><th>BHV</th><th>Acties</th></tr></thead>
+                        <tbody id="documentenTabel"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Uren -->
+        <div id="tab-uren" class="tab-content" style="display: none;">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="font-bold text-lg">📊 Uren</h2>
+                    <div class="flex gap-2">
+                        <select id="filterMedewerker" class="input-field" style="width:auto;" onchange="filterUren()"><option value="">Alle</option></select>
+                        <select id="filterPeriode" class="input-field" style="width:auto;" onchange="filterUren()">
+                            <option value="week">Deze week</option><option value="maand">Deze maand</option><option value="alles">Alles</option>
+                        </select>
+                        <button onclick="exportUren()" class="btn btn-secondary btn-sm">📥 Export</button>
+                    </div>
+                </div>
+                <div class="card-body p-0 overflow-x-auto">
+                    <table class="data-table">
+                        <thead><tr><th>Datum</th><th>Medewerker</th><th>Project</th><th>Tijd</th><th>Uren</th><th></th></tr></thead>
+                        <tbody id="urenTabel"></tbody>
+                    </table>
+                </div>
+                <div class="card-body border-t"><div class="flex justify-between"><span>Totaal:</span><span class="text-xl font-bold text-indigo-600" id="totaalUren">0u</span></div></div>
+            </div>
+        </div>
+
+        <!-- Tab: Projecten -->
+        <div id="tab-projecten" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <div class="flex items-center gap-4">
+                        <h2 class="font-bold text-lg">🏗️ Projecten</h2>
+                        <div class="flex gap-2 text-sm">
+                            <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded-full"><span id="statTotaalProjecten">0</span> totaal</span>
+                            <span class="px-2 py-1 bg-green-100 text-green-700 rounded-full"><span id="statActieveProjecten">0</span> actief</span>
+                            <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded-full"><span id="statGeplandeProjecten">0</span> gepland</span>
+                        </div>
+                    </div>
+                    <select id="filterProjectStatus" class="input-field" style="width:auto;" onchange="renderProjecten()">
+                        <option value="all">Alle statussen</option>
+                        <option value="gepland">Gepland</option>
+                        <option value="actief">Actief</option>
+                        <option value="afgerond">Afgerond</option>
+                    </select>
+                </div>
+                <div class="card-body p-0 overflow-x-auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>📍 Locatie</th>
+                                <th>Klant</th>
+                                <th>Status</th>
+                                <th>Voortgang</th>
+                                <th>Deadline</th>
+                                <th>Uren (werkelijk/budget)</th>
+                                <th>Acties</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projectenTabel"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Manstaat -->
+        <div id="tab-manstaat" class="tab-content" style="display: none;">
+            <div class="card">
+                <div class="card-header"><h2 class="font-bold text-lg">📄 Manstaat Generator</h2></div>
+                <div class="card-body">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Project *</label>
+                            <select id="manstaatProject" class="input-field">
+                                <option value="">-- Selecteer project --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Van datum *</label>
+                            <input type="date" id="manstaatVan" class="input-field">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Tot datum *</label>
+                            <input type="date" id="manstaatTot" class="input-field">
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="generateManstaat()" class="btn btn-primary w-full">📄 Genereer Manstaat</button>
+                        </div>
+                    </div>
+                    <p id="manstaatError" class="text-red-500 text-sm mb-4" style="display:none;"></p>
+                    
+                    <div id="manstaatResult" style="display:none;">
+                        <div id="manstaatContent" class="border rounded-lg p-6 mb-4 bg-white"></div>
+                        <div class="flex gap-3 flex-wrap">
+                            <button onclick="printManstaat()" class="btn btn-secondary">🖨️ Print</button>
+                            <button onclick="downloadManstaatPDF()" class="btn btn-primary">📥 Download PDF</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Empty state -->
+                    <div id="manstaatEmpty" class="text-center py-12 text-gray-400">
+                        <div class="text-5xl mb-3">📋</div>
+                        <p class="font-medium">Selecteer een project en periode</p>
+                        <p class="text-sm mt-1">De manstaat toont alle geregistreerde uren per medewerker</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Locaties -->
+        <div id="tab-locaties" class="tab-content" style="display: none;">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="stat-card blue"><div class="stat-value" id="statLocaties">0</div><div class="stat-label">Unieke locaties</div></div>
+                <div class="stat-card purple"><div class="stat-value" id="statBezoeken">0</div><div class="stat-label">Totaal bezoeken</div></div>
+                <div class="stat-card green"><div class="stat-value" id="statGekoppeld">0</div><div class="stat-label">Gekoppeld aan klant</div></div>
+                <div class="stat-card orange"><div class="stat-value" id="statOngekoppeld">0</div><div class="stat-label">Nog te koppelen</div></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="font-bold text-lg">📍 Locatie Overzicht</h2>
+                    <div class="flex gap-2 flex-wrap">
+                        <select id="filterLocatieStatus" class="input-field" style="width:auto;" onchange="renderLocatiesNew()">
+                            <option value="all">Alle locaties</option>
+                            <option value="gekoppeld">Gekoppeld</option>
+                            <option value="ongekoppeld">Nog te koppelen</option>
+                        </select>
+                        <button onclick="refreshLocaties()" class="btn btn-secondary btn-sm">🔄 Ververs</button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="locatiesGrid" class="p-4 space-y-4"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal: Medewerker met Document Uploads -->
+    <div class="modal-overlay" id="medewerkerModal">
+        <div class="modal">
+            <h3 class="text-lg font-bold mb-4" id="medewerkerModalTitle">Medewerker</h3>
+            <input type="hidden" id="editMedewerkerId">
+            
+            <!-- Basis Info -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div><label class="block text-sm font-medium mb-1">Naam *</label><input type="text" id="mNaam" class="input-field"></div>
+                <div><label class="block text-sm font-medium mb-1">Type</label><select id="mType" class="input-field"><option value="vast">Vast</option><option value="zzp">ZZP</option></select></div>
+                <div><label class="block text-sm font-medium mb-1">Telefoon</label><input type="tel" id="mTelefoon" class="input-field"></div>
+                <div><label class="block text-sm font-medium mb-1">Pincode (4 cijfers) *</label><input type="text" id="mPincode" class="input-field" maxlength="4"></div>
+                <div><label class="block text-sm font-medium mb-1">Email</label><input type="email" id="mEmail" class="input-field"></div>
+                <div><label class="block text-sm font-medium mb-1">Uurtarief €</label><input type="number" id="mUurtarief" class="input-field" step="0.01"></div>
+            </div>
+
+            <!-- Documenten Uploads -->
+            <h4 class="font-bold text-gray-700 mb-3 border-t pt-4">📋 Documenten & Certificaten</h4>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <!-- Kopie ID -->
+                <div class="doc-upload-card" id="docCard-id" onclick="triggerUpload('id')">
+                    <div id="docPreview-id"><span class="text-3xl">🪪</span><p class="font-semibold mt-2">Kopie ID</p><p class="text-sm text-gray-500">Klik om te uploaden</p></div>
+                    <input type="file" id="docFile-id" accept="image/*,.pdf" capture="environment" style="display:none" onchange="handleFileSelect('id', this)">
+                    <div class="mt-2"><label class="text-xs text-gray-500">Verloopdatum</label><input type="date" id="docVerloop-id" class="input-field" style="padding:8px" onclick="event.stopPropagation()"></div>
+                </div>
+
+                <!-- Contract -->
+                <div class="doc-upload-card" id="docCard-contract" onclick="triggerUpload('contract')">
+                    <div id="docPreview-contract"><span class="text-3xl">📝</span><p class="font-semibold mt-2">Contract</p><p class="text-sm text-gray-500">Klik om te uploaden</p></div>
+                    <input type="file" id="docFile-contract" accept="image/*,.pdf" capture="environment" style="display:none" onchange="handleFileSelect('contract', this)">
+                    <div class="mt-2"><label class="text-xs text-gray-500">Contract type</label><select id="docType-contract" class="input-field" style="padding:8px" onclick="event.stopPropagation()"><option value="">-</option><option value="bepaald">Bepaald</option><option value="onbepaald">Onbepaald</option><option value="zzp">ZZP</option></select></div>
+                    <div class="mt-2"><label class="text-xs text-gray-500">Einddatum</label><input type="date" id="docVerloop-contract" class="input-field" style="padding:8px" onclick="event.stopPropagation()"></div>
+                </div>
+
+                <!-- VCA -->
+                <div class="doc-upload-card" id="docCard-vca" onclick="triggerUpload('vca')">
+                    <div id="docPreview-vca"><span class="text-3xl">🎓</span><p class="font-semibold mt-2">VCA Certificaat</p><p class="text-sm text-gray-500">Klik om te uploaden</p></div>
+                    <input type="file" id="docFile-vca" accept="image/*,.pdf" capture="environment" style="display:none" onchange="handleFileSelect('vca', this)">
+                    <div class="mt-2"><label class="text-xs text-gray-500">Type</label><select id="docType-vca" class="input-field" style="padding:8px" onclick="event.stopPropagation()"><option value="">-</option><option value="basis">VCA Basis</option><option value="vol">VCA VOL</option></select></div>
+                    <div class="mt-2"><label class="text-xs text-gray-500">Verloopdatum</label><input type="date" id="docVerloop-vca" class="input-field" style="padding:8px" onclick="event.stopPropagation()"></div>
+                </div>
+
+                <!-- BHV -->
+                <div class="doc-upload-card" id="docCard-bhv" onclick="triggerUpload('bhv')">
+                    <div id="docPreview-bhv"><span class="text-3xl">🚑</span><p class="font-semibold mt-2">BHV / EHBO</p><p class="text-sm text-gray-500">Klik om te uploaden</p></div>
+                    <input type="file" id="docFile-bhv" accept="image/*,.pdf" capture="environment" style="display:none" onchange="handleFileSelect('bhv', this)">
+                    <div class="mt-2"><label class="text-xs text-gray-500">Type</label><select id="docType-bhv" class="input-field" style="padding:8px" onclick="event.stopPropagation()"><option value="">-</option><option value="bhv">BHV</option><option value="ehbo">EHBO</option><option value="beide">Beide</option></select></div>
+                    <div class="mt-2"><label class="text-xs text-gray-500">Verloopdatum</label><input type="date" id="docVerloop-bhv" class="input-field" style="padding:8px" onclick="event.stopPropagation()"></div>
+                </div>
+            </div>
+
+            <!-- Overige Certificaten -->
+            <h4 class="font-semibold text-gray-700 mb-2">📎 Overige certificaten</h4>
+            <div id="overigeCerts" class="space-y-2 mb-4"></div>
+            <button type="button" onclick="addOverigCert()" class="btn btn-secondary btn-sm mb-4">➕ Certificaat toevoegen</button>
+
+            <div class="flex gap-3 border-t pt-4">
+                <button onclick="saveMedewerker()" class="btn btn-success flex-1">💾 Opslaan</button>
+                <button onclick="closeModal('medewerkerModal')" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Document Viewer -->
+    <div class="modal-overlay" id="docViewerModal">
+        <div class="modal" style="max-width: 900px;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold" id="docViewerTitle">Document</h3>
+                <button onclick="closeModal('docViewerModal')" class="text-2xl text-gray-400 hover:text-gray-600">&times;</button>
+            </div>
+            <div id="docViewerContent" style="min-height: 400px; display: flex; align-items: center; justify-content: center;"></div>
+        </div>
+    </div>
+
+    <!-- Modal: Project -->
+    <div class="modal-overlay" id="projectModal">
+        <div class="modal" style="max-width: 600px;">
+            <h3 class="text-lg font-bold mb-4">🏗️ Project</h3>
+            <input type="hidden" id="editProjectId">
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-sm font-medium mb-1">Titel *</label><input type="text" id="pTitel" class="input-field" placeholder="Naam van het project"></div>
+                    <div><label class="block text-sm font-medium mb-1">Locatie *</label><input type="text" id="pLocatie" class="input-field" placeholder="Adres/locatie"></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Klant (uit boekhouding)</label>
+                    <div class="searchable-dropdown" id="pKlantDropdown">
+                        <input type="text" class="input-field" id="pKlantSearch" placeholder="🔍 Zoek klant..." autocomplete="off">
+                        <input type="hidden" id="pKlant">
+                        <div class="dropdown-list" id="pKlantList"></div>
+                    </div>
+                    <div id="pKlantSelected" class="selected-badge" style="display:none;"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Status</label>
+                        <select id="pStatus" class="input-field">
+                            <option value="gepland">📅 Gepland</option>
+                            <option value="actief">🔨 Actief</option>
+                            <option value="afgerond">✅ Afgerond</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Voortgang %</label>
+                        <input type="number" id="pVoortgang" class="input-field" min="0" max="100" value="0" placeholder="0-100">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-sm font-medium mb-1">Startdatum</label><input type="date" id="pStartdatum" class="input-field"></div>
+                    <div><label class="block text-sm font-medium mb-1">Deadline</label><input type="date" id="pDeadline" class="input-field"></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Budget uren</label>
+                    <input type="number" id="pBudgetUren" class="input-field" min="0" placeholder="Geschatte uren voor dit project">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Opmerkingen</label>
+                    <textarea id="pOpmerkingen" class="input-field" rows="2" placeholder="Notities over dit project..."></textarea>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="saveProject()" class="btn btn-success flex-1">💾 Opslaan</button>
+                <button onclick="closeModal('projectModal')" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let medewerkers = [], uren = [], projecten = [], klanten = [];
+        let pendingUploads = {}; // Store files to upload when saving
+        let overigCertCounter = 0;
+
+        function toggleMenu() { document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open'); }
+        function logout() { fetch('/api/logout', {method:'POST'}).then(() => location.href='/login.html'); }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadAll();
+            await loadCompanyInfo();
+            initManstaatDates();
+        });
+
+        async function loadAll() {
+            const [m, u, p, k] = await Promise.all([
+                fetch('/api/medewerkers').then(r => r.ok ? r.json() : []),
+                fetch('/api/uren').then(r => r.ok ? r.json() : []),
+                fetch('/api/projecten').then(r => r.ok ? r.json() : []),
+                fetch('/api/contacts').then(r => r.ok ? r.json() : [])
+            ]);
+            medewerkers = m; uren = u; projecten = p; klanten = k;
+            updateStats(); renderAll();
+            loadLocaties(); // Laad locaties op achtergrond
+        }
+
+        function updateStats() {
+            const now = new Date(), todayStr = now.toISOString().split('T')[0];
+            const ws = new Date(now); ws.setDate(now.getDate() - now.getDay() + 1); ws.setHours(0,0,0,0);
+            const in30 = new Date(now.getTime() + 30*24*60*60*1000);
+            
+            // These stats are now shown in Medewerkers tab, not top level
+            // Safe update with null check
+            const elUrenVandaag = document.getElementById('statUrenVandaag');
+            const elUrenWeek = document.getElementById('statUrenWeek');
+            const elMedewerkers = document.getElementById('statMedewerkers');
+            const elBijna = document.getElementById('statBijna');
+            const elVerlopen = document.getElementById('statVerlopen');
+            
+            if (elUrenVandaag) elUrenVandaag.textContent = uren.filter(u => u.datum === todayStr).reduce((s,u) => s+(u.totaalUren||0), 0).toFixed(1);
+            if (elUrenWeek) elUrenWeek.textContent = uren.filter(u => new Date(u.datum) >= ws).reduce((s,u) => s+(u.totaalUren||0), 0).toFixed(1);
+            if (elMedewerkers) elMedewerkers.textContent = medewerkers.filter(m => m.actief !== false).length;
+            
+            let bijna = 0, verlopen = 0;
+            medewerkers.forEach(m => {
+                const docs = m.documenten || {};
+                ['idVerloop', 'vcaVerloop', 'bhvVerloop', 'contractEind'].forEach(k => {
+                    if (docs[k]) { const d = new Date(docs[k]); if (d < now) verlopen++; else if (d < in30) bijna++; }
+                });
+            });
+            if (elBijna) elBijna.textContent = bijna;
+            if (elVerlopen) elVerlopen.textContent = verlopen;
+            
+            const banner = document.getElementById('alertBanner');
+            if (verlopen > 0) { banner.className = 'alert-banner danger'; banner.innerHTML = `⚠️ <strong>${verlopen} document(en) verlopen!</strong>`; banner.style.display = 'flex'; }
+            else if (bijna > 0) { banner.className = 'alert-banner warning'; banner.innerHTML = `⏰ <strong>${bijna} document(en) verlopen binnen 30 dagen</strong>`; banner.style.display = 'flex'; }
+            else banner.style.display = 'none';
+        }
+
+        function renderAll() { renderMedewerkers(); renderDocumentenOverzicht(); filterUren(); renderProjecten(); renderLocaties(); updateDropdowns(); }
+
+        function getDocStatus(dateStr) {
+            if (!dateStr) return { status: 'missing', class: 'gray' };
+            const d = new Date(dateStr), now = new Date(), in30 = new Date(now.getTime() + 30*24*60*60*1000);
+            if (d < now) return { status: 'expired', class: 'red' };
+            if (d < in30) return { status: 'warning', class: 'orange' };
+            return { status: 'valid', class: 'green' };
+        }
+
+        function renderDocBadge(dateStr, hasFile, label) {
+            const s = getDocStatus(dateStr);
+            const icon = hasFile ? (s.status === 'valid' ? '✅' : s.status === 'warning' ? '⚠️' : '❌') : '⬜';
+            return `<span class="badge badge-${s.class}">${icon} ${label}</span>`;
+        }
+
+        function renderMedewerkers() {
+            const tbody = document.getElementById('medewerkersTabel');
+            if (!medewerkers.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-8">Geen medewerkers</td></tr>'; return; }
+            const ws = new Date(); ws.setDate(ws.getDate() - ws.getDay() + 1); ws.setHours(0,0,0,0);
+            
+            tbody.innerHTML = medewerkers.map(m => {
+                const weekU = uren.filter(u => u.medewerkerId === m.id && new Date(u.datum) >= ws).reduce((s,u) => s+(u.totaalUren||0), 0);
+                const docs = m.documenten || {}, files = docs.bestanden || {};
+                return `<tr>
+                    <td><div class="font-semibold">${esc(m.naam)}</div><div class="text-xs text-gray-400">${m.email||''}</div></td>
+                    <td><span class="badge badge-${m.type}">${m.type==='zzp'?'ZZP':'VAST'}</span></td>
+                    <td>${esc(m.telefoon||'-')}</td>
+                    <td class="space-x-1">${renderDocBadge(docs.idVerloop, files.id, 'ID')} ${renderDocBadge(docs.vcaVerloop, files.vca, 'VCA')} ${docs.bhvType ? renderDocBadge(docs.bhvVerloop, files.bhv, 'BHV') : ''}</td>
+                    <td class="font-bold text-indigo-600">${weekU.toFixed(1)}u</td>
+                    <td><button onclick="editMedewerker('${m.id}')" class="text-indigo-600 mr-2">✏️</button><button onclick="deleteMedewerker('${m.id}')" class="text-red-500">🗑️</button></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderDocumentenOverzicht() {
+            const filter = document.getElementById('docFilter').value;
+            const tbody = document.getElementById('documentenTabel');
+            let list = medewerkers.filter(m => m.actief !== false);
+            
+            tbody.innerHTML = list.map(m => {
+                const docs = m.documenten || {}, files = docs.bestanden || {};
+                return `<tr>
+                    <td class="font-semibold">${esc(m.naam)}</td>
+                    <td>${renderDocCell(docs.idVerloop, files.id, m.id, 'id')}</td>
+                    <td>${renderContractCell(docs, files, m.id)}</td>
+                    <td>${docs.vcaType ? renderDocCell(docs.vcaVerloop, files.vca, m.id, 'vca', docs.vcaType) : '-'}</td>
+                    <td>${docs.bhvType ? renderDocCell(docs.bhvVerloop, files.bhv, m.id, 'bhv', docs.bhvType) : '-'}</td>
+                    <td><button onclick="editMedewerker('${m.id}')" class="btn btn-secondary btn-sm">✏️</button></td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="6" class="text-center text-gray-400 py-8">Geen data</td></tr>';
+        }
+
+        function renderDocCell(dateStr, fileInfo, odewerkerId, docType, extra = '') {
+            const s = getDocStatus(dateStr);
+            const dateLabel = dateStr ? new Date(dateStr).toLocaleDateString('nl-NL') : '-';
+            const hasFile = !!fileInfo;
+            const viewBtn = hasFile ? `<button onclick="viewDocument('${odewerkerId}', '${docType}')" class="text-blue-600 ml-2">👁️</button>` : '';
+            return `<span class="doc-status"><span class="doc-dot ${s.class}"></span> ${extra ? extra + ' ' : ''}${dateLabel}</span>${viewBtn}`;
+        }
+
+        function renderContractCell(docs, files, odewerkerId) {
+            if (!docs.contractType) return '-';
+            if (docs.contractType === 'onbepaald') return '<span class="badge badge-green">Onbepaald</span>';
+            return renderDocCell(docs.contractEind, files.contract, odewerkerId, 'contract', docs.contractType);
+        }
+
+        function filterUren() {
+            const medId = document.getElementById('filterMedewerker').value;
+            const periode = document.getElementById('filterPeriode').value;
+            let list = [...uren];
+            if (medId) list = list.filter(u => u.medewerkerId === medId);
+            const now = new Date();
+            if (periode === 'week') { const ws = new Date(now); ws.setDate(now.getDate()-now.getDay()+1); ws.setHours(0,0,0,0); list = list.filter(u => new Date(u.datum) >= ws); }
+            else if (periode === 'maand') { list = list.filter(u => new Date(u.datum) >= new Date(now.getFullYear(), now.getMonth(), 1)); }
+            list.sort((a,b) => b.datum.localeCompare(a.datum));
+            
+            const tbody = document.getElementById('urenTabel');
+            const totaal = list.reduce((s,u) => s+(u.totaalUren||0), 0);
+            document.getElementById('totaalUren').textContent = totaal.toFixed(1) + 'u';
+            tbody.innerHTML = list.length ? list.map(u => `<tr>
+                <td>${new Date(u.datum).toLocaleDateString('nl-NL',{weekday:'short',day:'numeric',month:'short'})}</td>
+                <td class="font-semibold">${esc(u.medewerkerNaam||'-')}</td><td>${esc(u.projectNaam||'-')}</td>
+                <td>${u.begintijd||'-'} - ${u.eindtijd||'-'}</td><td class="font-bold text-indigo-600">${(u.totaalUren||0).toFixed(1)}u</td>
+                <td><button onclick="deleteUren('${u.id}')" class="text-red-500">🗑️</button></td>
+            </tr>`).join('') : '<tr><td colspan="6" class="text-center text-gray-400 py-8">Geen uren</td></tr>';
+        }
+
+        function renderProjecten() {
+            const tbody = document.getElementById('projectenTabel');
+            const statusFilter = document.getElementById('filterProjectStatus')?.value || 'all';
+            
+            // Manstaat dropdown vullen - met locatie
+            document.getElementById('manstaatProject').innerHTML = '<option value="">Selecteer...</option>' + 
+                projecten.map(p => {
+                    const loc = p.locatie || p.adres || '';
+                    const label = loc || p.titel || p.naam || 'Project';
+                    return `<option value="${p.id}">📍 ${esc(label)}</option>`;
+                }).join('');
+            
+            // Filter op status
+            let filtered = statusFilter === 'all' ? projecten : projecten.filter(p => p.status === statusFilter);
+            
+            // Update project stats
+            const totaal = projecten.length;
+            const actief = projecten.filter(p => p.status === 'actief').length;
+            const gepland = projecten.filter(p => p.status === 'gepland').length;
+            const afgerond = projecten.filter(p => p.status === 'afgerond').length;
+            
+            document.getElementById('statTotaalProjecten').textContent = totaal;
+            document.getElementById('statActieveProjecten').textContent = actief;
+            document.getElementById('statGeplandeProjecten').textContent = gepland;
+            // statAfgerondeProjecten removed from UI
+            
+            if (!filtered.length) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-12">
+                            <div class="text-gray-400 mb-4">
+                                <div class="text-4xl mb-2">📋</div>
+                                <p class="font-medium">Geen projecten gevonden</p>
+                                <p class="text-sm mt-1">Maak een nieuw project aan</p>
+                            </div>
+                            <button onclick="showAddProject()" class="btn btn-primary">
+                                ➕ Nieuw Project
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Sorteer op locatie (primair voor workflow)
+            const sorted = [...filtered].sort((a, b) => {
+                const locA = (a.locatie || a.adres || '').toLowerCase();
+                const locB = (b.locatie || b.adres || '').toLowerCase();
+                return locA.localeCompare(locB);
+            });
+            
+            tbody.innerHTML = sorted.map(p => {
+                const klantNaam = p.klantNaam || (typeof p.klant === 'object' ? p.klant?.naam : p.klant) || '-';
+                const locatie = p.locatie || p.adres || '-';
+                const werkelijkeUren = uren.filter(u => u.projectId === p.id).reduce((s,u) => s+(u.totaalUren||0), 0);
+                const budgetUren = p.budgetUren || 0;
+                const voortgang = p.voortgang || 0;
+                const deadline = p.deadline ? new Date(p.deadline).toLocaleDateString('nl-NL') : '-';
+                
+                // Status badge
+                const statusBadges = {
+                    'gepland': '<span class="badge badge-gray">📅 Gepland</span>',
+                    'actief': '<span class="badge badge-green">🔨 Actief</span>',
+                    'afgerond': '<span class="badge" style="background:#dbeafe;color:#1d4ed8">✅ Afgerond</span>'
+                };
+                const statusBadge = statusBadges[p.status] || statusBadges['gepland'];
+                
+                // Voortgang bar
+                const voortgangColor = voortgang < 30 ? '#ef4444' : voortgang < 70 ? '#f59e0b' : '#10b981';
+                const voortgangBar = `
+                    <div class="flex items-center gap-2">
+                        <div style="width:60px;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;">
+                            <div style="width:${voortgang}%;height:100%;background:${voortgangColor};"></div>
+                        </div>
+                        <span class="text-xs font-medium">${voortgang}%</span>
+                    </div>
+                `;
+                
+                // Uren vergelijking
+                const urenClass = budgetUren && werkelijkeUren > budgetUren ? 'text-red-600' : 'text-indigo-600';
+                const urenText = budgetUren ? `${werkelijkeUren.toFixed(1)} / ${budgetUren}u` : `${werkelijkeUren.toFixed(1)}u`;
+                
+                return `<tr>
+                    <td class="font-semibold">📍 ${esc(locatie)}</td>
+                    <td>${esc(klantNaam)}</td>
+                    <td>${statusBadge}</td>
+                    <td>${voortgangBar}</td>
+                    <td>${deadline}</td>
+                    <td class="font-bold ${urenClass}">${urenText}</td>
+                    <td>
+                        <button onclick="editProject('${p.id}')" class="text-indigo-600 mr-2" title="Bewerken">✏️</button>
+                        <button onclick="deleteProject('${p.id}')" class="text-red-500" title="Verwijderen">🗑️</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function updateDropdowns() {
+            document.getElementById('filterMedewerker').innerHTML = '<option value="">Alle</option>' + medewerkers.map(m => `<option value="${m.id}">${esc(m.naam)}</option>`).join('');
+            console.log('updateDropdowns - klanten count:', klanten.length);
+            initKlantSearch(); // Zoekbare dropdown
+        }
+        
+        // Zoekbare klant dropdown
+        function initKlantSearch() {
+            const searchInput = document.getElementById('pKlantSearch');
+            const dropdown = document.getElementById('pKlantDropdown');
+            const list = document.getElementById('pKlantList');
+            const hiddenInput = document.getElementById('pKlant');
+            const selectedBadge = document.getElementById('pKlantSelected');
+            
+            console.log('initKlantSearch - elements:', { searchInput: !!searchInput, dropdown: !!dropdown, list: !!list, klanten: klanten.length });
+            
+            if (!searchInput || !dropdown || !list) {
+                console.warn('initKlantSearch: missing elements');
+                return;
+            }
+            
+            function renderKlantList(filter = '') {
+                const search = filter.toLowerCase().trim();
+                let filtered = klanten;
+                
+                if (search) {
+                    filtered = klanten.filter(k => {
+                        const name = (k.company_name || `${k.firstname || ''} ${k.lastname || ''}`).toLowerCase();
+                        const city = (k.city || '').toLowerCase();
+                        const address = (k.address1 || '').toLowerCase();
+                        return name.includes(search) || city.includes(search) || address.includes(search);
+                    });
+                }
+                
+                filtered = filtered.slice(0, 50);
+                console.log('renderKlantList - filtered:', filtered.length, 'from', klanten.length);
+                
+                if (filtered.length === 0) {
+                    list.innerHTML = '<div class="no-results">Geen klanten gevonden</div>';
+                } else {
+                    list.innerHTML = filtered.map(k => {
+                        const name = k.company_name || `${k.firstname || ''} ${k.lastname || ''}`.trim();
+                        const address = [k.address1, k.zipcode, k.city].filter(Boolean).join(', ');
+                        return `<div class="dropdown-item" data-id="${k.id}" data-name="${esc(name)}" data-address="${esc(address)}">
+                            <span class="item-name">${esc(name)}</span>
+                            ${address ? `<span class="item-address">${esc(address)}</span>` : ''}
+                        </div>`;
+                    }).join('');
+                }
+            }
+            
+            // Remove old listeners to prevent duplicates
+            const newSearchInput = searchInput.cloneNode(true);
+            searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+            
+            newSearchInput.addEventListener('focus', () => { 
+                console.log('focus - opening dropdown');
+                dropdown.classList.add('open'); 
+                renderKlantList(newSearchInput.value); 
+            });
+            newSearchInput.addEventListener('input', (e) => { renderKlantList(e.target.value); });
+            
+            // Re-get list after clone
+            const newList = document.getElementById('pKlantList');
+            newList.addEventListener('click', (e) => {
+                const item = e.target.closest('.dropdown-item');
+                if (item) {
+                    hiddenInput.value = item.dataset.id;
+                    newSearchInput.value = '';
+                    dropdown.classList.remove('open');
+                    selectedBadge.innerHTML = `✅ ${item.dataset.name} <button onclick="clearKlantSelection()" title="Verwijder">×</button>`;
+                    selectedBadge.style.display = 'inline-flex';
+                    // Auto-fill locatie met klant adres
+                    if (item.dataset.address) {
+                        document.getElementById('pLocatie').value = item.dataset.address;
+                    }
+                }
+            });
+            
+            document.addEventListener('click', (e) => { 
+                if (!dropdown.contains(e.target)) dropdown.classList.remove('open'); 
+            });
+            
+            // Initial render
+            renderKlantList();
+        }
+        
+        function clearKlantSelection() {
+            document.getElementById('pKlant').value = '';
+            document.getElementById('pKlantSelected').style.display = 'none';
+        }
+
+        function showTab(name, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + name).style.display = 'block';
+            btn.classList.add('active');
+        }
+
+        // === Document Upload Functions ===
+        function triggerUpload(docType) { document.getElementById('docFile-' + docType).click(); }
+
+        function handleFileSelect(docType, input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            pendingUploads[docType] = file;
+            const card = document.getElementById('docCard-' + docType);
+            const preview = document.getElementById('docPreview-' + docType);
+            
+            card.classList.add('has-file');
+            
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    preview.innerHTML = `<img src="${e.target.result}" class="doc-preview"><p class="text-sm text-green-600 font-semibold">✓ ${file.name}</p>
+                        <button onclick="event.stopPropagation(); removeDoc('${docType}')" class="btn btn-danger btn-sm mt-2">🗑️ Verwijderen</button>`;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.innerHTML = `<div class="doc-preview doc-preview-pdf">📄</div><p class="text-sm text-green-600 font-semibold">✓ ${file.name}</p>
+                    <button onclick="event.stopPropagation(); removeDoc('${docType}')" class="btn btn-danger btn-sm mt-2">🗑️ Verwijderen</button>`;
+            }
+        }
+
+        function removeDoc(docType) {
+            delete pendingUploads[docType];
+            const card = document.getElementById('docCard-' + docType);
+            const preview = document.getElementById('docPreview-' + docType);
+            card.classList.remove('has-file');
+            const icons = { id: '🪪', contract: '📝', vca: '🎓', bhv: '🚑' };
+            const labels = { id: 'Kopie ID', contract: 'Contract', vca: 'VCA Certificaat', bhv: 'BHV / EHBO' };
+            preview.innerHTML = `<span class="text-3xl">${icons[docType]}</span><p class="font-semibold mt-2">${labels[docType]}</p><p class="text-sm text-gray-500">Klik om te uploaden</p>`;
+            document.getElementById('docFile-' + docType).value = '';
+        }
+
+        async function uploadDocument(medewerkerId, docType, file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await fetch(`/api/medewerkers/${medewerkerId}/documenten/${docType}`, { method: 'POST', body: formData });
+            return res.json();
+        }
+
+        function viewDocument(medewerkerId, docType) {
+            const m = medewerkers.find(x => x.id === medewerkerId);
+            if (!m?.documenten?.bestanden?.[docType]) return;
+            const file = m.documenten.bestanden[docType];
+            const url = file.path;
+            
+            document.getElementById('docViewerTitle').textContent = docType.toUpperCase() + ' - ' + m.naam;
+            const content = document.getElementById('docViewerContent');
+            
+            if (file.filename.match(/\.(jpg|jpeg|png|webp)$/i)) {
+                content.innerHTML = `<img src="${url}" style="max-width: 100%; max-height: 70vh; border-radius: 8px;">`;
+            } else {
+                content.innerHTML = `<iframe src="${url}" style="width: 100%; height: 70vh; border: none; border-radius: 8px;"></iframe>`;
+            }
+            document.getElementById('docViewerModal').classList.add('active');
+        }
+
+        // === Medewerker CRUD ===
+        function showAddMedewerker() {
+            document.getElementById('medewerkerModalTitle').textContent = 'Nieuwe Medewerker';
+            document.getElementById('editMedewerkerId').value = '';
+            ['mNaam','mTelefoon','mPincode','mEmail','mUurtarief'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('mType').value = 'vast';
+            ['id','contract','vca','bhv'].forEach(t => { removeDoc(t); document.getElementById('docVerloop-'+t).value = ''; });
+            ['contract','vca','bhv'].forEach(t => document.getElementById('docType-'+t).value = '');
+            document.getElementById('overigeCerts').innerHTML = '';
+            overigCertCounter = 0;
+            pendingUploads = {};
+            document.getElementById('medewerkerModal').classList.add('active');
+        }
+
+        function editMedewerker(id) {
+            const m = medewerkers.find(x => x.id === id);
+            if (!m) return;
+            
+            document.getElementById('medewerkerModalTitle').textContent = 'Medewerker Bewerken';
+            document.getElementById('editMedewerkerId').value = id;
+            document.getElementById('mNaam').value = m.naam || '';
+            document.getElementById('mType').value = m.type || 'vast';
+            document.getElementById('mTelefoon').value = m.telefoon || '';
+            document.getElementById('mPincode').value = m.pincode || '';
+            document.getElementById('mEmail').value = m.email || '';
+            document.getElementById('mUurtarief').value = m.uurtarief || '';
+            
+            const docs = m.documenten || {}, files = docs.bestanden || {};
+            pendingUploads = {};
+            
+            // Reset and populate doc cards
+            ['id','contract','vca','bhv'].forEach(t => {
+                removeDoc(t);
+                const verloopKey = t === 'contract' ? 'contractEind' : t + 'Verloop';
+                document.getElementById('docVerloop-' + t).value = docs[verloopKey] || '';
+                
+                if (files[t]) {
+                    const card = document.getElementById('docCard-' + t);
+                    const preview = document.getElementById('docPreview-' + t);
+                    card.classList.add('has-file');
+                    const url = files[t].path;
+                    if (files[t].filename.match(/\.(jpg|jpeg|png|webp)$/i)) {
+                        preview.innerHTML = `<img src="${url}" class="doc-preview"><p class="text-sm text-green-600">✓ Geüpload</p><button onclick="event.stopPropagation(); deleteServerDoc('${id}','${t}')" class="btn btn-danger btn-sm mt-2">🗑️</button>`;
+                    } else {
+                        preview.innerHTML = `<div class="doc-preview doc-preview-pdf">📄</div><p class="text-sm text-green-600">✓ PDF</p><button onclick="event.stopPropagation(); deleteServerDoc('${id}','${t}')" class="btn btn-danger btn-sm mt-2">🗑️</button>`;
+                    }
+                }
+            });
+            
+            document.getElementById('docType-contract').value = docs.contractType || '';
+            document.getElementById('docType-vca').value = docs.vcaType || '';
+            document.getElementById('docType-bhv').value = docs.bhvType || '';
+            
+            document.getElementById('overigeCerts').innerHTML = '';
+            overigCertCounter = 0;
+            (docs.overig || []).forEach(c => addOverigCert(c.naam, c.verloop));
+            
+            document.getElementById('medewerkerModal').classList.add('active');
+        }
+
+        async function deleteServerDoc(medewerkerId, docType) {
+            if (!confirm('Document verwijderen?')) return;
+            await fetch(`/api/medewerkers/${medewerkerId}/documenten/${docType}`, { method: 'DELETE' });
+            await loadAll();
+            editMedewerker(medewerkerId);
+        }
+
+        function addOverigCert(naam = '', verloop = '') {
+            const id = ++overigCertCounter;
+            document.getElementById('overigeCerts').insertAdjacentHTML('beforeend', `
+                <div class="flex gap-2" id="overig-${id}">
+                    <input type="text" class="input-field flex-1" placeholder="Naam" value="${esc(naam)}" id="overigNaam-${id}">
+                    <input type="date" class="input-field" style="width:150px" value="${verloop}" id="overigVerloop-${id}">
+                    <button onclick="document.getElementById('overig-${id}').remove()" class="text-red-500 text-xl">&times;</button>
+                </div>
+            `);
+        }
+
+        async function saveMedewerker() {
+            const id = document.getElementById('editMedewerkerId').value;
+            const naam = document.getElementById('mNaam').value.trim();
+            const pincode = document.getElementById('mPincode').value.trim();
+            if (!naam) { alert('Vul naam in'); return; }
+            if (!pincode || pincode.length !== 4) { alert('Vul 4-cijferige pincode in'); return; }
+            
+            const overig = [];
+            document.querySelectorAll('#overigeCerts > div').forEach(div => {
+                const cid = div.id.split('-')[1];
+                const cn = document.getElementById('overigNaam-'+cid)?.value?.trim();
+                const cv = document.getElementById('overigVerloop-'+cid)?.value;
+                if (cn) overig.push({ naam: cn, verloop: cv || null });
+            });
+            
+            const data = {
+                naam, type: document.getElementById('mType').value,
+                telefoon: document.getElementById('mTelefoon').value.trim(),
+                pincode, email: document.getElementById('mEmail').value.trim(),
+                uurtarief: document.getElementById('mUurtarief').value || null,
+                actief: true,
+                documenten: {
+                    idVerloop: document.getElementById('docVerloop-id').value || null,
+                    contractType: document.getElementById('docType-contract').value || null,
+                    contractEind: document.getElementById('docVerloop-contract').value || null,
+                    vcaType: document.getElementById('docType-vca').value || null,
+                    vcaVerloop: document.getElementById('docVerloop-vca').value || null,
+                    bhvType: document.getElementById('docType-bhv').value || null,
+                    bhvVerloop: document.getElementById('docVerloop-bhv').value || null,
+                    overig
+                }
+            };
+            
+            // Save medewerker first
+            const res = await fetch(id ? '/api/medewerkers/' + id : '/api/medewerkers', {
+                method: id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const saved = await res.json();
+            const odewerkerId = id || saved.id;
+            
+            // Upload pending documents
+            for (const [docType, file] of Object.entries(pendingUploads)) {
+                await uploadDocument(odewerkerId, docType, file);
+            }
+            
+            pendingUploads = {};
+            closeModal('medewerkerModal');
+            await loadAll();
+        }
+
+        async function deleteMedewerker(id) {
+            if (!confirm('Medewerker verwijderen?')) return;
+            await fetch('/api/medewerkers/' + id, { method: 'DELETE' });
+            await loadAll();
+        }
+
+        // === Project CRUD ===
+        function showAddProject() {
+            document.getElementById('editProjectId').value = '';
+            document.getElementById('pTitel').value = '';
+            document.getElementById('pKlant').value = '';
+            document.getElementById('pKlantSearch').value = '';
+            document.getElementById('pKlantSelected').style.display = 'none';
+            document.getElementById('pLocatie').value = '';
+            document.getElementById('pStatus').value = 'gepland';
+            document.getElementById('pVoortgang').value = '0';
+            document.getElementById('pStartdatum').value = new Date().toISOString().split('T')[0];
+            document.getElementById('pDeadline').value = '';
+            document.getElementById('pBudgetUren').value = '';
+            document.getElementById('pOpmerkingen').value = '';
+            document.getElementById('projectModal').classList.add('active');
+        }
+
+        function editProject(id) {
+            const p = projecten.find(x => x.id === id);
+            if (!p) return;
+            document.getElementById('editProjectId').value = id;
+            document.getElementById('pTitel').value = p.titel || '';
+            document.getElementById('pKlant').value = p.klantId || '';
+            document.getElementById('pKlantSearch').value = '';
+            // Toon klant badge als er een klant is
+            const selectedBadge = document.getElementById('pKlantSelected');
+            if (p.klantId && p.klantNaam) {
+                selectedBadge.innerHTML = `✅ ${esc(p.klantNaam)} <button onclick="clearKlantSelection()" title="Verwijder">×</button>`;
+                selectedBadge.style.display = 'inline-flex';
+            } else {
+                selectedBadge.style.display = 'none';
+            }
+            document.getElementById('pLocatie').value = p.locatie || '';
+            document.getElementById('pStatus').value = p.status || 'gepland';
+            document.getElementById('pVoortgang').value = p.voortgang || 0;
+            document.getElementById('pStartdatum').value = p.startdatum || '';
+            document.getElementById('pDeadline').value = p.deadline || '';
+            document.getElementById('pBudgetUren').value = p.budgetUren || '';
+            document.getElementById('pOpmerkingen').value = p.opmerkingen || '';
+            document.getElementById('projectModal').classList.add('active');
+        }
+
+        async function saveProject() {
+            const id = document.getElementById('editProjectId').value;
+            const titel = document.getElementById('pTitel').value.trim();
+            const locatie = document.getElementById('pLocatie').value.trim();
+            if (!titel) { alert('Vul titel in'); return; }
+            if (!locatie) { alert('Vul locatie in'); return; }
+            
+            const klantId = document.getElementById('pKlant').value;
+            const klant = klanten.find(k => k.id === klantId);
+            
+            const projectData = {
+                titel,
+                klantId: klantId || null,
+                klantNaam: klant ? (klant.company_name || klant.firstname + ' ' + klant.lastname) : '',
+                locatie,
+                status: document.getElementById('pStatus').value || 'gepland',
+                voortgang: parseInt(document.getElementById('pVoortgang').value) || 0,
+                startdatum: document.getElementById('pStartdatum').value || null,
+                deadline: document.getElementById('pDeadline').value || null,
+                budgetUren: parseInt(document.getElementById('pBudgetUren').value) || null,
+                opmerkingen: document.getElementById('pOpmerkingen').value.trim()
+            };
+            
+            await fetch(id ? '/api/projecten/' + id : '/api/projecten', {
+                method: id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(projectData)
+            });
+            closeModal('projectModal');
+            await loadAll();
+        }
+
+        async function deleteProject(id) { if (!confirm('Verwijderen?')) return; await fetch('/api/projecten/' + id, { method: 'DELETE' }); await loadAll(); }
+        async function deleteUren(id) { if (!confirm('Verwijderen?')) return; await fetch('/api/uren/' + id, { method: 'DELETE' }); await loadAll(); }
+
+        // === Manstaat ===
+        let companyInfo = { naam: 'Uw Bedrijf', adres: '', telefoon: '', email: '', kvk: '', btw: '' };
+        
+        async function loadCompanyInfo() {
+            try {
+                const res = await fetch('/api/company');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.company) companyInfo = data.company;
+                }
+            } catch (e) { console.log('Company info not loaded'); }
+        }
+        
+        function initManstaatDates() {
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            document.getElementById('manstaatVan').value = firstDay.toISOString().split('T')[0];
+            document.getElementById('manstaatTot').value = now.toISOString().split('T')[0];
+        }
+        
+        function generateManstaat() {
+            const errorEl = document.getElementById('manstaatError');
+            const emptyEl = document.getElementById('manstaatEmpty');
+            const resultEl = document.getElementById('manstaatResult');
+            errorEl.style.display = 'none';
+            
+            const pid = document.getElementById('manstaatProject').value;
+            const van = document.getElementById('manstaatVan').value;
+            const tot = document.getElementById('manstaatTot').value;
+            
+            if (!pid) { errorEl.textContent = '⚠️ Selecteer een project'; errorEl.style.display = 'block'; return; }
+            if (!van || !tot) { errorEl.textContent = '⚠️ Selecteer een periode (van/tot datum)'; errorEl.style.display = 'block'; return; }
+            if (van > tot) { errorEl.textContent = '⚠️ Van-datum moet voor tot-datum liggen'; errorEl.style.display = 'block'; return; }
+            
+            const project = projecten.find(p => p.id === pid);
+            const list = uren.filter(u => u.projectId === pid && u.datum >= van && u.datum <= tot).sort((a,b) => a.datum.localeCompare(b.datum));
+            
+            if (!list.length) { 
+                errorEl.textContent = '⚠️ Geen uren gevonden voor dit project in de geselecteerde periode'; 
+                errorEl.style.display = 'block'; 
+                return; 
+            }
+            
+            // Generate reference number
+            const refNr = `MS-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+            
+            // Calculate totals
+            let totaalUren = 0;
+            const perMedewerker = {};
+            
+            const rows = list.map(u => { 
+                totaalUren += (u.totaalUren||0); 
+                const naam = u.medewerkerNaam || 'Onbekend';
+                perMedewerker[naam] = (perMedewerker[naam] || 0) + (u.totaalUren || 0);
+                return `<tr>
+                    <td style="padding:8px 12px;border:1px solid #e5e7eb;">${fmtDate(u.datum)}</td>
+                    <td style="padding:8px 12px;border:1px solid #e5e7eb;">${esc(naam)}</td>
+                    <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:center;">${u.begintijd || '-'}</td>
+                    <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:center;">${u.eindtijd || '-'}</td>
+                    <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:center;">${u.pauze || 0} min</td>
+                    <td style="padding:8px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:500;">${(u.totaalUren||0).toFixed(2)}</td>
+                </tr>`; 
+            }).join('');
+            
+            // Samenvatting per medewerker
+            const samenvattingRows = Object.entries(perMedewerker).map(([naam, uren]) => 
+                `<tr><td style="padding:6px 12px;border:1px solid #e5e7eb;">${esc(naam)}</td><td style="padding:6px 12px;border:1px solid #e5e7eb;text-align:right;">${uren.toFixed(2)} uur</td></tr>`
+            ).join('');
+            
+            document.getElementById('manstaatContent').innerHTML = `
+                <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;">
+                    <!-- Header -->
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #6366f1;padding-bottom:16px;margin-bottom:20px;">
+                        <div>
+                            <img src="/logo-stucadmin.svg" style="height:45px;margin-bottom:8px;" onerror="this.style.display='none'">
+                            <h1 style="font-size:24px;font-weight:bold;color:#1f2937;margin:0;">MANSTAAT</h1>
+                            <p style="font-size:12px;color:#6b7280;margin:4px 0 0 0;">Referentie: ${refNr}</p>
+                        </div>
+                        <div style="text-align:right;font-size:13px;color:#4b5563;">
+                            <strong style="font-size:15px;color:#1f2937;">${esc(companyInfo.naam || 'Uw Bedrijf')}</strong><br>
+                            ${companyInfo.adres ? esc(companyInfo.adres) + '<br>' : ''}
+                            ${companyInfo.telefoon ? '📞 ' + esc(companyInfo.telefoon) + '<br>' : ''}
+                            ${companyInfo.email ? '✉️ ' + esc(companyInfo.email) : ''}
+                        </div>
+                    </div>
+                    
+                    <!-- Project Info -->
+                    <div style="background:#f8fafc;border-radius:8px;padding:16px;margin-bottom:20px;">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px;">
+                            <div><span style="color:#6b7280;">Project:</span> <strong>${esc(project?.titel || '-')}</strong></div>
+                            <div><span style="color:#6b7280;">Periode:</span> <strong>${fmtDate(van)} t/m ${fmtDate(tot)}</strong></div>
+                            <div><span style="color:#6b7280;">Klant:</span> <strong>${esc(project?.klantNaam || project?.klant?.naam || '-')}</strong></div>
+                            <div><span style="color:#6b7280;">Locatie:</span> <strong>${esc(project?.locatie || '-')}</strong></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Uren Tabel -->
+                    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px;">
+                        <thead>
+                            <tr style="background:#6366f1;color:white;">
+                                <th style="padding:10px 12px;text-align:left;">Datum</th>
+                                <th style="padding:10px 12px;text-align:left;">Medewerker</th>
+                                <th style="padding:10px 12px;text-align:center;">Begin</th>
+                                <th style="padding:10px 12px;text-align:center;">Eind</th>
+                                <th style="padding:10px 12px;text-align:center;">Pauze</th>
+                                <th style="padding:10px 12px;text-align:right;">Uren</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                        <tfoot>
+                            <tr style="background:#f1f5f9;font-weight:bold;">
+                                <td colspan="5" style="padding:10px 12px;border:1px solid #e5e7eb;">TOTAAL</td>
+                                <td style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;color:#6366f1;font-size:15px;">${totaalUren.toFixed(2)} uur</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    
+                    <!-- Samenvatting per medewerker -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:30px;">
+                        <div>
+                            <h3 style="font-size:14px;font-weight:600;color:#374151;margin-bottom:8px;">📊 Samenvatting per medewerker</h3>
+                            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                                <thead><tr style="background:#f1f5f9;"><th style="padding:6px 12px;text-align:left;border:1px solid #e5e7eb;">Medewerker</th><th style="padding:6px 12px;text-align:right;border:1px solid #e5e7eb;">Uren</th></tr></thead>
+                                <tbody>${samenvattingRows}</tbody>
+                            </table>
+                        </div>
+                        <div style="font-size:12px;color:#6b7280;">
+                            <p><strong>Gegenereerd:</strong> ${new Date().toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                            <p style="margin-top:4px;"><strong>Aantal registraties:</strong> ${list.length}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Handtekeningen -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px;padding-top:20px;border-top:1px solid #e5e7eb;">
+                        <div>
+                            <p style="font-size:12px;color:#6b7280;margin-bottom:40px;">Akkoord opdrachtgever:</p>
+                            <div style="border-bottom:1px solid #9ca3af;margin-bottom:8px;"></div>
+                            <p style="font-size:11px;color:#9ca3af;">Naam / Datum / Handtekening</p>
+                        </div>
+                        <div>
+                            <p style="font-size:12px;color:#6b7280;margin-bottom:40px;">Akkoord uitvoerder:</p>
+                            <div style="border-bottom:1px solid #9ca3af;margin-bottom:8px;"></div>
+                            <p style="font-size:11px;color:#9ca3af;">Naam / Datum / Handtekening</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            emptyEl.style.display = 'none';
+            resultEl.style.display = 'block';
+        }
+        
+        function printManstaat() { 
+            const content = document.getElementById('manstaatContent').innerHTML;
+            const w = window.open('','_blank'); 
+            w.document.write(`
+                <html>
+                <head>
+                    <title>Manstaat</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; margin: 0; }
+                        @media print { body { padding: 0; } }
+                    </style>
+                </head>
+                <body>${content}</body>
+                </html>
+            `); 
+            w.document.close(); 
+            setTimeout(() => w.print(), 300); 
+        }
+        
+        async function downloadManstaatPDF() {
+            // Use browser print to PDF
+            const content = document.getElementById('manstaatContent').innerHTML;
+            const w = window.open('','_blank'); 
+            w.document.write(`
+                <html>
+                <head>
+                    <title>Manstaat - Download als PDF</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; margin: 0; }
+                        @page { margin: 15mm; }
+                    </style>
+                </head>
+                <body>
+                    ${content}
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                            }, 500);
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `); 
+            w.document.close();
+        }
+
+        // === Locaties Overzicht (Nieuw met API) ===
+        let locatiesData = [];
+        
+        async function loadLocaties() {
+            try {
+                const res = await fetch('/api/locaties/overzicht');
+                const data = await res.json();
+                if (data.success) {
+                    locatiesData = data.locaties;
+                    document.getElementById('statLocaties').textContent = data.totaalLocaties;
+                    document.getElementById('statBezoeken').textContent = data.totaalBezoeken;
+                    const gekoppeld = locatiesData.filter(l => l.gekoppeldeKlant).length;
+                    document.getElementById('statGekoppeld').textContent = gekoppeld;
+                    document.getElementById('statOngekoppeld').textContent = data.totaalLocaties - gekoppeld;
+                    renderLocatiesNew();
+                }
+            } catch (e) {
+                console.error('Locaties laden mislukt:', e);
+            }
+        }
+        
+        function renderLocatiesNew() {
+            const filter = document.getElementById('filterLocatieStatus')?.value || 'all';
+            let filtered = locatiesData;
+            
+            if (filter === 'gekoppeld') {
+                filtered = locatiesData.filter(l => l.gekoppeldeKlant);
+            } else if (filter === 'ongekoppeld') {
+                filtered = locatiesData.filter(l => !l.gekoppeldeKlant);
+            }
+            
+            const container = document.getElementById('locatiesGrid');
+            
+            if (!filtered.length) {
+                container.innerHTML = '<p class="text-center text-gray-400 py-8">Geen locaties gevonden</p>';
+                return;
+            }
+            
+            container.innerHTML = filtered.map((loc, idx) => {
+                const mapsUrl = `https://maps.google.com/?q=${loc.lat},${loc.lng}`;
+                const uniqueMedewerkers = [...new Set(loc.bezoeken.map(b => b.medewerker))];
+                const uniqueDatums = [...new Set(loc.bezoeken.map(b => b.datum))].sort().reverse();
+                const totaalUren = loc.bezoeken.reduce((s, b) => s + (b.uren || 0), 0);
+                
+                const klantBadge = loc.gekoppeldeKlant 
+                    ? `<div class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2">
+                        ✅ ${esc(loc.gekoppeldeKlant.klantNaam)}
+                        <button onclick="ontkoppelLocatie(${idx})" class="text-green-500 hover:text-red-500" title="Ontkoppelen">×</button>
+                       </div>`
+                    : `<button onclick="zoekKlantSuggesties(${idx})" class="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-medium hover:bg-orange-200">
+                        🔍 Zoek klant...
+                       </button>`;
+                
+                return `
+                    <div class="border border-gray-200 rounded-xl overflow-hidden" id="locatie-${idx}">
+                        <div class="bg-gradient-to-r ${loc.gekoppeldeKlant ? 'from-green-500 to-emerald-500' : 'from-indigo-500 to-purple-500'} text-white p-4">
+                            <div class="flex justify-between items-start gap-4 flex-wrap">
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="font-bold text-lg truncate">${esc(loc.adres || 'Onbekend adres')}</h3>
+                                    <p class="text-white/80 text-sm">📍 ${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}</p>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold">${totaalUren.toFixed(1)}u</div>
+                                    <div class="text-sm text-white/80">${loc.bezoeken.length} bezoeken</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                                ${klantBadge}
+                                <a href="${mapsUrl}" target="_blank" class="text-indigo-600 text-sm hover:underline">🗺️ Open in Maps</a>
+                            </div>
+                            
+                            <div id="suggesties-${idx}" class="hidden mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <p class="text-sm font-medium text-yellow-800 mb-2">🔍 Klant suggesties:</p>
+                                <div id="suggesties-list-${idx}" class="space-y-2"></div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">👷 Medewerkers</p>
+                                    <div class="space-y-1">
+                                        ${uniqueMedewerkers.slice(0, 3).map(m => `<span class="badge badge-vast">${esc(m)}</span>`).join(' ')}
+                                        ${uniqueMedewerkers.length > 3 ? `<span class="text-xs text-gray-400">+${uniqueMedewerkers.length - 3} meer</span>` : ''}
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">📅 Laatste bezoeken</p>
+                                    <p class="text-sm">${uniqueDatums.slice(0, 3).map(d => fmtDate(d)).join(', ')}</p>
+                                </div>
+                            </div>
+                            
+                            <details class="text-sm">
+                                <summary class="cursor-pointer text-indigo-600 font-medium">Bekijk alle ${loc.bezoeken.length} registraties</summary>
+                                <div class="mt-2 max-h-48 overflow-y-auto">
+                                    <table class="w-full text-xs">
+                                        <thead><tr class="text-gray-500"><th class="text-left py-1">Datum</th><th class="text-left py-1">Medewerker</th><th class="text-left py-1">Project</th><th class="text-right py-1">Uren</th></tr></thead>
+                                        <tbody>
+                                            ${loc.bezoeken.sort((a,b) => b.datum.localeCompare(a.datum)).map(b => `
+                                                <tr class="border-t border-gray-100">
+                                                    <td class="py-1">${fmtDate(b.datum)}</td>
+                                                    <td class="py-1">${esc(b.medewerker)}</td>
+                                                    <td class="py-1 truncate max-w-32">${esc(b.project)}</td>
+                                                    <td class="py-1 text-right font-medium">${(b.uren||0).toFixed(1)}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        async function zoekKlantSuggesties(idx) {
+            const loc = locatiesData[idx];
+            const suggestiesDiv = document.getElementById(`suggesties-${idx}`);
+            const listDiv = document.getElementById(`suggesties-list-${idx}`);
+            
+            suggestiesDiv.classList.remove('hidden');
+            listDiv.innerHTML = '<p class="text-sm text-gray-500">⏳ Suggesties zoeken...</p>';
+            
+            try {
+                const res = await fetch(`/api/locaties/suggesties/${loc.lat}/${loc.lng}`);
+                const data = await res.json();
+                
+                if (data.success && data.suggesties.length > 0) {
+                    listDiv.innerHTML = data.suggesties.map(s => {
+                        const confidenceColor = s.confidence === 'hoog' ? 'green' : s.confidence === 'medium' ? 'yellow' : 'gray';
+                        return `
+                            <div class="flex items-center justify-between p-2 bg-white rounded border hover:border-indigo-300 cursor-pointer" onclick="koppelKlant(${idx}, '${s.klantId}', '${esc(s.naam).replace(/'/g, "\\'")}', '${esc(s.adres).replace(/'/g, "\\'")}')">
+                                <div>
+                                    <p class="font-medium">${esc(s.naam)}</p>
+                                    <p class="text-xs text-gray-500">${esc(s.adres)}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="badge badge-${confidenceColor === 'green' ? 'green' : confidenceColor === 'yellow' ? 'orange' : 'gray'}">${s.afstand}m</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('') + `
+                        <button onclick="document.getElementById('suggesties-${idx}').classList.add('hidden')" class="text-xs text-gray-400 mt-2">Annuleren</button>
+                    `;
+                } else {
+                    listDiv.innerHTML = `
+                        <p class="text-sm text-gray-500">Geen klanten gevonden binnen 500m</p>
+                        <button onclick="showManualKoppel(${idx})" class="btn btn-sm btn-secondary mt-2">✏️ Handmatig koppelen</button>
+                        <button onclick="document.getElementById('suggesties-${idx}').classList.add('hidden')" class="text-xs text-gray-400 ml-2">Annuleren</button>
+                    `;
+                }
+            } catch (e) {
+                listDiv.innerHTML = '<p class="text-sm text-red-500">Fout bij laden suggesties</p>';
+            }
+        }
+        
+        async function koppelKlant(idx, klantId, klantNaam, klantAdres) {
+            const loc = locatiesData[idx];
+            try {
+                await fetch('/api/locaties/koppel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lat: loc.lat,
+                        lng: loc.lng,
+                        klantId,
+                        klantNaam,
+                        klantAdres
+                    })
+                });
+                await loadLocaties();
+            } catch (e) {
+                alert('Koppelen mislukt');
+            }
+        }
+        
+        async function ontkoppelLocatie(idx) {
+            if (!confirm('Koppeling verwijderen?')) return;
+            const loc = locatiesData[idx];
+            try {
+                await fetch(`/api/locaties/koppel/${loc.lat}/${loc.lng}`, { method: 'DELETE' });
+                await loadLocaties();
+            } catch (e) {
+                alert('Ontkoppelen mislukt');
+            }
+        }
+        
+        function showManualKoppel(idx) {
+            const klantNaam = prompt('Voer klantnaam in:');
+            if (!klantNaam) return;
+            const klantAdres = prompt('Voer klantadres in (optioneel):') || '';
+            koppelKlant(idx, 'manual_' + Date.now(), klantNaam, klantAdres);
+        }
+        
+        async function refreshLocaties() {
+            document.getElementById('locatiesGrid').innerHTML = '<p class="text-center text-gray-400 py-8">⏳ Locaties laden...</p>';
+            await loadLocaties();
+        }
+        
+        function exportLocaties() {
+            const rows = locatiesData.map(loc => {
+                const totaalUren = loc.bezoeken.reduce((s, b) => s + (b.uren || 0), 0);
+                const medewerkers = [...new Set(loc.bezoeken.map(b => b.medewerker))].join('; ');
+                return `"${loc.adres || ''}",${loc.lat},${loc.lng},"${loc.gekoppeldeKlant?.klantNaam || ''}",${loc.bezoeken.length},${totaalUren.toFixed(2)},"${medewerkers}"`;
+            });
+            const csv = 'Adres,Lat,Lng,Gekoppelde Klant,Bezoeken,Totaal Uren,Medewerkers\n' + rows.join('\n');
+            const a = document.createElement('a'); 
+            a.href = URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'})); 
+            a.download = 'locaties-export.csv'; 
+            a.click();
+        }
+
+        // === Utils ===
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); }));
+        function fmtDate(d) { return new Date(d).toLocaleDateString('nl-NL', {day:'numeric',month:'short',year:'numeric'}); }
+        function esc(t) { if (!t) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        function copyPortalLink() { 
+            const url = location.origin + '/medewerker-portal.html';
+            navigator.clipboard?.writeText(url).then(() => {
+                alert('Portal link gekopieerd!\\n\\nMedewerkers moeten inloggen met hun pincode.');
+            }); 
+        }
+        function exportUren() { const csv = 'Datum,Medewerker,Project,Begin,Eind,Uren\\n' + uren.map(u => `${u.datum},"${u.medewerkerNaam}","${u.projectNaam}",${u.begintijd},${u.eindtijd},${u.totaalUren}`).join('\\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\\ufeff'+csv],{type:'text/csv'})); a.download = 'uren.csv'; a.click(); }
+    </script>
+    <script src="/sidebar.js"></script>
+</body>
+</html>

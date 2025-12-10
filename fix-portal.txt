@@ -1,0 +1,9 @@
+WIJZIGING medewerker-portal.html regel 438:
+
+ZOEK:
+await fetch('/api/uren', { method: 'POST',
+
+VERVANG DOOR:
+await fetch('/api/medewerker/uren', { method: 'POST',
+
+Dit is de ENIGE wijziging nodig in medewerker-portal.html

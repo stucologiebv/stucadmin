@@ -1,0 +1,1 @@
+tail -30 /home/info/.pm2/logs/stucadmin-out.log

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abonnement - StucAdmin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .pricing-card { transition: all 0.3s ease; }
+        .pricing-card:hover { transform: scale(1.02); }
+        .pricing-card.popular { border: 3px solid #f97316; }
+        .pricing-card.current { border: 3px solid #22c55e; background: #f0fdf4; }
+        .btn-primary { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
+        .btn-primary:hover { background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <div class="bg-white border-b">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+            <a href="/dashboard.html" class="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                Terug naar Dashboard
+            </a>
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
+                    <span class="text-white text-sm">🏗️</span>
+                </div>
+                <span class="font-bold text-gray-900">StucAdmin</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-5xl mx-auto px-4 py-12">
+        <!-- Current Plan Status -->
+        <div id="currentPlanBanner" class="bg-white rounded-xl p-6 mb-8 shadow-sm border hidden">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Huidig abonnement</p>
+                    <p class="text-xl font-bold text-gray-900" id="currentPlanName">-</p>
+                </div>
+                <div id="trialWarning" class="hidden bg-orange-100 text-orange-800 px-4 py-2 rounded-lg">
+                    <p class="font-medium">⏳ Trial eindigt over <span id="trialDays">0</span> dagen</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mb-12">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Kies je abonnement</h1>
+            <p class="text-gray-600">Upgrade of wijzig je abonnement. Maandelijks opzegbaar.</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6" id="plansContainer">
+            <!-- Plans worden hier geladen -->
+        </div>
+
+        <p class="text-center text-gray-500 text-sm mt-8">Alle prijzen zijn exclusief 21% BTW. Maandelijks opzegbaar.</p>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-xl p-8 text-center">
+            <div class="animate-spin w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p class="font-medium text-gray-900">Even geduld...</p>
+            <p class="text-sm text-gray-500">Je wordt doorgestuurd naar de betaalpagina</p>
+        </div>
+    </div>
+
+    <script>
+        let currentPlan = 'trial';
+        let companyData = null;
+
+        async function init() {
+            try {
+                // Check auth
+                const authRes = await fetch('/api/auth/check');
+                if (!authRes.ok) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+
+                // Get company data
+                const companyRes = await fetch('/api/company');
+                if (companyRes.ok) {
+                    companyData = await companyRes.json();
+                    currentPlan = companyData.plan || 'trial';
+                    
+                    // Show current plan banner
+                    document.getElementById('currentPlanBanner').classList.remove('hidden');
+                    document.getElementById('currentPlanName').textContent = getPlanDisplayName(currentPlan);
+                    
+                    // Check trial
+                    if (currentPlan === 'trial' && companyData.trialEnds) {
+                        const daysLeft = Math.ceil((new Date(companyData.trialEnds) - new Date()) / (1000 * 60 * 60 * 24));
+                        if (daysLeft > 0 && daysLeft <= 14) {
+                            document.getElementById('trialWarning').classList.remove('hidden');
+                            document.getElementById('trialDays').textContent = daysLeft;
+                        }
+                    }
+                }
+
+                // Load plans
+                await loadPlans();
+            } catch (e) {
+                console.error('Init error:', e);
+            }
+        }
+
+        function getPlanDisplayName(planId) {
+            const names = {
+                'trial': '🎁 Gratis Trial',
+                'starter': '🚀 Starter',
+                'professional': '⭐ Professional',
+                'enterprise': '🏢 Enterprise'
+            };
+            return names[planId] || planId;
+        }
+
+        async function loadPlans() {
+            try {
+                const res = await fetch('/api/plans');
+                const plans = await res.json();
+                
+                const container = document.getElementById('plansContainer');
+                container.innerHTML = plans
+                    .filter(p => p.id !== 'trial' && p.active)
+                    .map(plan => renderPlanCard(plan))
+                    .join('');
+            } catch (e) {
+                console.error('Plans error:', e);
+            }
+        }
+
+        function renderPlanCard(plan) {
+            const isCurrent = plan.id === currentPlan;
+            const isPopular = plan.popular;
+            
+            let cardClass = 'pricing-card bg-white rounded-2xl p-8 shadow-sm relative';
+            if (isCurrent) cardClass += ' current';
+            else if (isPopular) cardClass += ' popular border-orange-500';
+            else cardClass += ' border border-gray-200';
+
+            const featuresHtml = plan.features.map(f => `
+                <li class="flex items-center gap-3 text-gray-600">
+                    <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                    ${f}
+                </li>
+            `).join('');
+
+            let buttonHtml = '';
+            if (isCurrent) {
+                buttonHtml = `<div class="w-full py-3 px-6 text-center bg-green-100 text-green-800 rounded-xl font-semibold">✓ Huidig abonnement</div>`;
+            } else {
+                buttonHtml = `<button onclick="subscribe('${plan.id}')" class="btn-primary w-full py-3 px-6 text-center rounded-xl font-semibold text-white">
+                    ${currentPlan === 'trial' ? 'Activeren' : 'Upgraden'} →
+                </button>`;
+            }
+
+            return `
+                <div class="${cardClass}">
+                    ${isPopular && !isCurrent ? '<div class="absolute -top-4 left-1/2 transform -translate-x-1/2"><span class="bg-orange-500 text-white px-4 py-1 rounded-full text-sm font-semibold">Meest gekozen</span></div>' : ''}
+                    ${isCurrent ? '<div class="absolute -top-4 left-1/2 transform -translate-x-1/2"><span class="bg-green-500 text-white px-4 py-1 rounded-full text-sm font-semibold">Huidig</span></div>' : ''}
+                    <div class="text-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">${plan.naam}</h3>
+                    </div>
+                    <div class="text-center mb-6">
+                        <span class="text-5xl font-bold text-gray-900">€${plan.prijs}</span>
+                        <span class="text-gray-500">/maand</span>
+                    </div>
+                    <ul class="space-y-3 mb-8">${featuresHtml}</ul>
+                    ${buttonHtml}
+                </div>
+            `;
+        }
+
+        async function subscribe(planId) {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            
+            try {
+                const res = await fetch('/api/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ planId })
+                });
+                
+                const data = await res.json();
+                
+                if (data.checkoutUrl) {
+                    window.location.href = data.checkoutUrl;
+                } else {
+                    throw new Error(data.error || 'Betaling starten mislukt');
+                }
+            } catch (e) {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                alert('Er ging iets mis: ' + e.message);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

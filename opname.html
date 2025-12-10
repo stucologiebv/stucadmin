@@ -1,0 +1,2165 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Opname & Offerte - StucAdmin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/sidebar.js"></script>
+    <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; }
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        main { padding: 24px; min-height: 100vh; max-width: 1000px; }
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+        .btn { padding: 12px 24px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+        .btn-secondary { background: #f1f5f9; color: #475569; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-sm { padding: 8px 12px; font-size: 13px; min-height: 36px; }
+        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; width: 100%; font-size: 16px; min-height: 44px; }
+        .input-field:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+        textarea.input-field { min-height: 100px; resize: vertical; }
+        .step-indicator { display: flex; gap: 6px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 8px; flex-wrap: wrap; }
+        .step { padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; white-space: nowrap; background: #e5e7eb; color: #64748b; cursor: pointer; transition: all 0.2s; }
+        .step.active { background: #6366f1; color: white; }
+        .step.completed { background: #10b981; color: white; }
+        .section-title { font-weight: 700; font-size: 14px; color: #374151; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .dropdown-container { position: relative; }
+        .dropdown-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); max-height: 250px; overflow-y: auto; z-index: 50; display: none; }
+        .dropdown-list.show { display: block; }
+        .dropdown-item { padding: 12px 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
+        .dropdown-item:hover { background: #f8fafc; }
+        .dropdown-item:last-child { border-bottom: none; }
+        
+        /* Ruimte card styling */
+        .ruimte-card { background: #fff; border: 2px solid #e5e7eb; border-radius: 16px; margin-bottom: 16px; overflow: hidden; }
+        .ruimte-header { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .ruimte-body { padding: 16px; }
+        .ruimte-section { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+        .ruimte-section:last-child { margin-bottom: 0; }
+        .ruimte-section-title { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+        
+        /* Dienst in ruimte */
+        .dienst-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: white; border: 1px solid #e5e7eb; border-radius: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+        .dienst-item.is-optie { border-color: #f59e0b; background: #fffbeb; border-style: dashed; }
+        .dienst-item:last-child { margin-bottom: 0; }
+        .dienst-info { flex: 1; min-width: 150px; }
+        .dienst-naam { font-weight: 600; font-size: 14px; }
+        .dienst-prijs { font-size: 12px; color: #059669; }
+        .dienst-input { width: 80px; text-align: center; padding: 8px; border: 1px solid #e2e8f0; border-radius: 8px; }
+        .dienst-totaal { font-weight: 700; color: #059669; min-width: 80px; text-align: right; }
+        .dienst-remove { background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; width: 32px; height: 32px; cursor: pointer; font-size: 16px; }
+        .optie-badge { background: #f59e0b; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+        .optie-checkbox { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #64748b; }
+        .optie-checkbox input { width: 16px; height: 16px; accent-color: #f59e0b; }
+        
+        /* Foto grid */
+        .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+        .photo-item { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #e5e7eb; }
+        .photo-item img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-item .delete-btn { position: absolute; top: 4px; right: 4px; background: rgba(239,68,68,0.9); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; }
+        .photo-add { aspect-ratio: 1; border: 2px dashed #cbd5e1; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: #64748b; font-size: 12px; transition: all 0.2s; }
+        .photo-add:hover { border-color: #6366f1; color: #6366f1; }
+        
+        /* Afwerking cards */
+        .afwerking-card { padding: 16px; border: 2px solid #e5e7eb; border-radius: 12px; cursor: pointer; transition: all 0.2s; text-align: center; }
+        .afwerking-card:hover { border-color: #a5b4fc; }
+        .afwerking-card.selected { border-color: #6366f1; background: #eef2ff; }
+        .afwerking-card .titel { font-weight: 700; font-size: 16px; }
+        .afwerking-card .subtitel { font-size: 12px; color: #64748b; }
+        
+        /* Prijs berekening */
+        .prijs-regel { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f8fafc; border-radius: 10px; margin-bottom: 8px; }
+        .prijs-regel-naam { font-weight: 500; }
+        .prijs-regel-calc { display: flex; align-items: center; gap: 8px; }
+        .prijs-regel-totaal { font-weight: 700; color: #059669; }
+        .totaal-box { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #22c55e; border-radius: 16px; padding: 20px; margin-top: 20px; }
+        .totaal-row { display: flex; justify-content: space-between; padding: 8px 0; }
+        .totaal-row.grand { border-top: 2px solid #22c55e; margin-top: 12px; padding-top: 16px; font-size: 20px; font-weight: 700; color: #166534; }
+        
+        /* Checklist */
+        .checklist-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f8fafc; border-radius: 10px; margin-bottom: 8px; }
+        .toggle-group { display: flex; gap: 4px; }
+        .toggle-btn { padding: 6px 16px; border: 2px solid #e2e8f0; background: white; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .toggle-btn:hover { border-color: #a5b4fc; }
+        .toggle-btn.active-ja { background: #dcfce7; border-color: #22c55e; color: #166534; }
+        .toggle-btn.active-nee { background: #fee2e2; border-color: #ef4444; color: #dc2626; }
+        
+        .nav-buttons { display: flex; gap: 12px; margin-top: 24px; }
+        .nav-buttons .btn { flex: 1; }
+        .hidden { display: none !important; }
+        
+        /* Laser Meten Styling */
+        .laser-btn { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; border: none; padding: 12px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .laser-btn:hover { transform: scale(1.02); }
+        .laser-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .laser-status { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+        .laser-status.disconnected { background: #fee2e2; color: #dc2626; }
+        .laser-status.connecting { background: #fef3c7; color: #d97706; }
+        .laser-status.connected { background: #dcfce7; color: #166534; }
+        .laser-meting { background: #f0fdf4; border: 2px solid #22c55e; border-radius: 12px; padding: 16px; margin: 8px 0; display: flex; align-items: center; gap: 12px; }
+        .laser-meting-value { font-size: 28px; font-weight: 800; color: #166534; font-family: monospace; }
+        .laser-meting-unit { font-size: 16px; color: #16a34a; }
+        .muur-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0; }
+        .muur-input { background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px; text-align: center; }
+        .muur-input.has-value { border-color: #22c55e; background: #f0fdf4; }
+        .muur-input label { display: block; font-size: 12px; color: #64748b; margin-bottom: 4px; }
+        .muur-input input { width: 100%; border: none; background: transparent; font-size: 20px; font-weight: 700; text-align: center; color: #1e293b; }
+        .muur-input input:focus { outline: none; }
+        .ruimte-totalen { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border-radius: 12px; padding: 16px; margin-top: 16px; }
+        .totaal-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .totaal-row:last-child { border-bottom: none; font-weight: 700; font-size: 18px; }
+        
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            main { margin-left: 0; padding: 70px 16px 24px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
+    <!-- Sidebar wordt geladen door sidebar.js -->
+
+    <main>
+        <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div>
+                <h1 class="text-xl font-bold">📋 Opname & Offerte</h1>
+                <p class="text-gray-500 text-sm">Complete opname met directe offerte</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="nieuweOpname()" class="btn btn-secondary text-sm">🆕 Nieuw</button>
+                <button onclick="showOpnameList()" class="btn btn-secondary text-sm">📁 Opnames</button>
+            </div>
+        </header>
+
+        <!-- Tip Banner -->
+        <div class="bg-gradient-to-r from-cyan-50 to-sky-50 border border-cyan-100 rounded-xl p-3 mb-4 flex items-center gap-3">
+            <span class="text-xl">📐</span>
+            <p class="text-sm text-cyan-700"><strong>Stap-voor-stap opname</strong> — Meet ruimtes op, selecteer werkzaamheden en genereer direct een professionele offerte. Klanten en prijzen komen uit je boekhouding.</p>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator" id="stepIndicator">
+            <div class="step active" onclick="goToStep(1)">1. Klant</div>
+            <div class="step" onclick="goToStep(2)">2. Ruimtes</div>
+            <div class="step" onclick="goToStep(3)">3. Checklist</div>
+            <div class="step" onclick="goToStep(4)">4. Berekening</div>
+            <div class="step" onclick="goToStep(5)">5. Voorwaarden</div>
+            <div class="step" onclick="goToStep(6)">6. Offerte</div>
+        </div>
+
+        <!-- STAP 1: Klantgegevens -->
+        <div id="step1" class="step-content">
+            <div class="card">
+                <h2 class="text-lg font-bold mb-4">👤 Klantgegevens</h2>
+                
+                <div class="mb-4">
+                    <label class="text-sm text-gray-600 mb-1 block">Klant zoeken (uit boekhouding)</label>
+                    <div class="dropdown-container">
+                        <input type="text" id="klantSearch" class="input-field" placeholder="🔍 Zoek op naam..." oninput="filterKlanten(this.value)" onfocus="showKlantDropdown()">
+                        <div id="klantDropdown" class="dropdown-list"></div>
+                    </div>
+                </div>
+
+                <div id="klantDetails">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="text-sm text-gray-600 mb-1 block">Naam *</label>
+                            <input type="text" id="klantNaam" class="input-field" placeholder="Volledige naam">
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-600 mb-1 block">Telefoon</label>
+                            <input type="tel" id="klantTelefoon" class="input-field" placeholder="06-12345678">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="text-sm text-gray-600 mb-1 block">Email *</label>
+                        <input type="email" id="klantEmail" class="input-field" placeholder="email@voorbeeld.nl">
+                    </div>
+                </div>
+
+                <div class="border-t pt-4 mt-4">
+                    <h3 class="font-semibold mb-3">📍 Werklocatie</h3>
+                    <div class="mb-4">
+                        <label class="text-sm text-gray-600 mb-1 block">Adres *</label>
+                        <input type="text" id="werkAdres" class="input-field" placeholder="Straat en huisnummer">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-sm text-gray-600 mb-1 block">Postcode</label>
+                            <input type="text" id="werkPostcode" class="input-field" placeholder="1234 AB">
+                        </div>
+                        <div>
+                            <label class="text-sm text-gray-600 mb-1 block">Plaats *</label>
+                            <input type="text" id="werkPlaats" class="input-field" placeholder="Stad">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t pt-4 mt-4">
+                    <label class="text-sm text-gray-600 mb-1 block">📅 Datum opname</label>
+                    <input type="date" id="opnameDatum" class="input-field" style="max-width: 200px;">
+                </div>
+
+                <div class="nav-buttons">
+                    <button onclick="goToStep(2)" class="btn btn-primary">Volgende →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STAP 2: Ruimtes met Diensten en Foto's -->
+        <div id="step2" class="step-content hidden">
+            <div class="card">
+                <h2 class="text-lg font-bold mb-2">📐 Ruimtes, Diensten & Foto's</h2>
+                <p class="text-sm text-gray-500 mb-4">Voeg per ruimte de diensten toe met m² of aantal, en maak foto's.</p>
+                
+                <!-- Laser Meten Sectie -->
+                <div class="bg-green-50 border-2 border-green-200 rounded-xl p-4 mb-6">
+                    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                        <div>
+                            <h3 class="font-bold text-green-800 flex items-center gap-2">📐 Laser Meter</h3>
+                            <p class="text-sm text-green-600">Verbind je Bluetooth laser afstandsmeter</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div id="laserStatus" class="laser-status disconnected">
+                                <span class="status-dot">●</span>
+                                <span class="status-text">Niet verbonden</span>
+                            </div>
+                            <button id="laserConnectBtn" onclick="toggleLaserConnection()" class="laser-btn">
+                                🔵 Verbinden
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg p-3 mb-4 text-xs text-gray-600">
+                        <p class="font-semibold text-gray-700 mb-2">ℹ️ Compatibiliteit:</p>
+                        <ul class="space-y-1">
+                            <li>✅ <strong>Ondersteund:</strong> Bosch GLM serie met Bluetooth (GLM 50 C, GLM 100 C, GLM 120 C)</li>
+                            <li>✅ <strong>Browsers:</strong> Chrome, Edge, Opera (desktop & Android)</li>
+                            <li>❌ <strong>Niet ondersteund:</strong> iOS (iPhone/iPad), Safari, Firefox</li>
+                            <li>💡 <strong>Tip:</strong> Zet Bluetooth aan op je apparaat en op de laser meter</li>
+                        </ul>
+                    </div>
+                    
+                    <div id="laserMetenPanel" class="hidden">
+                        <div class="bg-white rounded-lg p-4 mb-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="font-semibold">Laatste meting:</span>
+                            </div>
+                            <div class="laser-meting">
+                                <span class="laser-meting-value" id="lastMeasurement">--</span>
+                                <span class="laser-meting-unit">meter</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="openLaserRuimteModal()" class="btn btn-success w-full">
+                        🏠 Start Ruimte Meten
+                    </button>
+                </div>
+                
+                <div id="ruimtesContainer"></div>
+                
+                <button onclick="addRuimte()" class="btn btn-primary mt-4">+ Ruimte toevoegen</button>
+
+                <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4 mt-6">
+                    <h3 class="font-semibold mb-2">📊 Totaal overzicht</h3>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="text-gray-600">Totaal m² wanden:</span>
+                            <span class="font-bold text-indigo-600 ml-2" id="totaalWanden">0</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">Totaal m² plafonds:</span>
+                            <span class="font-bold text-indigo-600 ml-2" id="totaalPlafonds">0</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">Totaal m² kozijnen:</span>
+                            <span class="font-bold text-amber-600 ml-2" id="totaalKozijnen">0</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">Aantal ruimtes:</span>
+                            <span class="font-bold text-indigo-600 ml-2" id="totaalRuimtes">0</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-600">Aantal diensten:</span>
+                            <span class="font-bold text-indigo-600 ml-2" id="totaalDiensten">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nav-buttons">
+                    <button onclick="goToStep(1)" class="btn btn-secondary">← Vorige</button>
+                    <button onclick="goToStep(3)" class="btn btn-primary">Volgende →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STAP 3: Checklist -->
+        <div id="step3" class="step-content hidden">
+            <div class="card">
+                <h2 class="text-lg font-bold mb-4">✅ Checklist</h2>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <p class="text-sm text-blue-800">
+                        <strong>💡 Tip:</strong> Stel hier je eigen checklist samen voor opnames. 
+                        Voeg items toe die je standaard wilt controleren bij elke opname, zoals 
+                        "Stopcontacten vrij?", "Meubels verplaatsen?", "Vloerbescherming nodig?" etc.
+                        Je checklist wordt automatisch opgeslagen en is beschikbaar bij elke nieuwe opname.
+                    </p>
+                </div>
+                
+                <div id="checklistItems" class="space-y-2"></div>
+                
+                <div class="flex gap-2 mt-4">
+                    <input type="text" id="nieuweCheckItem" class="input-field flex-1" placeholder="Nieuw checklist item toevoegen...">
+                    <button onclick="addChecklistItem()" class="btn btn-secondary">+ Toevoegen</button>
+                </div>
+
+                <div class="section-title mt-6">📝 Algemene opmerkingen</div>
+                <textarea id="algOpmerkingen" class="input-field" placeholder="Bijzonderheden, afspraken, speciale wensen..."></textarea>
+
+                <div class="nav-buttons">
+                    <button onclick="goToStep(2)" class="btn btn-secondary">← Vorige</button>
+                    <button onclick="goToStep(4)" class="btn btn-primary">Volgende →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STAP 4: Berekening met Afwerking keuze -->
+        <div id="step4" class="step-content hidden">
+            <div class="card">
+                <h2 class="text-lg font-bold mb-4">💰 Prijsberekening</h2>
+                
+                <!-- Afwerking niveau -->
+                <div class="section-title">⭐ Kies afwerking niveau</div>
+                <div class="grid grid-cols-3 gap-4 mb-6">
+                    <div class="afwerking-card" onclick="selectAfwerking('basis')" id="afwerkingBasis">
+                        <div class="titel">Basis</div>
+                        <div class="text-xs text-gray-500 mt-1">+0%</div>
+                    </div>
+                    <div class="afwerking-card selected" onclick="selectAfwerking('premium')" id="afwerkingPremium">
+                        <div class="titel">Premium</div>
+                        <div class="text-xs text-indigo-600 mt-1 font-semibold">+27%</div>
+                    </div>
+                    <div class="afwerking-card" onclick="selectAfwerking('luxe')" id="afwerkingLuxe">
+                        <div class="titel">Luxe</div>
+                        <div class="text-xs text-purple-600 mt-1 font-semibold">+60%</div>
+                    </div>
+                </div>
+
+                <!-- Prijsregels -->
+                <div class="section-title">📋 Prijsoverzicht per dienst</div>
+                <div id="prijsRegels"></div>
+
+                <!-- Extra kosten -->
+                <div class="section-title mt-6">➕ Extra kosten toevoegen</div>
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="extraKostNaam" class="input-field flex-1" placeholder="Omschrijving">
+                    <input type="number" id="extraKostBedrag" class="input-field" style="width: 100px;" placeholder="€">
+                    <button onclick="addExtraKost()" class="btn btn-secondary">+</button>
+                </div>
+                <div id="extraKostenLijst"></div>
+
+                <!-- Totaal box -->
+                <div class="totaal-box">
+                    <div class="totaal-row">
+                        <span>Subtotaal diensten</span>
+                        <span id="subtotaalDiensten">€ 0,00</span>
+                    </div>
+                    <div class="totaal-row">
+                        <span>Extra kosten</span>
+                        <span id="subtotaalExtra">€ 0,00</span>
+                    </div>
+                    <div class="totaal-row">
+                        <span>BTW (21%)</span>
+                        <span id="btwBedrag">€ 0,00</span>
+                    </div>
+                    <div class="totaal-row grand">
+                        <span>Totaal incl. BTW</span>
+                        <span id="totaalIncl">€ 0,00</span>
+                    </div>
+                </div>
+
+                <div class="nav-buttons">
+                    <button onclick="goToStep(3)" class="btn btn-secondary">← Vorige</button>
+                    <button onclick="goToStep(5)" class="btn btn-primary">Volgende →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STAP 5: Voorwaarden -->
+        <div id="step5" class="step-content hidden">
+            <div class="card">
+                <h2 class="text-lg font-bold mb-4">📜 Voorwaarden en Akkoord</h2>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <p class="text-sm text-blue-800">
+                        <strong>💡 Tip:</strong> Pas de voorwaarden aan naar je eigen bedrijfsvoorwaarden. 
+                        Deze worden automatisch opgeslagen en verschijnen op al je offertes.
+                    </p>
+                </div>
+                
+                <div class="mb-4">
+                    <textarea id="voorwaardenText" class="input-field" rows="12" placeholder="Vul hier je voorwaarden in..."></textarea>
+                </div>
+                
+                <div class="flex gap-2 mb-6">
+                    <button onclick="saveVoorwaarden()" class="btn btn-primary">💾 Voorwaarden opslaan</button>
+                    <button onclick="resetVoorwaarden()" class="btn btn-secondary">↩️ Standaard herstellen</button>
+                </div>
+
+                <div class="section-title">✍️ Handtekening klant</div>
+                <div class="border-2 border-gray-200 rounded-lg p-2 mb-2">
+                    <canvas id="signatureCanvas" class="w-full bg-white rounded" style="height: 150px; touch-action: none;"></canvas>
+                </div>
+                <button onclick="clearSignature()" class="btn btn-secondary btn-sm">Wissen</button>
+
+                <div class="nav-buttons">
+                    <button onclick="goToStep(4)" class="btn btn-secondary">← Vorige</button>
+                    <button onclick="goToStep(6)" class="btn btn-primary">Naar offerte →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STAP 6: Offerte -->
+        <div id="step6" class="step-content hidden">
+            <div class="card">
+                <h2 class="text-lg font-bold mb-4">📄 Offerte Overzicht</h2>
+                
+                <div id="offerteSummary" class="space-y-4"></div>
+
+                <div class="flex flex-wrap gap-3 mt-6">
+                    <button onclick="saveOpname()" class="btn btn-secondary flex-1">💾 Opslaan</button>
+                    <button onclick="genereerOffertePDF()" class="btn btn-primary flex-1">📄 Download PDF</button>
+                    <button onclick="printOfferte()" class="btn btn-primary flex-1">🖨️ Print</button>
+                    <button onclick="createMoneybirdOfferte()" class="btn btn-success flex-1">📤 Naar boekhouding</button>
+                </div>
+
+                <div id="offerteResultaat" class="hidden mt-6">
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+                        <div class="text-4xl mb-2">✅</div>
+                        <div class="font-bold text-lg">Offerte aangemaakt!</div>
+                        <p class="text-sm text-gray-600 mt-2">De concept-offerte staat klaar in je boekhouding.</p>
+                        <a id="moneybirdLink" href="#" target="_blank" class="btn btn-primary mt-4">🔗 Open in boekhouding</a>
+                    </div>
+                </div>
+
+                <div class="nav-buttons">
+                    <button onclick="goToStep(5)" class="btn btn-secondary">← Vorige</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Opname List Modal -->
+        <div id="opnameListModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl max-w-lg w-full max-h-[80vh] overflow-hidden">
+                <div class="p-4 border-b flex justify-between items-center">
+                    <h2 class="font-bold">📁 Opgeslagen opnames</h2>
+                    <button onclick="hideOpnameList()" class="text-gray-400 text-2xl">&times;</button>
+                </div>
+                <div class="p-4 overflow-y-auto max-h-[60vh]" id="opnameListContent"></div>
+            </div>
+        </div>
+
+        <!-- Dienst toevoegen modal -->
+        <div id="dienstModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden">
+                <div class="p-4 border-b flex justify-between items-center">
+                    <h2 class="font-bold">🛠️ Dienst toevoegen</h2>
+                    <button onclick="hideDienstModal()" class="text-gray-400 text-2xl">&times;</button>
+                </div>
+                <div class="p-4">
+                    <input type="hidden" id="dienstModalRuimteId">
+                    <div class="mb-4">
+                        <label class="text-sm text-gray-600 mb-1 block">Zoek dienst</label>
+                        <input type="text" id="dienstModalSearch" class="input-field" placeholder="🔍 Zoek..." oninput="filterModalDiensten(this.value)">
+                    </div>
+                    <div id="dienstModalList" class="max-h-60 overflow-y-auto space-y-2"></div>
+                    
+                    <!-- Custom dienst -->
+                    <div class="border-t mt-4 pt-4">
+                        <div class="text-sm font-semibold text-gray-600 mb-2">Of voeg aangepaste dienst toe:</div>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <input type="text" id="customDienstNaam" class="input-field text-sm" placeholder="Naam">
+                            <input type="number" id="customDienstPrijs" class="input-field text-sm" placeholder="€ prijs">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <select id="customDienstEenheid" class="input-field text-sm">
+                                <option value="m²">m²</option>
+                                <option value="m¹">m¹</option>
+                                <option value="stuk">stuk</option>
+                                <option value="uur">uur</option>
+                            </select>
+                            <button onclick="addCustomDienst()" class="btn btn-primary btn-sm">Toevoegen</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Laser Ruimte Meten Modal -->
+        <div id="laserRuimteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-hidden">
+                <div class="p-4 border-b flex justify-between items-center bg-gradient-to-r from-green-500 to-green-600 text-white">
+                    <h2 class="font-bold">📐 Ruimte Opmeten</h2>
+                    <button onclick="closeLaserRuimteModal()" class="text-white/80 hover:text-white text-2xl">&times;</button>
+                </div>
+                <div class="p-4 overflow-y-auto max-h-[70vh]">
+                    <!-- Ruimte Naam -->
+                    <div class="mb-4">
+                        <label class="text-sm text-gray-600 mb-1 block">Ruimte naam</label>
+                        <input type="text" id="laserRuimteNaam" class="input-field" placeholder="bijv. Slaapkamer 1">
+                    </div>
+                    
+                    <!-- Categorie Tabs -->
+                    <div class="flex gap-2 mb-4 flex-wrap">
+                        <button onclick="selectLaserCategorie('muren')" id="tabMuren" class="flex-1 py-3 px-4 rounded-lg font-bold text-white bg-indigo-600">🧱 Muren</button>
+                        <button onclick="selectLaserCategorie('plafond')" id="tabPlafond" class="flex-1 py-3 px-4 rounded-lg font-semibold bg-gray-200 text-gray-700">📐 Plafond</button>
+                        <button onclick="selectLaserCategorie('kozijnen')" id="tabKozijnen" class="flex-1 py-3 px-4 rounded-lg font-semibold bg-gray-200 text-gray-700">🪟 Kozijnen</button>
+                        <button onclick="selectLaserCategorie('aftrek')" id="tabAftrek" class="flex-1 py-3 px-4 rounded-lg font-semibold bg-gray-200 text-gray-700">🚪 Aftrek</button>
+                    </div>
+                    
+                    <!-- Laatste Meting Display -->
+                    <div class="bg-green-50 border-2 border-green-400 rounded-xl p-4 mb-4 text-center">
+                        <div class="text-sm text-green-600 mb-1">Laatste meting</div>
+                        <div class="text-4xl font-black text-green-700" id="lastLaserReading">-- m²</div>
+                        <div class="text-sm text-green-600 mt-2">Meet met laser of typ handmatig:</div>
+                        <div class="flex gap-2 mt-2 justify-center">
+                            <input type="number" id="manualM2Input" step="0.01" class="input-field text-center text-xl font-bold" style="width: 120px;" placeholder="0.00">
+                            <button onclick="addManualMeasurement()" class="btn btn-success">+ Voeg toe</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Metingen Overzicht -->
+                    <div class="space-y-3 mb-4">
+                        <!-- Muren -->
+                        <div class="bg-indigo-50 rounded-lg p-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-semibold text-indigo-800">🧱 Muren</span>
+                                <span class="font-bold text-indigo-600" id="murenTotaal">0 m²</span>
+                            </div>
+                            <div class="text-sm text-indigo-600" id="murenMetingen">Nog geen metingen</div>
+                        </div>
+                        
+                        <!-- Plafond -->
+                        <div class="bg-purple-50 rounded-lg p-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-semibold text-purple-800">📐 Plafond</span>
+                                <span class="font-bold text-purple-600" id="plafondTotaal">0 m²</span>
+                            </div>
+                            <div class="text-sm text-purple-600" id="plafondMetingen">Nog geen metingen</div>
+                        </div>
+                        
+                        <!-- Kozijnen -->
+                        <div class="bg-amber-50 rounded-lg p-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-semibold text-amber-800">🪟 Kozijnen</span>
+                                <span class="font-bold text-amber-600" id="kozijnenTotaal">0 m²</span>
+                            </div>
+                            <div class="text-sm text-amber-600" id="kozijnenMetingen">Nog geen metingen</div>
+                        </div>
+                        
+                        <!-- Aftrek -->
+                        <div class="bg-red-50 rounded-lg p-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-semibold text-red-800">🚪 Aftrek</span>
+                                <span class="font-bold text-red-600" id="aftrekTotaal">- 0 m²</span>
+                            </div>
+                            <div class="text-sm text-red-600" id="aftrekMetingen">Nog geen metingen</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Netto Totaal -->
+                    <div class="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl p-4 text-center mb-4">
+                        <div class="text-sm opacity-80">Netto Muren (na aftrek)</div>
+                        <div class="text-3xl font-black" id="nettoTotaal">0 m²</div>
+                    </div>
+                    
+                    <!-- Acties -->
+                    <div class="flex gap-3">
+                        <button onclick="undoLastMeasurement()" class="btn btn-secondary">↩️ Ongedaan</button>
+                        <button onclick="resetLaserRuimte()" class="btn btn-secondary">🔄 Reset</button>
+                        <button onclick="saveLaserRuimte()" class="btn btn-success flex-1">💾 Opslaan & Volgende</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ============================================
+        // PRIJZEN DATABASE - Alleen basisprijs
+        // Afwerking: Basis +0%, Premium +27%, Luxe +60%
+        // ============================================
+        const AFWERKING_MULTIPLIER = {
+            'basis': 1.00,
+            'premium': 1.27,
+            'luxe': 1.60
+        };
+        
+        const PRIJZEN = {
+            // Stucwerk
+            glad_stucwerk_wanden: { naam: 'Glad Stucwerk - Wanden', basisPrijs: 15, eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
+            glad_stucwerk_plafonds: { naam: 'Glad Stucwerk - Plafonds', basisPrijs: 15, eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
+            waterpas_stucwerk_wanden: { naam: 'Waterpas Stucwerk - Wanden', basisPrijs: 28, eenheid: 'm²', type: 'wanden', heeftNiveaus: false },
+            waterpas_stucwerk_plafonds: { naam: 'Waterpas Stucwerk - Plafonds', basisPrijs: 28, eenheid: 'm²', type: 'plafonds', heeftNiveaus: false },
+            dunpleister_wanden: { naam: 'Dunpleister - Wanden', basisPrijs: 12, eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
+            dunpleister_plafonds: { naam: 'Dunpleister - Plafonds', basisPrijs: 12, eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
+            spachtelputz_wanden: { naam: 'Spachtelputz - Wanden', basisPrijs: 18, eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
+            spachtelputz_plafonds: { naam: 'Spachtelputz - Plafonds', basisPrijs: 18, eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
+            betonlook_wanden: { naam: 'Betonlook - Wanden', basisPrijs: 35, eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
+            betonlook_plafonds: { naam: 'Betonlook - Plafonds', basisPrijs: 35, eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
+            
+            // Spuiten
+            latex_wanden: { naam: 'Latex spuiten - Wanden', basisPrijs: 11, eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
+            latex_plafonds: { naam: 'Latex spuiten - Plafonds', basisPrijs: 10, eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
+            spack_wanden: { naam: 'Spack spuiten - Wanden', basisPrijs: 12, eenheid: 'm²', type: 'wanden', heeftNiveaus: true },
+            spack_plafonds: { naam: 'Spack spuiten - Plafonds', basisPrijs: 12, eenheid: 'm²', type: 'plafonds', heeftNiveaus: true },
+            
+            // Overig
+            kozijnen: { naam: 'Kozijnen schilderen', basisPrijs: 25, eenheid: 'm²', type: 'aantal', heeftNiveaus: true },
+            deuren: { naam: 'Deuren schilderen', basisPrijs: 65, eenheid: 'stuk', type: 'aantal', heeftNiveaus: true },
+            plinten: { naam: 'Plinten schilderen', basisPrijs: 6, eenheid: 'm¹', type: 'aantal', heeftNiveaus: false },
+            trap: { naam: 'Trap schilderen', basisPrijs: 750, eenheid: 'trapdeel', type: 'aantal', heeftNiveaus: true },
+            kitwerk: { naam: 'Kit Werkzaamheden', basisPrijs: 3, eenheid: 'm¹', type: 'aantal', heeftNiveaus: false },
+            stucwerk_restauratie: { naam: 'Stucwerk Restauratie', basisPrijs: 120, eenheid: 'uur', type: 'aantal', heeftNiveaus: false },
+            gevelstucwerk: { naam: 'Gevelstucwerk (Glad)', basisPrijs: 45, eenheid: 'm²', type: 'aantal', heeftNiveaus: true },
+            gevelisolatie: { naam: 'Gevelisolatie', basisPrijs: 55, eenheid: 'm²', type: 'aantal', heeftNiveaus: true },
+            brandwerend: { naam: 'Brandwerende Coating', basisPrijs: 22, eenheid: 'm²', type: 'aantal', heeftNiveaus: false },
+            '2k_coating': { naam: '2K Coating', basisPrijs: 17, eenheid: 'm²', type: 'aantal', heeftNiveaus: false }
+        };
+        
+        // Bereken prijs met afwerking
+        function berekenPrijsMetAfwerking(basisPrijs, heeftNiveaus) {
+            if (!heeftNiveaus) return basisPrijs;
+            return Math.round(basisPrijs * AFWERKING_MULTIPLIER[selectedAfwerking]);
+        }
+
+        // ============================================
+        // STATE
+        // ============================================
+        let currentStep = 1;
+        let selectedAfwerking = 'premium';
+        let ruimtes = [];
+        let extraKosten = [];
+        let opnames = [];
+        let contacts = [];
+        let selectedContact = null;
+        let signatureCanvas = null;
+        let signatureCtx = null;
+        let isDrawing = false;
+
+        // Checklist
+        const STANDAARD_CHECKLIST = [];
+        let checklistValues = {};
+        let customChecklistItems = [];
+
+        // Voorwaarden
+        const STANDAARD_VOORWAARDEN = `Betaling
+30% aanbetaling bij akkoord. Restant binnen 5 dagen na oplevering (particulier).
+
+Meetwijze
+Bij m² worden ramen, kozijnen en deuren niet afgetrokken (inbegrepen in prijs).
+
+Meerwerk
+Meerwerk wordt apart geoffreerd en gefactureerd. Prijzen kunnen afwijken van de oorspronkelijke offerte.
+
+Annulering
+Bij annulering wordt €250 administratiekosten in rekening gebracht.
+
+Geldigheid offerte
+Deze offerte is 30 dagen geldig.
+
+Verantwoordelijkheid opdrachtgever
+De opdrachtgever is verantwoordelijk voor het volledig en correct opgeven van alle gewenste werkzaamheden voorafgaand aan de offerte. Eventuele aanvullende werkzaamheden of bijzonderheden die na akkoordbevinding aan het licht komen, vallen buiten de scope van deze overeenkomst en worden als meerwerk in rekening gebracht.`;
+
+        // ============================================
+        // BOSCH LASER METER (Bluetooth)
+        // ============================================
+        let laserDevice = null;
+        let laserCharacteristic = null;
+        let laserConnected = false;
+        let lastMeasurement = null;
+        
+        // Nieuwe simpele laser data structuur
+        let laserCategorie = 'muren'; // 'muren', 'plafond', 'kozijnen', 'aftrek'
+        let laserMetingen = { muren: [], plafond: [], kozijnen: [], aftrek: [] };
+
+        async function toggleLaserConnection() {
+            if (laserConnected) {
+                disconnectLaser();
+            } else {
+                await connectLaser();
+            }
+        }
+
+        async function connectLaser() {
+            try {
+                updateLaserStatus('connecting', 'Verbinden...');
+                
+                // Correcte Bosch GLM/PLR Service UUIDs
+                const glmServiceUuid = '00005301-0000-0041-5253-534f46540000';
+                const glmCharacteristicUuid = '00004301-0000-0041-5253-534f46540000';
+                
+                laserDevice = await navigator.bluetooth.requestDevice({
+                    filters: [
+                        { namePrefix: 'Bosch' },
+                        { namePrefix: 'GLM' },
+                        { namePrefix: 'PLR' }
+                    ],
+                    optionalServices: [glmServiceUuid]
+                });
+
+                laserDevice.addEventListener('gattserverdisconnected', onLaserDisconnected);
+                const server = await laserDevice.gatt.connect();
+                
+                // Probeer eerst de specifieke Bosch GLM service
+                try {
+                    const glmService = await server.getPrimaryService(glmServiceUuid);
+                    laserCharacteristic = await glmService.getCharacteristic(glmCharacteristicUuid);
+                    
+                    if (laserCharacteristic.properties.notify) {
+                        await laserCharacteristic.startNotifications();
+                        laserCharacteristic.addEventListener('characteristicvaluechanged', handleLaserMeasurement);
+                    }
+                } catch (serviceError) {
+                    console.log('GLM service niet gevonden, probeer generieke scan...', serviceError);
+                    // Fallback: scan alle services
+                    const services = await server.getPrimaryServices();
+                    for (const service of services) {
+                        const characteristics = await service.getCharacteristics();
+                        for (const char of characteristics) {
+                            if (char.properties.notify || char.properties.read) {
+                                laserCharacteristic = char;
+                                if (char.properties.notify) {
+                                    await char.startNotifications();
+                                    char.addEventListener('characteristicvaluechanged', handleLaserMeasurement);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                laserConnected = true;
+                updateLaserStatus('connected', laserDevice.name || 'Verbonden');
+                document.getElementById('laserConnectBtn').innerHTML = '🔴 Verbreken';
+                document.getElementById('laserMetenPanel').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Laser verbinding mislukt:', error);
+                updateLaserStatus('disconnected', 'Verbinding mislukt');
+                if (error.name === 'NotFoundError') {
+                    alert('Geen Bosch laser gevonden. Zorg dat:\n\n1. Bluetooth aan staat op je telefoon/tablet\n2. De laser aan staat\n3. Bluetooth actief is op de laser (druk Bluetooth knop)\n4. Je Chrome of Edge gebruikt (Safari werkt niet!)');
+                } else {
+                    alert('Verbinding mislukt: ' + error.message);
+                }
+            }
+        }
+
+        function disconnectLaser() {
+            if (laserDevice && laserDevice.gatt.connected) {
+                laserDevice.gatt.disconnect();
+            }
+            onLaserDisconnected();
+        }
+
+        function onLaserDisconnected() {
+            laserConnected = false;
+            laserDevice = null;
+            laserCharacteristic = null;
+            updateLaserStatus('disconnected', 'Niet verbonden');
+            document.getElementById('laserConnectBtn').innerHTML = '🔵 Verbinden';
+            document.getElementById('laserMetenPanel').classList.add('hidden');
+        }
+
+        function updateLaserStatus(status, text) {
+            const el = document.getElementById('laserStatus');
+            el.className = 'laser-status ' + status;
+            el.querySelector('.status-text').textContent = text;
+        }
+
+        function handleLaserMeasurement(event) {
+            const value = event.target.value;
+            const data = new Uint8Array(value.buffer);
+            
+            console.log('Laser data ontvangen:', Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' '));
+            
+            // Bosch GLM protocol parsing
+            // De data kan in verschillende formaten komen afhankelijk van de modus
+            let measurement = 0;
+            
+            // Check voor Bosch GLM response formaat
+            if (data.length >= 4) {
+                // Standaard 4-byte formaat: measurement in mm als signed int32
+                const rawValue = data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
+                measurement = rawValue / 1000; // mm naar meters
+            } else if (data.length >= 2) {
+                // 2-byte formaat: measurement in cm
+                measurement = (data[0] | (data[1] << 8)) / 100;
+            }
+            
+            // Validatie: tussen 0.01m en 50m (bereik van GLM 50-27 CG)
+            if (measurement > 0.01 && measurement < 50) {
+                lastMeasurement = Math.round(measurement * 100) / 100;
+                document.getElementById('lastLaserReading').textContent = lastMeasurement.toFixed(2) + ' m';
+                
+                // Visuele feedback
+                const readingEl = document.getElementById('lastLaserReading');
+                readingEl.style.backgroundColor = '#4CAF50';
+                setTimeout(() => readingEl.style.backgroundColor = '', 500);
+                
+                // Audio feedback
+                if ('vibrate' in navigator) navigator.vibrate(100);
+            }
+        }
+
+        function selectLaserCategorie(cat) {
+            laserCategorie = cat;
+            // Update tab styling
+            ['muren', 'plafond', 'kozijnen', 'aftrek'].forEach(c => {
+                const tab = document.getElementById('tab' + c.charAt(0).toUpperCase() + c.slice(1));
+                if (c === cat) {
+                    tab.className = 'flex-1 py-3 px-4 rounded-lg font-bold text-white ' + 
+                        (c === 'muren' ? 'bg-indigo-600' : c === 'plafond' ? 'bg-purple-600' : c === 'kozijnen' ? 'bg-amber-600' : 'bg-red-600');
+                } else {
+                    tab.className = 'flex-1 py-3 px-4 rounded-lg font-semibold bg-gray-200 text-gray-700';
+                }
+            });
+        }
+
+        function addManualMeasurement() {
+            const input = document.getElementById('manualM2Input');
+            const value = parseFloat(input.value);
+            if (value > 0) {
+                lastMeasurement = value;
+                document.getElementById('lastLaserReading').textContent = value.toFixed(2) + ' m²';
+                addMeasurementToCategory(value);
+                input.value = '';
+            }
+        }
+
+        function addMeasurementToCategory(value) {
+            laserMetingen[laserCategorie].push(value);
+            updateLaserTotalen();
+        }
+
+        function undoLastMeasurement() {
+            if (laserMetingen[laserCategorie].length > 0) {
+                laserMetingen[laserCategorie].pop();
+                updateLaserTotalen();
+            }
+        }
+
+        function updateLaserTotalen() {
+            // Muren
+            const murenTotal = laserMetingen.muren.reduce((a, b) => a + b, 0);
+            document.getElementById('murenTotaal').textContent = murenTotal.toFixed(1) + ' m²';
+            document.getElementById('murenMetingen').textContent = laserMetingen.muren.length > 0 
+                ? laserMetingen.muren.map(m => m.toFixed(1)).join(' + ') 
+                : 'Nog geen metingen';
+            
+            // Plafond
+            const plafondTotal = laserMetingen.plafond.reduce((a, b) => a + b, 0);
+            document.getElementById('plafondTotaal').textContent = plafondTotal.toFixed(1) + ' m²';
+            document.getElementById('plafondMetingen').textContent = laserMetingen.plafond.length > 0 
+                ? laserMetingen.plafond.map(m => m.toFixed(1)).join(' + ') 
+                : 'Nog geen metingen';
+            
+            // Kozijnen
+            const kozijnenTotal = laserMetingen.kozijnen.reduce((a, b) => a + b, 0);
+            document.getElementById('kozijnenTotaal').textContent = kozijnenTotal.toFixed(1) + ' m²';
+            document.getElementById('kozijnenMetingen').textContent = laserMetingen.kozijnen.length > 0 
+                ? laserMetingen.kozijnen.map(m => m.toFixed(1)).join(' + ') 
+                : 'Nog geen metingen';
+            
+            // Aftrek
+            const aftrekTotal = laserMetingen.aftrek.reduce((a, b) => a + b, 0);
+            document.getElementById('aftrekTotaal').textContent = '- ' + aftrekTotal.toFixed(1) + ' m²';
+            document.getElementById('aftrekMetingen').textContent = laserMetingen.aftrek.length > 0 
+                ? laserMetingen.aftrek.map(m => m.toFixed(1)).join(' + ') 
+                : 'Nog geen metingen';
+            
+            // Netto
+            const netto = Math.max(0, murenTotal - aftrekTotal);
+            document.getElementById('nettoTotaal').textContent = netto.toFixed(1) + ' m²';
+        }
+
+        function openLaserRuimteModal() {
+            resetLaserRuimte();
+            document.getElementById('laserRuimteModal').classList.remove('hidden');
+        }
+
+        function closeLaserRuimteModal() {
+            document.getElementById('laserRuimteModal').classList.add('hidden');
+        }
+
+        function resetLaserRuimte() {
+            document.getElementById('laserRuimteNaam').value = '';
+            laserMetingen = { muren: [], plafond: [], kozijnen: [], aftrek: [] };
+            laserCategorie = 'muren';
+            selectLaserCategorie('muren');
+            document.getElementById('lastLaserReading').textContent = '-- m²';
+            document.getElementById('manualM2Input').value = '';
+            updateLaserTotalen();
+        }
+
+        function saveLaserRuimte() {
+            const naam = document.getElementById('laserRuimteNaam').value || 'Ruimte ' + (ruimtes.length + 1);
+            
+            const murenM2 = laserMetingen.muren.reduce((a, b) => a + b, 0);
+            const plafondM2 = laserMetingen.plafond.reduce((a, b) => a + b, 0);
+            const kozijnenM2 = laserMetingen.kozijnen.reduce((a, b) => a + b, 0);
+            const aftrekM2 = laserMetingen.aftrek.reduce((a, b) => a + b, 0);
+            const nettoMurenM2 = Math.max(0, murenM2 - aftrekM2);
+            
+            if (murenM2 === 0 && plafondM2 === 0 && kozijnenM2 === 0) {
+                alert('Voeg eerst metingen toe!');
+                return;
+            }
+            
+            // Maak ruimte aan
+            const ruimte = {
+                id: Date.now(),
+                naam: naam,
+                diensten: [],
+                fotos: [],
+                laserData: { 
+                    murenM2, 
+                    plafondM2,
+                    kozijnenM2,
+                    aftrekM2, 
+                    nettoMurenM2,
+                    metingen: { ...laserMetingen }
+                }
+            };
+            
+            ruimtes.push(ruimte);
+            renderRuimtes();
+            updateTotalen();
+            
+            let samenvatting = `✅ "${naam}" opgeslagen!\n\n`;
+            if (murenM2 > 0) samenvatting += `Muren: ${nettoMurenM2.toFixed(1)} m² (bruto: ${murenM2.toFixed(1)}, aftrek: ${aftrekM2.toFixed(1)})\n`;
+            if (plafondM2 > 0) samenvatting += `Plafond: ${plafondM2.toFixed(1)} m²\n`;
+            if (kozijnenM2 > 0) samenvatting += `Kozijnen: ${kozijnenM2.toFixed(1)} m²\n`;
+            samenvatting += `\nNog een ruimte meten?`;
+            
+            if (confirm(samenvatting)) {
+                resetLaserRuimte();
+            } else {
+                closeLaserRuimteModal();
+            }
+        }
+
+        // ============================================
+        // INITIALISATIE
+        // ============================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('opnameDatum').value = new Date().toISOString().split('T')[0];
+            await loadContacts();
+            await loadOpnames();
+            await loadVoorwaarden();
+            initSignature();
+            initChecklist();
+            
+            // Sluit dropdowns bij klik buiten
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.dropdown-container')) {
+                    document.getElementById('klantDropdown')?.classList.remove('show');
+                }
+            });
+        });
+
+        // ============================================
+        // NAVIGATIE
+        // ============================================
+        function goToStep(step) {
+            document.querySelectorAll('.step-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById('step' + step)?.classList.remove('hidden');
+            
+            document.querySelectorAll('.step').forEach((el, i) => {
+                el.classList.remove('active', 'completed');
+                if (i + 1 < step) el.classList.add('completed');
+                if (i + 1 === step) el.classList.add('active');
+            });
+            
+            currentStep = step;
+            if (step === 4) berekenPrijzen();
+            if (step === 6) updateSummary();
+        }
+
+        function toggleMenu() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.querySelector('.sidebar-overlay').classList.toggle('open');
+        }
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
+
+        // ============================================
+        // KLANTEN
+        // ============================================
+        async function loadContacts() {
+            try {
+                const res = await fetch('/api/contacts');
+                if (res.ok) {
+                    const data = await res.json();
+                    contacts = data.contacts || data || [];
+                }
+            } catch (e) { console.error('Contacts laden mislukt'); }
+        }
+
+        function showKlantDropdown() {
+            renderKlantDropdown(contacts.slice(0, 20));
+            document.getElementById('klantDropdown').classList.add('show');
+        }
+
+        function filterKlanten(query) {
+            if (!query) { renderKlantDropdown(contacts.slice(0, 20)); return; }
+            const filtered = contacts.filter(c => {
+                const naam = (c.company_name || c.firstname + ' ' + c.lastname || '').toLowerCase();
+                return naam.includes(query.toLowerCase());
+            }).slice(0, 20);
+            renderKlantDropdown(filtered);
+            document.getElementById('klantDropdown').classList.add('show');
+        }
+
+        function renderKlantDropdown(lijst) {
+            const dropdown = document.getElementById('klantDropdown');
+            dropdown.innerHTML = lijst.map(c => `
+                <div class="dropdown-item" onclick="selectKlant('${c.id}')">
+                    <div class="font-medium">${c.company_name || (c.firstname + ' ' + c.lastname) || 'Onbekend'}</div>
+                    <div class="text-xs text-gray-500">${c.city || ''} ${c.email ? '• ' + c.email : ''}</div>
+                </div>
+            `).join('') || '<div class="dropdown-item text-gray-400">Geen resultaten</div>';
+        }
+
+        function selectKlant(id) {
+            selectedContact = contacts.find(c => c.id === id);
+            if (!selectedContact) return;
+            document.getElementById('klantSearch').value = selectedContact.company_name || (selectedContact.firstname + ' ' + selectedContact.lastname) || '';
+            document.getElementById('klantNaam').value = selectedContact.company_name || (selectedContact.firstname + ' ' + selectedContact.lastname) || '';
+            document.getElementById('klantTelefoon').value = selectedContact.phone || '';
+            document.getElementById('klantEmail').value = selectedContact.email || '';
+            document.getElementById('werkAdres').value = selectedContact.address1 || '';
+            document.getElementById('werkPostcode').value = selectedContact.zipcode || '';
+            document.getElementById('werkPlaats').value = selectedContact.city || '';
+            document.getElementById('klantDropdown').classList.remove('show');
+        }
+
+        // ============================================
+        // RUIMTES MET DIENSTEN
+        // ============================================
+        function addRuimte() {
+            const ruimte = {
+                id: Date.now(),
+                naam: '',
+                diensten: [],
+                fotos: []
+            };
+            ruimtes.push(ruimte);
+            renderRuimtes();
+        }
+
+        function removeRuimte(id) {
+            ruimtes = ruimtes.filter(r => r.id !== id);
+            renderRuimtes();
+            updateTotalen();
+        }
+
+        function updateRuimteNaam(id, naam) {
+            const ruimte = ruimtes.find(r => r.id === id);
+            if (ruimte) ruimte.naam = naam;
+        }
+
+        function renderRuimtes() {
+            const container = document.getElementById('ruimtesContainer');
+            
+            container.innerHTML = ruimtes.map((r, index) => `
+                <div class="ruimte-card">
+                    <div class="ruimte-header">
+                        <input type="text" class="bg-transparent border-none text-white font-bold text-lg placeholder-white/70 flex-1" 
+                               placeholder="Ruimte naam (bijv. Woonkamer)" 
+                               value="${r.naam}" 
+                               onchange="updateRuimteNaam(${r.id}, this.value)">
+                        <button onclick="removeRuimte(${r.id})" class="text-white/80 hover:text-white text-xl ml-2">✕</button>
+                    </div>
+                    <div class="ruimte-body">
+                        ${r.laserData ? `
+                        <!-- Laser Metingen -->
+                        <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 mb-4 border border-green-200">
+                            <div class="text-sm font-semibold text-green-800 mb-2">📐 Gemeten m²</div>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                                ${r.laserData.nettoMurenM2 > 0 ? `
+                                <div class="bg-white rounded px-2 py-1">
+                                    <span class="text-gray-600">Muren:</span>
+                                    <span class="font-bold text-indigo-600">${r.laserData.nettoMurenM2.toFixed(1)} m²</span>
+                                </div>` : ''}
+                                ${r.laserData.plafondM2 > 0 ? `
+                                <div class="bg-white rounded px-2 py-1">
+                                    <span class="text-gray-600">Plafond:</span>
+                                    <span class="font-bold text-purple-600">${r.laserData.plafondM2.toFixed(1)} m²</span>
+                                </div>` : ''}
+                                ${r.laserData.kozijnenM2 > 0 ? `
+                                <div class="bg-white rounded px-2 py-1">
+                                    <span class="text-gray-600">Kozijnen:</span>
+                                    <span class="font-bold text-amber-600">${r.laserData.kozijnenM2.toFixed(1)} m²</span>
+                                </div>` : ''}
+                                ${r.laserData.aftrekM2 > 0 ? `
+                                <div class="bg-white rounded px-2 py-1">
+                                    <span class="text-gray-600">Aftrek:</span>
+                                    <span class="font-bold text-red-600">-${r.laserData.aftrekM2.toFixed(1)} m²</span>
+                                </div>` : ''}
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <!-- Diensten sectie -->
+                        <div class="ruimte-section">
+                            <div class="ruimte-section-title">
+                                <span>🛠️ Diensten</span>
+                                <button onclick="showDienstModal(${r.id})" class="btn btn-primary btn-sm ml-auto">+ Dienst</button>
+                            </div>
+                            <div id="diensten-${r.id}">
+                                ${r.diensten.length === 0 ? 
+                                    '<p class="text-gray-400 text-sm">Nog geen diensten toegevoegd</p>' :
+                                    r.diensten.map(d => renderDienstItem(r.id, d)).join('')
+                                }
+                            </div>
+                        </div>
+                        
+                        <!-- Foto's sectie -->
+                        <div class="ruimte-section">
+                            <div class="ruimte-section-title">📸 Foto's (${r.fotos.length})</div>
+                            <div class="photo-grid">
+                                ${r.fotos.map(f => `
+                                    <div class="photo-item">
+                                        <img src="${f.data}" alt="Foto">
+                                        <button onclick="removeFoto(${r.id}, '${f.id}')" class="delete-btn">✕</button>
+                                    </div>
+                                `).join('')}
+                                <label class="photo-add">
+                                    <span class="text-2xl">+</span>
+                                    <span>Foto</span>
+                                    <input type="file" accept="image/*" multiple class="hidden" onchange="addFotos(${r.id}, this.files)">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            updateTotalen();
+        }
+
+        function renderDienstItem(ruimteId, dienst) {
+            return `
+                <div class="dienst-item ${dienst.isOptie ? 'is-optie' : ''}">
+                    <div class="dienst-info">
+                        <div class="dienst-naam">
+                            ${dienst.naam}
+                            ${dienst.isOptie ? '<span class="optie-badge">OPTIE</span>' : ''}
+                        </div>
+                        <div class="dienst-prijs">€${dienst.prijs}/${dienst.eenheid}</div>
+                    </div>
+                    <input type="number" class="dienst-input" placeholder="0" min="0" step="0.1"
+                           value="${dienst.hoeveelheid || ''}"
+                           onchange="updateDienstHoeveelheid(${ruimteId}, '${dienst.id}', this.value)">
+                    <span class="text-gray-500 text-sm">${dienst.eenheid}</span>
+                    <div class="dienst-totaal">€${((dienst.hoeveelheid || 0) * dienst.prijs).toFixed(2)}</div>
+                    <label class="optie-checkbox" title="Markeer als optie voor klant">
+                        <input type="checkbox" ${dienst.isOptie ? 'checked' : ''} 
+                               onchange="toggleDienstOptie(${ruimteId}, '${dienst.id}', this.checked)">
+                        <span>Optie</span>
+                    </label>
+                    <button onclick="removeDienst(${ruimteId}, '${dienst.id}')" class="dienst-remove">✕</button>
+                </div>
+                <div class="dienst-notitie-row" style="margin-bottom: 8px; margin-top: -4px;">
+                    <input type="text" class="input-field text-sm" style="padding: 8px 12px;" 
+                           placeholder="Notitie..." 
+                           value="${dienst.notitie || ''}"
+                           onchange="updateDienstNotitie(${ruimteId}, '${dienst.id}', this.value)">
+                </div>
+            `;
+        }
+
+        function updateDienstNotitie(ruimteId, dienstId, notitie) {
+            const ruimte = ruimtes.find(r => r.id === ruimteId);
+            if (!ruimte) return;
+            const dienst = ruimte.diensten.find(d => d.id === dienstId);
+            if (dienst) dienst.notitie = notitie;
+        }
+
+        function toggleDienstOptie(ruimteId, dienstId, isOptie) {
+            const ruimte = ruimtes.find(r => r.id === ruimteId);
+            if (!ruimte) return;
+            const dienst = ruimte.diensten.find(d => d.id === dienstId);
+            if (dienst) {
+                dienst.isOptie = isOptie;
+                renderRuimtes();
+            }
+        }
+
+        function updateDienstHoeveelheid(ruimteId, dienstId, value) {
+            const ruimte = ruimtes.find(r => r.id === ruimteId);
+            if (!ruimte) return;
+            const dienst = ruimte.diensten.find(d => d.id === dienstId);
+            if (dienst) {
+                dienst.hoeveelheid = parseFloat(value) || 0;
+                renderRuimtes();
+            }
+        }
+
+        function removeDienst(ruimteId, dienstId) {
+            const ruimte = ruimtes.find(r => r.id === ruimteId);
+            if (ruimte) {
+                ruimte.diensten = ruimte.diensten.filter(d => d.id !== dienstId);
+                renderRuimtes();
+            }
+        }
+
+        // Dienst Modal
+        function showDienstModal(ruimteId) {
+            document.getElementById('dienstModalRuimteId').value = ruimteId;
+            document.getElementById('dienstModalSearch').value = '';
+            renderModalDiensten(Object.keys(PRIJZEN));
+            document.getElementById('dienstModal').classList.remove('hidden');
+        }
+
+        function hideDienstModal() {
+            document.getElementById('dienstModal').classList.add('hidden');
+        }
+
+        function filterModalDiensten(query) {
+            if (!query) {
+                renderModalDiensten(Object.keys(PRIJZEN));
+            } else {
+                const filtered = Object.keys(PRIJZEN).filter(id => 
+                    PRIJZEN[id].naam.toLowerCase().includes(query.toLowerCase())
+                );
+                renderModalDiensten(filtered);
+            }
+        }
+
+        function renderModalDiensten(dienstIds) {
+            const container = document.getElementById('dienstModalList');
+            
+            container.innerHTML = dienstIds.map(id => {
+                const info = PRIJZEN[id];
+                const prijs = berekenPrijsMetAfwerking(info.basisPrijs, info.heeftNiveaus);
+                return `
+                    <div class="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-indigo-50 transition" onclick="addDienstToRuimte('${id}')">
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">${info.naam}</span>
+                            <span class="text-green-600 font-semibold">€${prijs}/${info.eenheid}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('') || '<p class="text-gray-400">Geen diensten gevonden</p>';
+        }
+
+        function addDienstToRuimte(dienstId) {
+            const ruimteId = parseInt(document.getElementById('dienstModalRuimteId').value);
+            const ruimte = ruimtes.find(r => r.id === ruimteId);
+            if (!ruimte) return;
+            
+            const info = PRIJZEN[dienstId];
+            const prijs = berekenPrijsMetAfwerking(info.basisPrijs, info.heeftNiveaus);
+            
+            // Check of deze dienst al bestaat in deze ruimte
+            if (ruimte.diensten.some(d => d.dienstId === dienstId)) {
+                alert('Deze dienst is al toegevoegd aan deze ruimte');
+                return;
+            }
+            
+            // Auto-invullen m² op basis van laserData
+            let autoHoeveelheid = 0;
+            if (ruimte.laserData) {
+                const naam = info.naam.toLowerCase();
+                if (naam.includes('wand') || naam.includes('muren')) {
+                    autoHoeveelheid = ruimte.laserData.nettoMurenM2 || 0;
+                } else if (naam.includes('plafond')) {
+                    autoHoeveelheid = ruimte.laserData.plafondM2 || 0;
+                } else if (naam.includes('kozijn')) {
+                    autoHoeveelheid = ruimte.laserData.kozijnenM2 || 0;
+                }
+            }
+            
+            ruimte.diensten.push({
+                id: dienstId + '_' + Date.now(),
+                dienstId: dienstId,
+                naam: info.naam,
+                prijs: prijs,
+                basisPrijs: info.basisPrijs,
+                eenheid: info.eenheid,
+                type: info.type,
+                heeftNiveaus: info.heeftNiveaus,
+                hoeveelheid: autoHoeveelheid,
+                isOptie: false,
+                notitie: ''
+            });
+            
+            hideDienstModal();
+            renderRuimtes();
+        }
+
+        function addCustomDienst() {
+            const ruimteId = parseInt(document.getElementById('dienstModalRuimteId').value);
+            const ruimte = ruimtes.find(r => r.id === ruimteId);
+            if (!ruimte) return;
+            
+            const naam = document.getElementById('customDienstNaam').value.trim();
+            const prijs = parseFloat(document.getElementById('customDienstPrijs').value) || 0;
+            const eenheid = document.getElementById('customDienstEenheid').value;
+            
+            if (!naam || prijs <= 0) {
+                alert('Vul naam en prijs in');
+                return;
+            }
+            
+            ruimte.diensten.push({
+                id: 'custom_' + Date.now(),
+                dienstId: 'custom',
+                naam: naam,
+                prijs: prijs,
+                basisPrijs: prijs,
+                eenheid: eenheid,
+                type: 'custom',
+                heeftNiveaus: false,
+                hoeveelheid: 0,
+                isOptie: false
+            });
+            
+            document.getElementById('customDienstNaam').value = '';
+            document.getElementById('customDienstPrijs').value = '';
+            
+            hideDienstModal();
+            renderRuimtes();
+        }
+
+        // Foto's
+        function addFotos(ruimteId, files) {
+            const ruimte = ruimtes.find(r => r.id === ruimteId);
+            if (!ruimte) return;
+            
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    ruimte.fotos.push({
+                        id: 'foto_' + Date.now() + Math.random(),
+                        data: e.target.result
+                    });
+                    renderRuimtes();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function removeFoto(ruimteId, fotoId) {
+            const ruimte = ruimtes.find(r => r.id === ruimteId);
+            if (ruimte) {
+                ruimte.fotos = ruimte.fotos.filter(f => f.id !== fotoId);
+                renderRuimtes();
+            }
+        }
+
+        // Totalen berekenen
+        function updateTotalen() {
+            let totaalWanden = 0;
+            let totaalPlafonds = 0;
+            let totaalKozijnen = 0;
+            let totaalDiensten = 0;
+            
+            ruimtes.forEach(r => {
+                // Tel laserData mee
+                if (r.laserData) {
+                    totaalWanden += r.laserData.nettoMurenM2 || 0;
+                    totaalPlafonds += r.laserData.plafondM2 || 0;
+                    totaalKozijnen += r.laserData.kozijnenM2 || 0;
+                }
+                
+                r.diensten.forEach(d => {
+                    totaalDiensten++;
+                });
+            });
+            
+            document.getElementById('totaalWanden').textContent = totaalWanden.toFixed(1);
+            document.getElementById('totaalPlafonds').textContent = totaalPlafonds.toFixed(1);
+            document.getElementById('totaalKozijnen').textContent = totaalKozijnen.toFixed(1);
+            document.getElementById('totaalRuimtes').textContent = ruimtes.length;
+            document.getElementById('totaalDiensten').textContent = totaalDiensten;
+        }
+
+        // ============================================
+        // AFWERKING
+        // ============================================
+        function selectAfwerking(niveau) {
+            selectedAfwerking = niveau;
+            document.querySelectorAll('.afwerking-card').forEach(el => el.classList.remove('selected'));
+            document.getElementById('afwerking' + niveau.charAt(0).toUpperCase() + niveau.slice(1)).classList.add('selected');
+            
+            // Update prijzen in alle ruimtes
+            updateAllePrijzen();
+            if (currentStep === 4) berekenPrijzen();
+        }
+
+        function updateAllePrijzen() {
+            ruimtes.forEach(r => {
+                r.diensten.forEach(d => {
+                    if (d.dienstId !== 'custom') {
+                        const info = PRIJZEN[d.dienstId];
+                        if (info) {
+                            let prijs = berekenPrijsMetAfwerking(info.basisPrijs, info.heeftNiveaus);
+                            d.prijs = prijs;
+                        }
+                    }
+                });
+            });
+            
+            renderRuimtes();
+        }
+
+        // ============================================
+        // CHECKLIST
+        // ============================================
+        function initChecklist() {
+            STANDAARD_CHECKLIST.forEach(item => {
+                checklistValues[item.id] = null;
+            });
+            renderChecklist();
+        }
+
+        function renderChecklist() {
+            const container = document.getElementById('checklistItems');
+            container.innerHTML = [...STANDAARD_CHECKLIST, ...customChecklistItems].map(item => `
+                <div class="checklist-item">
+                    <span class="font-medium">${item.label}</span>
+                    <div class="toggle-group">
+                        <button class="toggle-btn ${checklistValues[item.id] === true ? 'active-ja' : ''}" 
+                                onclick="setChecklistValue('${item.id}', true)">Ja</button>
+                        <button class="toggle-btn ${checklistValues[item.id] === false ? 'active-nee' : ''}" 
+                                onclick="setChecklistValue('${item.id}', false)">Nee</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function setChecklistValue(id, value) {
+            checklistValues[id] = value;
+            renderChecklist();
+        }
+
+        function addChecklistItem() {
+            const input = document.getElementById('nieuweCheckItem');
+            const label = input.value.trim();
+            if (!label) return;
+            
+            const id = 'custom_' + Date.now();
+            customChecklistItems.push({ id, label });
+            checklistValues[id] = null;
+            input.value = '';
+            renderChecklist();
+        }
+
+        // ============================================
+        // VOORWAARDEN
+        // ============================================
+        async function loadVoorwaarden() {
+            try {
+                const res = await fetch('/api/company/voorwaarden');
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('voorwaardenText').value = data.voorwaarden || STANDAARD_VOORWAARDEN;
+                } else {
+                    document.getElementById('voorwaardenText').value = STANDAARD_VOORWAARDEN;
+                }
+            } catch (e) {
+                console.log('Voorwaarden laden mislukt, standaard gebruiken');
+                document.getElementById('voorwaardenText').value = STANDAARD_VOORWAARDEN;
+            }
+        }
+
+        async function saveVoorwaarden() {
+            const voorwaarden = document.getElementById('voorwaardenText').value;
+            try {
+                const res = await fetch('/api/company/voorwaarden', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ voorwaarden })
+                });
+                if (res.ok) {
+                    alert('✅ Voorwaarden opgeslagen!');
+                } else {
+                    alert('❌ Fout bij opslaan');
+                }
+            } catch (e) {
+                alert('❌ Fout bij opslaan: ' + e.message);
+            }
+        }
+
+        function resetVoorwaarden() {
+            if (confirm('Weet je zeker dat je de voorwaarden wilt herstellen naar standaard?')) {
+                document.getElementById('voorwaardenText').value = STANDAARD_VOORWAARDEN;
+            }
+        }
+
+        // ============================================
+        // PRIJSBEREKENING
+        // ============================================
+        function berekenPrijzen() {
+            updateAllePrijzen();
+            
+            const container = document.getElementById('prijsRegels');
+            
+            // Verzamel alle diensten uit alle ruimtes
+            let alleDiensten = [];
+            ruimtes.forEach(r => {
+                r.diensten.forEach(d => {
+                    if (d.hoeveelheid > 0) {
+                        alleDiensten.push({
+                            ...d,
+                            ruimteNaam: r.naam || 'Onbenoemd'
+                        });
+                    }
+                });
+            });
+            
+            if (alleDiensten.length === 0) {
+                container.innerHTML = '<p class="text-gray-400">Geen diensten met hoeveelheid ingevuld</p>';
+                updateTotaalBox(0);
+                return;
+            }
+            
+            container.innerHTML = alleDiensten.map(d => {
+                const totaal = d.hoeveelheid * d.prijs;
+                return `
+                    <div class="prijs-regel">
+                        <div>
+                            <div class="prijs-regel-naam">${d.naam}</div>
+                            <div class="text-xs text-gray-500">${d.ruimteNaam}</div>
+                        </div>
+                        <div class="prijs-regel-calc">
+                            <span class="font-semibold text-indigo-600">${d.hoeveelheid}</span>
+                            <span class="text-gray-400">${d.eenheid} ×</span>
+                            <span>€${d.prijs}</span>
+                            <span class="text-gray-400">=</span>
+                            <span class="prijs-regel-totaal">€${totaal.toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            const subtotaal = alleDiensten.reduce((sum, d) => sum + (d.hoeveelheid * d.prijs), 0);
+            updateTotaalBox(subtotaal);
+        }
+
+        function updateTotaalBox(subtotaalDiensten) {
+            const extraTotaal = extraKosten.reduce((sum, k) => sum + k.bedrag, 0);
+            const subtotaal = subtotaalDiensten + extraTotaal;
+            const btw = subtotaal * 0.21;
+            const totaal = subtotaal + btw;
+            
+            document.getElementById('subtotaalDiensten').textContent = '€ ' + subtotaalDiensten.toFixed(2);
+            document.getElementById('subtotaalExtra').textContent = '€ ' + extraTotaal.toFixed(2);
+            document.getElementById('btwBedrag').textContent = '€ ' + btw.toFixed(2);
+            document.getElementById('totaalIncl').textContent = '€ ' + totaal.toFixed(2);
+        }
+
+        // Extra kosten
+        function addExtraKost() {
+            const naam = document.getElementById('extraKostNaam').value.trim();
+            const bedrag = parseFloat(document.getElementById('extraKostBedrag').value) || 0;
+            
+            if (!naam || bedrag <= 0) return;
+            
+            extraKosten.push({ id: Date.now(), naam, bedrag });
+            document.getElementById('extraKostNaam').value = '';
+            document.getElementById('extraKostBedrag').value = '';
+            renderExtraKosten();
+            berekenPrijzen();
+        }
+
+        function removeExtraKost(id) {
+            extraKosten = extraKosten.filter(k => k.id !== id);
+            renderExtraKosten();
+            berekenPrijzen();
+        }
+
+        function renderExtraKosten() {
+            const container = document.getElementById('extraKostenLijst');
+            container.innerHTML = extraKosten.map(k => `
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg mb-2">
+                    <span>${k.naam}</span>
+                    <div class="flex items-center gap-3">
+                        <span class="font-semibold">€${k.bedrag.toFixed(2)}</span>
+                        <button onclick="removeExtraKost(${k.id})" class="text-red-500">✕</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ============================================
+        // VOORWAARDEN & HANDTEKENING
+        // ============================================
+        function initSignature() {
+            signatureCanvas = document.getElementById('signatureCanvas');
+            if (!signatureCanvas) return;
+            
+            signatureCtx = signatureCanvas.getContext('2d');
+            
+            // Resize canvas
+            function resizeCanvas() {
+                const rect = signatureCanvas.getBoundingClientRect();
+                signatureCanvas.width = rect.width;
+                signatureCanvas.height = rect.height;
+                signatureCtx.strokeStyle = '#000';
+                signatureCtx.lineWidth = 2;
+                signatureCtx.lineCap = 'round';
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Drawing events
+            signatureCanvas.addEventListener('mousedown', startDrawing);
+            signatureCanvas.addEventListener('mousemove', draw);
+            signatureCanvas.addEventListener('mouseup', stopDrawing);
+            signatureCanvas.addEventListener('mouseleave', stopDrawing);
+            
+            signatureCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e.touches[0]); });
+            signatureCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); });
+            signatureCanvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            signatureCtx.beginPath();
+            const rect = signatureCanvas.getBoundingClientRect();
+            signatureCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = signatureCanvas.getBoundingClientRect();
+            signatureCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            signatureCtx.stroke();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function clearSignature() {
+            if (signatureCtx && signatureCanvas) {
+                signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+            }
+        }
+
+        // ============================================
+        // OFFERTE SAMENVATTING
+        // ============================================
+        function updateSummary() {
+            const container = document.getElementById('offerteSummary');
+            
+            // Klant info
+            const klantNaam = document.getElementById('klantNaam').value;
+            const werkAdres = document.getElementById('werkAdres').value;
+            const werkPlaats = document.getElementById('werkPlaats').value;
+            
+            // Alle diensten verzamelen - gescheiden in vast en optie
+            let vasteDiensten = [];
+            let optieDiensten = [];
+            ruimtes.forEach(r => {
+                r.diensten.forEach(d => {
+                    if (d.hoeveelheid > 0) {
+                        const item = { ...d, ruimteNaam: r.naam || 'Onbenoemd', ruimteNotitie: r.notitie };
+                        if (d.isOptie) {
+                            optieDiensten.push(item);
+                        } else {
+                            vasteDiensten.push(item);
+                        }
+                    }
+                });
+            });
+            
+            const subtotaalVast = vasteDiensten.reduce((sum, d) => sum + (d.hoeveelheid * d.prijs), 0);
+            const subtotaalOpties = optieDiensten.reduce((sum, d) => sum + (d.hoeveelheid * d.prijs), 0);
+            const extraTotaal = extraKosten.reduce((sum, k) => sum + k.bedrag, 0);
+            const subtotaal = subtotaalVast + extraTotaal;
+            const btw = subtotaal * 0.21;
+            const totaal = subtotaal + btw;
+            
+            // Opties apart berekenen
+            const btwOpties = subtotaalOpties * 0.21;
+            const totaalOpties = subtotaalOpties + btwOpties;
+            
+            container.innerHTML = `
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="font-bold mb-2">👤 Klant</h3>
+                    <p>${klantNaam || '-'}</p>
+                    <p class="text-sm text-gray-500">${werkAdres || ''} ${werkPlaats || ''}</p>
+                </div>
+                
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="font-bold mb-2">🛠️ Werkzaamheden (${selectedAfwerking})</h3>
+                    ${vasteDiensten.map(d => `
+                        <div class="flex justify-between text-sm py-1">
+                            <span>${d.naam} <span class="text-gray-400">(${d.ruimteNaam})</span></span>
+                            <span>${d.hoeveelheid} ${d.eenheid} × €${d.prijs} = <strong>€${(d.hoeveelheid * d.prijs).toFixed(2)}</strong></span>
+                        </div>
+                    `).join('')}
+                    ${extraKosten.length > 0 ? `
+                        <div class="border-t mt-2 pt-2">
+                            ${extraKosten.map(k => `
+                                <div class="flex justify-between text-sm py-1">
+                                    <span>${k.naam}</span>
+                                    <strong>€${k.bedrag.toFixed(2)}</strong>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+                
+                ${optieDiensten.length > 0 ? `
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <h3 class="font-bold mb-2 text-amber-700">⭐ Opties (niet in totaal)</h3>
+                    ${optieDiensten.map(d => `
+                        <div class="flex justify-between text-sm py-1">
+                            <span>${d.naam} <span class="text-gray-400">(${d.ruimteNaam})</span></span>
+                            <span>${d.hoeveelheid} ${d.eenheid} × €${d.prijs} = <strong>€${(d.hoeveelheid * d.prijs).toFixed(2)}</strong></span>
+                        </div>
+                    `).join('')}
+                    <div class="border-t mt-2 pt-2 text-amber-700">
+                        <div class="flex justify-between font-semibold">
+                            <span>Totaal opties incl. BTW</span>
+                            <span>€${totaalOpties.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+                
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div class="flex justify-between mb-1">
+                        <span>Subtotaal</span>
+                        <span>€${subtotaal.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between mb-1">
+                        <span>BTW (21%)</span>
+                        <span>€${btw.toFixed(2)}</span>
+                    </div>
+                    <div class="flex justify-between font-bold text-lg text-green-700">
+                        <span>Totaal incl. BTW</span>
+                        <span>€${totaal.toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // OPSLAAN & LADEN
+        // ============================================
+        async function loadOpnames() {
+            try {
+                const saved = localStorage.getItem('stuc_opnames');
+                if (saved) opnames = JSON.parse(saved);
+            } catch (e) { console.error('Opnames laden mislukt'); }
+        }
+
+        function saveOpname() {
+            const opname = {
+                id: Date.now(),
+                datum: document.getElementById('opnameDatum').value,
+                klant: {
+                    naam: document.getElementById('klantNaam').value,
+                    telefoon: document.getElementById('klantTelefoon').value,
+                    email: document.getElementById('klantEmail').value,
+                    adres: document.getElementById('werkAdres').value,
+                    postcode: document.getElementById('werkPostcode').value,
+                    plaats: document.getElementById('werkPlaats').value,
+                    contactId: selectedContact?.id
+                },
+                ruimtes: ruimtes,
+                afwerking: selectedAfwerking,
+                extraKosten: extraKosten,
+                checklist: checklistValues,
+                opmerkingen: document.getElementById('algOpmerkingen').value,
+                created: new Date().toISOString()
+            };
+            
+            opnames.push(opname);
+            localStorage.setItem('stuc_opnames', JSON.stringify(opnames));
+            alert('Opname opgeslagen!');
+        }
+
+        function nieuweOpname() {
+            if (!confirm('Nieuwe opname starten? Niet-opgeslagen gegevens gaan verloren.')) return;
+            
+            ruimtes = [];
+            extraKosten = [];
+            selectedContact = null;
+            selectedAfwerking = 'premium';
+            checklistValues = {};
+            customChecklistItems = [];
+            
+            document.getElementById('klantSearch').value = '';
+            document.getElementById('klantNaam').value = '';
+            document.getElementById('klantTelefoon').value = '';
+            document.getElementById('klantEmail').value = '';
+            document.getElementById('werkAdres').value = '';
+            document.getElementById('werkPostcode').value = '';
+            document.getElementById('werkPlaats').value = '';
+            document.getElementById('opnameDatum').value = new Date().toISOString().split('T')[0];
+            document.getElementById('algOpmerkingen').value = '';
+            
+            initChecklist();
+            renderRuimtes();
+            goToStep(1);
+            
+            document.querySelectorAll('.afwerking-card').forEach(el => el.classList.remove('selected'));
+            document.getElementById('afwerkingPremium').classList.add('selected');
+        }
+
+        function showOpnameList() {
+            const container = document.getElementById('opnameListContent');
+            container.innerHTML = opnames.length === 0 
+                ? '<p class="text-gray-400">Geen opgeslagen opnames</p>'
+                : opnames.slice().reverse().map(o => `
+                    <div class="p-3 bg-gray-50 rounded-lg mb-2 cursor-pointer hover:bg-gray-100" onclick="loadOpname(${o.id})">
+                        <div class="font-semibold">${o.klant?.naam || 'Onbekend'}</div>
+                        <div class="text-sm text-gray-500">${o.klant?.plaats || ''} • ${o.datum || ''}</div>
+                    </div>
+                `).join('');
+            document.getElementById('opnameListModal').classList.remove('hidden');
+        }
+
+        function hideOpnameList() {
+            document.getElementById('opnameListModal').classList.add('hidden');
+        }
+
+        function loadOpname(id) {
+            const opname = opnames.find(o => o.id === id);
+            if (!opname) return;
+            
+            document.getElementById('klantNaam').value = opname.klant?.naam || '';
+            document.getElementById('klantTelefoon').value = opname.klant?.telefoon || '';
+            document.getElementById('klantEmail').value = opname.klant?.email || '';
+            document.getElementById('werkAdres').value = opname.klant?.adres || '';
+            document.getElementById('werkPostcode').value = opname.klant?.postcode || '';
+            document.getElementById('werkPlaats').value = opname.klant?.plaats || '';
+            document.getElementById('opnameDatum').value = opname.datum || '';
+            document.getElementById('algOpmerkingen').value = opname.opmerkingen || '';
+            
+            ruimtes = opname.ruimtes || [];
+            extraKosten = opname.extraKosten || [];
+            selectedAfwerking = opname.afwerking || 'premium';
+            checklistValues = opname.checklist || {};
+            
+            renderRuimtes();
+            renderChecklist();
+            renderExtraKosten();
+            selectAfwerking(selectedAfwerking);
+            
+            hideOpnameList();
+            goToStep(1);
+        }
+
+        // ============================================
+        // MONEYBIRD OFFERTE
+        // ============================================
+        async function createMoneybirdOfferte() {
+            // Verzamel alle diensten per ruimte
+            const ruimtesData = ruimtes.map(r => ({
+                naam: r.naam || 'Onbenoemd',
+                diensten: r.diensten.filter(d => d.hoeveelheid > 0).map(d => ({
+                    naam: d.naam,
+                    prijs: d.prijs,
+                    hoeveelheid: d.hoeveelheid,
+                    eenheid: d.eenheid,
+                    isOptie: d.isOptie || false,
+                    notitie: d.notitie || ''
+                })),
+                laserData: r.laserData || null
+            })).filter(r => r.diensten.length > 0);
+            
+            if (ruimtesData.length === 0) {
+                alert('Voeg eerst diensten toe met hoeveelheden');
+                return;
+            }
+            
+            const payload = {
+                contact_id: selectedContact?.id,
+                klant_naam: document.getElementById('klantNaam').value,
+                klant_email: document.getElementById('klantEmail').value,
+                klant_adres: document.getElementById('werkAdres').value,
+                klant_postcode: document.getElementById('werkPostcode').value,
+                klant_plaats: document.getElementById('werkPlaats').value,
+                ruimtes: ruimtesData,
+                extraKosten: extraKosten
+            };
+            
+            try {
+                const res = await fetch('/api/offerte', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('offerteResultaat').classList.remove('hidden');
+                    if (data.url) {
+                        document.getElementById('moneybirdLink').href = data.url;
+                    }
+                } else {
+                    const err = await res.json();
+                    alert('Fout bij aanmaken offerte: ' + (err.error || 'Onbekend'));
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Fout bij verbinden met server');
+            }
+        }
+
+        // ============================================
+        // PDF & PRINT OFFERTE
+        // ============================================
+        function getOfferteHTML() {
+            const klantNaam = document.getElementById('klantNaam').value || 'Onbekend';
+            const klantEmail = document.getElementById('klantEmail').value || '';
+            const werkAdres = document.getElementById('werkAdres').value || '';
+            const werkPostcode = document.getElementById('werkPostcode').value || '';
+            const werkPlaats = document.getElementById('werkPlaats').value || '';
+            const datum = new Date().toLocaleDateString('nl-NL');
+            const offerteNr = 'OFF-' + Date.now().toString().slice(-8);
+            
+            // Bereken totalen
+            let subtotaalDiensten = 0;
+            let subtotaalOpties = 0;
+            let dienstenHTML = '';
+            let optiesHTML = '';
+            
+            ruimtes.forEach(r => {
+                r.diensten.forEach(d => {
+                    if (d.hoeveelheid > 0) {
+                        const totaal = d.hoeveelheid * d.prijs;
+                        const row = `
+                            <tr>
+                                <td style="padding: 8px; border-bottom: 1px solid #eee;">${d.naam}</td>
+                                <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${r.naam || 'Onbenoemd'}</td>
+                                <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${d.hoeveelheid} ${d.eenheid}</td>
+                                <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">€${d.prijs.toFixed(2)}</td>
+                                <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">€${totaal.toFixed(2)}</td>
+                            </tr>
+                            ${d.notitie ? `<tr><td colspan="5" style="padding: 4px 8px 8px 20px; font-style: italic; color: #666; font-size: 12px;">↳ ${d.notitie}</td></tr>` : ''}
+                        `;
+                        if (d.isOptie) {
+                            optiesHTML += row;
+                            subtotaalOpties += totaal;
+                        } else {
+                            dienstenHTML += row;
+                            subtotaalDiensten += totaal;
+                        }
+                    }
+                });
+            });
+            
+            let extraKostenHTML = '';
+            let subtotaalExtra = 0;
+            extraKosten.forEach(k => {
+                subtotaalExtra += k.bedrag;
+                extraKostenHTML += `
+                    <tr>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee;" colspan="4">${k.naam}</td>
+                        <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">€${k.bedrag.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+            
+            const subtotaal = subtotaalDiensten + subtotaalExtra;
+            const btw = subtotaal * 0.21;
+            const totaal = subtotaal + btw;
+            
+            // Handtekening
+            let handtekeningImg = '';
+            if (signatureCanvas) {
+                const ctx = signatureCanvas.getContext('2d');
+                const pixelData = ctx.getImageData(0, 0, signatureCanvas.width, signatureCanvas.height).data;
+                const hasSignature = pixelData.some((val, i) => i % 4 === 3 && val > 0);
+                if (hasSignature) {
+                    handtekeningImg = signatureCanvas.toDataURL('image/png');
+                }
+            }
+            
+            return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Offerte ${offerteNr} - StucAdmin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 14px; color: #333; line-height: 1.5; }
+        .container { max-width: 800px; margin: 0 auto; padding: 40px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 3px solid #4f46e5; padding-bottom: 20px; }
+        .logo { font-size: 28px; font-weight: bold; color: #4f46e5; }
+        .logo-sub { font-size: 12px; color: #666; }
+        .offerte-info { text-align: right; }
+        .offerte-nr { font-size: 18px; font-weight: bold; color: #4f46e5; }
+        .section { margin-bottom: 30px; }
+        .section-title { font-size: 16px; font-weight: bold; color: #4f46e5; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; }
+        .klant-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .klant-box { background: #f9fafb; padding: 15px; border-radius: 8px; }
+        .klant-label { font-size: 12px; color: #666; margin-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th { background: #4f46e5; color: white; padding: 10px; text-align: left; }
+        th:nth-child(3), th:nth-child(4), th:nth-child(5) { text-align: center; }
+        th:last-child { text-align: right; }
+        .totalen { background: #f0fdf4; padding: 20px; border-radius: 8px; }
+        .totaal-row { display: flex; justify-content: space-between; padding: 5px 0; }
+        .totaal-row.groot { font-size: 20px; font-weight: bold; color: #16a34a; border-top: 2px solid #16a34a; margin-top: 10px; padding-top: 10px; }
+        .voorwaarden { background: #f9fafb; padding: 20px; border-radius: 8px; font-size: 12px; }
+        .voorwaarden h4 { margin-bottom: 10px; }
+        .voorwaarden p { margin-bottom: 8px; }
+        .handtekening { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+        .handtekening-box { border: 1px solid #e5e7eb; padding: 15px; border-radius: 8px; min-height: 120px; }
+        .handtekening-label { font-size: 12px; color: #666; margin-bottom: 10px; }
+        .handtekening-img { max-height: 80px; }
+        .opties-section { background: #fffbeb; padding: 15px; border-radius: 8px; border: 2px dashed #f59e0b; margin-top: 20px; }
+        .opties-title { color: #b45309; font-weight: bold; margin-bottom: 10px; }
+        .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #e5e7eb; padding-top: 20px; }
+        @media print {
+            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            .container { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <div class="logo">UW BEDRIJF</div>
+                <div class="logo-sub">Stukadoorsbedrijf</div>
+            </div>
+            <div class="offerte-info">
+                <div class="offerte-nr">${offerteNr}</div>
+                <div>Datum: ${datum}</div>
+                <div>Geldig tot: ${new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString('nl-NL')}</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="klant-grid">
+                <div class="klant-box">
+                    <div class="klant-label">OPDRACHTGEVER</div>
+                    <strong>${klantNaam}</strong><br>
+                    ${klantEmail ? klantEmail + '<br>' : ''}
+                </div>
+                <div class="klant-box">
+                    <div class="klant-label">WERKADRES</div>
+                    ${werkAdres}<br>
+                    ${werkPostcode} ${werkPlaats}
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Werkzaamheden</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Omschrijving</th>
+                        <th>Ruimte</th>
+                        <th>Aantal</th>
+                        <th>Prijs</th>
+                        <th>Totaal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${dienstenHTML}
+                    ${extraKostenHTML}
+                </tbody>
+            </table>
+            
+            ${optiesHTML ? `
+            <div class="opties-section">
+                <div class="opties-title">⚡ Optionele werkzaamheden (niet inbegrepen in totaal)</div>
+                <table>
+                    <tbody>
+                        ${optiesHTML}
+                    </tbody>
+                </table>
+                <div style="text-align: right; font-weight: bold; color: #b45309;">Subtotaal opties: €${subtotaalOpties.toFixed(2)}</div>
+            </div>
+            ` : ''}
+            
+            <div class="totalen">
+                <div class="totaal-row"><span>Subtotaal</span><span>€${subtotaal.toFixed(2)}</span></div>
+                <div class="totaal-row"><span>BTW (21%)</span><span>€${btw.toFixed(2)}</span></div>
+                <div class="totaal-row groot"><span>Totaal incl. BTW</span><span>€${totaal.toFixed(2)}</span></div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Voorwaarden</div>
+            <div class="voorwaarden">
+                <p><strong>Betaling:</strong> 30% aanbetaling bij akkoord. Restant binnen 5 dagen na oplevering.</p>
+                <p><strong>Meetwijze:</strong> Bij m² worden ramen, kozijnen en deuren niet afgetrokken (inbegrepen in prijs).</p>
+                <p><strong>Meerwerk:</strong> Meerwerk wordt apart geoffreerd en gefactureerd. Prijzen kunnen afwijken van de oorspronkelijke offerte.</p>
+                <p><strong>Annulering:</strong> Bij annulering wordt €250 administratiekosten in rekening gebracht.</p>
+                <p><strong>Verantwoordelijkheid:</strong> De opdrachtgever is verantwoordelijk voor het volledig en correct opgeven van alle gewenste werkzaamheden voorafgaand aan de offerte. Eventuele aanvullende werkzaamheden of bijzonderheden die na akkoordbevinding aan het licht komen, vallen buiten de scope van deze overeenkomst en worden als meerwerk in rekening gebracht. Een beroep op onbekendheid met de materie ontslaat de opdrachtgever niet van deze verantwoordelijkheid.</p>
+            </div>
+        </div>
+        
+        <div class="handtekening">
+            <div class="handtekening-box">
+                <div class="handtekening-label">Handtekening opdrachtgever</div>
+                ${handtekeningImg ? `<img src="${handtekeningImg}" class="handtekening-img">` : '<div style="color: #999; font-style: italic;">Niet getekend</div>'}
+                <div style="margin-top: 10px; font-size: 12px;">Datum: ${datum}</div>
+            </div>
+            <div class="handtekening-box">
+                <div class="handtekening-label">Voor akkoord namens Stucologie</div>
+                <div style="margin-top: 40px; border-top: 1px solid #ccc; padding-top: 5px; font-size: 12px;">Naam:</div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <strong>Stucologie B.V.</strong><br>
+            info@stucologie.nl | www.stucologie.nl | KvK: 12345678
+        </div>
+    </div>
+`;
+        }
+        
+        function printOfferte() {
+            const html = getOfferteHTML();
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(html);
+            printWindow.document.close();
+            setTimeout(() => printWindow.print(), 500);
+        }
+        
+        function genereerOffertePDF() {
+            const html = getOfferteHTML();
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(html);
+            printWindow.document.close();
+            // Gebruiker kan dan Ctrl+P of Print > Save as PDF gebruiken
+            setTimeout(() => {
+                alert('Gebruik Ctrl+P of Print > Opslaan als PDF om de offerte als PDF te downloaden');
+                printWindow.print();
+            }, 500);
+        }
+    </script>
+<script src="/sidebar.js"></script>
+</body>
+</html>

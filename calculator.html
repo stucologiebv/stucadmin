@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Calculator - StucAdmin Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/sidebar.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; }
+        
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; }
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 16px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .btn-success { background: #dcfce7; color: #15803d; padding: 8px 12px; border-radius: 8px; border: none; cursor: pointer; min-height: 44px; }
+        .btn-warning { background: #fef3c7; color: #b45309; padding: 12px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; min-height: 44px; }
+        .btn-moneybird { background: #51a0d5; color: white; padding: 12px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; min-height: 44px; }
+        
+        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; width: 100%; font-size: 16px; min-height: 44px; }
+        .input-field:focus { outline: none; border-color: #6366f1; }
+        
+        .result-card { background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 16px; padding: 20px; color: white; text-align: center; }
+        .result-value { font-size: 2rem; font-weight: 800; }
+        
+        .material-card { background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 16px; padding: 16px; color: white; }
+        .material-item { display: flex; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.15); border-radius: 8px; margin-bottom: 6px; font-size: 14px; }
+        
+        .checkbox-row { display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 10px; margin-bottom: 8px; cursor: pointer; min-height: 44px; }
+        .checkbox-row input { width: 20px; height: 20px; }
+        
+        .service-row { display: grid; grid-template-columns: 1fr 80px 80px 70px; gap: 8px; align-items: center; padding: 12px; background: #f8fafc; border-radius: 10px; margin-bottom: 8px; }
+        .extra-mat-row { display: grid; grid-template-columns: 1fr 60px 60px 30px; gap: 6px; align-items: center; padding: 8px; background: #fff7ed; border-radius: 8px; margin-bottom: 4px; font-size: 14px; }
+        
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+        .modal-content { background: white; border-radius: 16px; max-width: 500px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 20px; }
+        
+        main { margin-left: 256px; padding: 24px; min-height: 100vh; }
+        
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            main { margin-left: 0; padding: 70px 12px 24px 12px; }
+            .result-value { font-size: 1.75rem; }
+            .service-row { grid-template-columns: 1fr; gap: 8px; }
+            .service-row > div:first-child { font-weight: 600; }
+            .service-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        }
+        
+        @media (max-width: 640px) {
+            .card { border-radius: 12px; padding: 16px !important; }
+            .modal-content { border-radius: 12px; }
+        }
+        
+        #klantDropdown { left: 0; top: 100%; }
+        #klantDropdown div:hover { background: #eef2ff; }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
+    <div class="flex min-h-screen">
+        <!-- Sidebar wordt geladen door sidebar.js -->
+
+        <main class="flex-1">
+            <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div><h1 class="text-lg sm:text-xl font-bold">🧮 Project Calculator</h1><p class="text-gray-500 text-sm">Met materiaalberekening & boekhouding</p></div>
+                <button onclick="resetCalculator()" class="btn-secondary text-sm">🔄 Reset</button>
+            </header>
+
+            <!-- Tip Banner -->
+            <div class="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-3 mb-4 flex items-center gap-3">
+                <span class="text-xl">🧮</span>
+                <p class="text-sm text-indigo-700"><strong>Slimme berekening</strong> — Prijzen worden automatisch berekend op basis van m², materiaalkosten en arbeid. Offertes kunnen direct naar je boekhouding worden gestuurd.</p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="card p-4">
+                        <h2 class="font-bold mb-3 text-sm">📋 Project Info</h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div><label class="text-xs text-gray-500">Projectnaam</label><input type="text" id="projectNaam" class="input-field" placeholder="Bijv. Renovatie Jansen"></div>
+                            <div class="relative">
+                                <label class="text-xs text-gray-500">Klant (Moneybird)</label>
+                                <input type="text" id="klantSearch" class="input-field" placeholder="🔍 Zoek klant..." onfocus="showKlantDropdown()" oninput="filterKlanten(this.value)">
+                                <input type="hidden" id="klantSelect">
+                                <div id="klantDropdown" class="hidden absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1"></div>
+                            </div>
+                        </div>
+                        <div id="klantInfo" class="mt-3 p-3 bg-blue-50 rounded-lg text-sm hidden"></div>
+                    </div>
+
+                    <div class="card p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="font-bold text-sm">🔨 Diensten</h2>
+                            <button onclick="openDienstModal()" class="btn-success text-sm">+ Toevoegen</button>
+                        </div>
+                        <div id="dienstenLijst"></div>
+                    </div>
+
+                    <div class="card p-4" id="verfKwaliteitCard" style="display:none;">
+                        <h2 class="font-bold mb-3 text-sm">🎨 Verfkwaliteit (spuitwerk)</h2>
+                        <select id="verfKwaliteitSelect" class="input-field" onchange="bereken()">
+                            <option value="budget">Budget muurverf - €25/10L</option>
+                            <option value="standaard" selected>Standaard muurverf - €45/10L</option>
+                            <option value="klasse3">Klasse 3 - €55/10L</option>
+                            <option value="klasse2">Klasse 2 - €75/10L</option>
+                            <option value="klasse1">Klasse 1 - €95/10L</option>
+                            <option value="premium">Premium (Sigma/Sikkens) - €120/10L</option>
+                        </select>
+                    </div>
+
+                    <div class="card p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="font-bold text-sm">📦 Extra Materialen</h2>
+                            <button onclick="openMateriaalModal()" class="btn-success text-sm">+ Toevoegen</button>
+                        </div>
+                        <div id="extraMaterialenLijst"><p class="text-gray-400 text-sm">Geen extra materialen</p></div>
+                    </div>
+
+                    <div class="card p-4">
+                        <h2 class="font-bold mb-3 text-sm">➕ Toeslagen</h2>
+                        <label class="checkbox-row"><input type="checkbox" id="cbMateriaal" onchange="bereken()"><span class="flex-1 text-sm">Materiaalkosten meenemen</span><span class="text-indigo-600 font-semibold text-sm" id="cbMateriaalBedrag">€0</span></label>
+                        <label class="checkbox-row"><input type="checkbox" id="cbAfval" onchange="bereken()"><span class="flex-1 text-sm">Afval wegbrengen</span><span class="text-indigo-600 font-semibold text-sm">€50</span></label>
+                        <label class="checkbox-row"><input type="checkbox" id="cbFlat" onchange="bereken()"><span class="flex-1 text-sm">Flat toeslag</span><span class="text-indigo-600 font-semibold text-sm">€150</span></label>
+                        
+                        <!-- Custom toeslagen -->
+                        <div id="customToeslagenLijst" class="mt-2"></div>
+                        
+                        <!-- Nieuwe toeslag toevoegen -->
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <div class="flex gap-2">
+                                <input type="text" id="nieuwToeslagNaam" class="input-field flex-1 text-sm py-2" placeholder="Toeslag naam">
+                                <input type="number" id="nieuwToeslagBedrag" class="input-field text-sm py-2" style="width: 80px;" placeholder="€">
+                                <button onclick="voegToeslagToe()" class="btn-success text-sm px-3">+</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card p-4">
+                        <h2 class="font-bold mb-3 text-sm">📊 Marges & BTW</h2>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div><label class="text-xs text-gray-500">Marge %</label><input type="number" id="winstmarge" class="input-field" value="5" onchange="bereken()"></div>
+                            <div><label class="text-xs text-gray-500">BTW</label><select id="btw" class="input-field" onchange="bereken()"><option value="21">21%</option><option value="9">9%</option><option value="0">0%</option></select></div>
+                            <div><label class="text-xs text-gray-500">Korting %</label><input type="number" id="korting" class="input-field" value="0" onchange="bereken()"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="result-card">
+                        <p class="text-white/80 text-xs mb-1">Totaal incl. BTW</p>
+                        <p class="result-value" id="totaalIncl">€0</p>
+                        <p class="text-white/60 text-sm mt-2">Excl: <span id="totaalExcl">€0</span> | <span id="totaalM2">0</span> m²</p>
+                    </div>
+
+                    <div class="material-card">
+                        <h3 class="font-bold mb-2 text-sm">📦 Benodigde Materialen</h3>
+                        <div id="materialenLijst"><p class="text-white/60 text-sm text-center py-2">Voeg diensten toe</p></div>
+                        <div class="border-t border-white/20 mt-2 pt-2 flex justify-between text-sm">
+                            <span>Geschatte kosten</span><span class="font-bold" id="materiaalKosten">€0</span>
+                        </div>
+                    </div>
+
+                    <button onclick="exportBestellijst()" class="btn-warning w-full">📋 Kopieer Bestellijst</button>
+                    
+                    <div class="card p-4">
+                        <h3 class="font-bold mb-2 text-sm">💵 Specificatie</h3>
+                        <div id="specificatie" class="text-sm space-y-1"></div>
+                    </div>
+
+                    <button onclick="verstuurNaarMoneybird()" class="btn-moneybird w-full">📤 Verstuur als Offerte</button>
+                    <button onclick="opslaanProject()" class="btn-primary w-full">💾 Opslaan</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="dienstModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="flex justify-between mb-4"><h2 class="font-bold">Dienst toevoegen</h2><button onclick="sluitModal('dienstModal')" class="text-gray-400 text-2xl">&times;</button></div>
+            
+            <!-- Zoekbalk -->
+            <input type="text" id="dienstZoek" class="input-field mb-3" placeholder="🔍 Zoek dienst..." oninput="filterDienstenModal(this.value)">
+            
+            <!-- Categorie filters -->
+            <div class="flex gap-2 mb-4 flex-wrap" id="categorieButtons">
+                <button onclick="filterDienstenModal('', 'alle')" class="cat-btn px-3 py-1 rounded-full text-sm bg-indigo-600 text-white" data-cat="alle">Alle</button>
+                <button onclick="filterDienstenModal('', 'stucwerk')" class="cat-btn px-3 py-1 rounded-full text-sm bg-gray-100" data-cat="stucwerk">🧱 Stucwerk</button>
+                <button onclick="filterDienstenModal('', 'spuitwerk')" class="cat-btn px-3 py-1 rounded-full text-sm bg-gray-100" data-cat="spuitwerk">🎨 Spuitwerk</button>
+                <button onclick="filterDienstenModal('', 'schilderwerk')" class="cat-btn px-3 py-1 rounded-full text-sm bg-gray-100" data-cat="schilderwerk">🖌️ Schilderwerk</button>
+                <button onclick="filterDienstenModal('', 'voorbereiding')" class="cat-btn px-3 py-1 rounded-full text-sm bg-gray-100" data-cat="voorbereiding">🔧 Voorbereiding</button>
+            </div>
+            
+            <!-- Diensten lijst -->
+            <div id="beschikbareDiensten" class="space-y-2 max-h-64 overflow-y-auto"></div>
+            
+            <!-- Custom dienst toevoegen -->
+            <div id="customDienstForm" class="hidden mt-4 pt-4 border-t border-amber-300 bg-amber-50 rounded-lg p-4">
+                <div class="font-semibold text-amber-800 mb-3">➕ Nieuwe dienst toevoegen</div>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <input type="text" id="customDienstNaam" class="input-field text-sm" placeholder="Naam dienst">
+                    <input type="number" id="customDienstPrijs" class="input-field text-sm" placeholder="€ per m²">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="customDienstCategorie" class="input-field text-sm">
+                        <option value="stucwerk">Stucwerk</option>
+                        <option value="spuitwerk">Spuitwerk</option>
+                        <option value="schilderwerk">Schilderwerk</option>
+                        <option value="voorbereiding">Voorbereiding</option>
+                        <option value="overig">Overig</option>
+                    </select>
+                    <button onclick="voegCustomDienstToe()" class="btn-primary text-sm">Toevoegen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="materiaalModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="flex justify-between mb-4"><h2 class="font-bold">Materiaal toevoegen</h2><button onclick="sluitModal('materiaalModal')" class="text-gray-400 text-2xl">&times;</button></div>
+            <input type="text" id="matZoek" class="input-field mb-4" placeholder="🔍 Zoek materiaal..." onkeyup="filterMaterialen()">
+            <div id="beschikbareMaterialen" class="space-y-2 max-h-64 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let taxRates = [], contacts = [], selectedContact = null, projectDiensten = [], extraMaterialen = [], berekendeMaterialen = [];
+        let customToeslagen = [];
+        let currentDienstCategorie = 'alle';
+        let materiaalDB = [];
+        try {
+            const stored = localStorage.getItem('stuc_materialen_db');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                // Ondersteun zowel array als object met materialen property
+                if (Array.isArray(parsed)) {
+                    materiaalDB = parsed;
+                } else if (parsed && Array.isArray(parsed.materialen)) {
+                    materiaalDB = parsed.materialen;
+                }
+            }
+        } catch(e) {
+            materiaalDB = [];
+        }
+        
+        const standaardDiensten = [
+            // Stucwerk
+            { id: 1, naam: 'Glad Stucwerk', prijs: 28, categorie: 'stucwerk' },
+            { id: 2, naam: 'Waterpas Stucwerk', prijs: 32, categorie: 'stucwerk' },
+            { id: 3, naam: 'Waterdicht Stucwerk', prijs: 35, categorie: 'stucwerk' },
+            { id: 4, naam: 'Betonlook Stucwerk', prijs: 45, categorie: 'stucwerk' },
+            { id: 5, naam: 'Dunpleister', prijs: 22, categorie: 'stucwerk' },
+            { id: 6, naam: 'Spachtelputz', prijs: 26, categorie: 'stucwerk' },
+            { id: 7, naam: 'Gevelstucwerk', prijs: 38, categorie: 'stucwerk' },
+            { id: 9, naam: 'Schuurwerk', prijs: 18, categorie: 'stucwerk' },
+            { id: 10, naam: 'Reparatie stucwerk', prijs: 40, categorie: 'stucwerk' },
+            // Spuitwerk
+            { id: 8, naam: 'Spuitwerk muren', prijs: 12, categorie: 'spuitwerk' },
+            { id: 11, naam: 'Spuitwerk plafond', prijs: 14, categorie: 'spuitwerk' },
+            { id: 12, naam: 'Latex spuiten', prijs: 10, categorie: 'spuitwerk' },
+            { id: 13, naam: 'Primer spuiten', prijs: 8, categorie: 'spuitwerk' },
+            // Schilderwerk
+            { id: 14, naam: 'Schilderwerk muren', prijs: 16, categorie: 'schilderwerk' },
+            { id: 15, naam: 'Schilderwerk kozijnen', prijs: 25, categorie: 'schilderwerk' },
+            { id: 16, naam: 'Schilderwerk deuren', prijs: 35, categorie: 'schilderwerk' },
+            { id: 17, naam: 'Lakwerk houtwerk', prijs: 30, categorie: 'schilderwerk' },
+            // Voorbewerking
+            { id: 18, naam: 'Voorstrijken', prijs: 5, categorie: 'voorbereiding' },
+            { id: 19, naam: 'Schuren/plamuren', prijs: 12, categorie: 'voorbereiding' },
+            { id: 20, naam: 'Behang verwijderen', prijs: 8, categorie: 'voorbereiding' },
+            { id: 21, naam: 'Oude verf verwijderen', prijs: 15, categorie: 'voorbereiding' },
+        ];
+
+        // Verfkwaliteit opties
+        const verfKwaliteit = {
+            'budget': { naam: 'Budget muurverf', prijs: 25.00, m2: 12 },
+            'standaard': { naam: 'Muurverf standaard', prijs: 45.00, m2: 12 },
+            'klasse3': { naam: 'Muurverf Klasse 3', prijs: 55.00, m2: 10 },
+            'klasse2': { naam: 'Muurverf Klasse 2', prijs: 75.00, m2: 10 },
+            'klasse1': { naam: 'Muurverf Klasse 1', prijs: 95.00, m2: 8 },
+            'premium': { naam: 'Premium muurverf (Sigma/Sikkens)', prijs: 120.00, m2: 8 }
+        };
+
+        const verbruik = {
+            1: [{ naam: 'Gipspleister 25kg', m2: 4, prijs: 12.50 }, { naam: 'Knauf Spraykontakt 15kg', m2: 80, prijs: 45.00 }],
+            2: [{ naam: 'Gipspleister 25kg', m2: 4, prijs: 12.50 }, { naam: 'Knauf Spraykontakt 15kg', m2: 80, prijs: 45.00 }],
+            3: [{ naam: 'Waterdichte pleister 25kg', m2: 4, prijs: 18.00 }, { naam: 'Knauf Spraykontakt 15kg', m2: 80, prijs: 45.00 }],
+            4: [{ naam: 'Betonlook mortel 25kg', m2: 5, prijs: 35.00 }, { naam: 'Knauf Spraykontakt 15kg', m2: 80, prijs: 45.00 }],
+            5: [{ naam: 'Dunpleister 25kg', m2: 8, prijs: 15.00 }, { naam: 'Knauf Spraykontakt 15kg', m2: 80, prijs: 45.00 }],
+            6: [{ naam: 'SPS Spachtelputz 15kg', m2: 5, prijs: 32.30 }, { naam: 'Voorkwarts 10L', m2: 50, prijs: 35.00 }],
+            7: [{ naam: 'Gevelmortel 25kg', m2: 2.5, prijs: 16.00 }, { naam: 'Knauf Spraykontakt 15kg', m2: 80, prijs: 45.00 }],
+            8: [] // Wordt dynamisch ingevuld op basis van verfkwaliteit
+        };
+
+        function toggleMenu() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.querySelector('.sidebar-overlay').classList.toggle('open');
+        }
+        document.querySelectorAll('.nav-item').forEach(l => l.addEventListener('click', () => {
+            document.querySelector('.sidebar').classList.remove('open');
+            document.querySelector('.sidebar-overlay').classList.remove('open');
+        }));
+
+        async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login.html'; }
+        async function loadTaxRates() { try { taxRates = await (await fetch(API_BASE + '/tax_rates')).json(); } catch(e){} }
+        function getTaxRateId(perc) { const r = taxRates.find(t => parseFloat(t.percentage) === perc); return r ? r.id : null; }
+        
+        async function loadContacts() {
+            try {
+                contacts = await (await fetch(API_BASE + '/contacts')).json();
+            } catch(e){}
+        }
+
+        function showKlantDropdown() {
+            filterKlanten('');
+            document.getElementById('klantDropdown').classList.remove('hidden');
+        }
+        
+        function filterKlanten(searchText) {
+            const dropdown = document.getElementById('klantDropdown');
+            const search = searchText.toLowerCase();
+            
+            const filtered = contacts
+                .filter(c => {
+                    const name = c.company_name || (c.firstname + ' ' + c.lastname) || '';
+                    return !search || name.toLowerCase().includes(search);
+                })
+                .slice(0, 50);
+            
+            dropdown.innerHTML = filtered.map(c => {
+                const name = c.company_name || (c.firstname + ' ' + c.lastname) || 'Onbekend';
+                return `<div class="p-2 hover:bg-indigo-50 cursor-pointer border-b text-sm" onclick="selectKlantFromDropdown('${c.id}')">
+                    <div class="font-medium">${name}</div>
+                    <div class="text-gray-500 text-xs">${c.city || ''}</div>
+                </div>`;
+            }).join('') || '<div class="p-3 text-gray-400 text-center">Geen resultaten</div>';
+            
+            dropdown.classList.remove('hidden');
+        }
+        
+        function selectKlantFromDropdown(id) {
+            selectedContact = contacts.find(c => c.id === id);
+            const searchInput = document.getElementById('klantSearch');
+            const dropdown = document.getElementById('klantDropdown');
+            const info = document.getElementById('klantInfo');
+            
+            if (selectedContact) {
+                const name = selectedContact.company_name || (selectedContact.firstname + ' ' + selectedContact.lastname) || '';
+                searchInput.value = name;
+                document.getElementById('klantSelect').value = id;
+                info.classList.remove('hidden');
+                info.innerHTML = `<strong>${selectedContact.company_name || ''}</strong><br>${selectedContact.address1 || ''}<br>${selectedContact.zipcode || ''} ${selectedContact.city || ''}`;
+            }
+            dropdown.classList.add('hidden');
+        }
+        
+        function selectKlant() {
+            const id = document.getElementById('klantSelect').value;
+            selectedContact = contacts.find(c => c.id === id);
+            const info = document.getElementById('klantInfo');
+            if (selectedContact) {
+                info.classList.remove('hidden');
+                info.innerHTML = `<strong>${selectedContact.company_name || ''}</strong><br>${selectedContact.address1 || ''}<br>${selectedContact.zipcode || ''} ${selectedContact.city || ''}`;
+            } else { info.classList.add('hidden'); }
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#klantSearch') && !e.target.closest('#klantDropdown')) {
+                document.getElementById('klantDropdown').classList.add('hidden');
+            }
+        });
+
+        function renderDiensten() {
+            const c = document.getElementById('dienstenLijst');
+            if (projectDiensten.length === 0) { c.innerHTML = '<p class="text-gray-400 text-center py-4 text-sm">Klik op "+ Toevoegen"</p>'; bereken(); updateVerfKwaliteitVisibility(); return; }
+            c.innerHTML = projectDiensten.map(pd => {
+                const d = standaardDiensten.find(x => x.id === pd.dienstId);
+                return `<div class="service-row">
+                    <div class="text-sm font-medium">${d?.naam || 'Onbekend'}</div>
+                    <div class="service-inputs lg:contents">
+                        <input type="number" class="input-field text-center py-2 text-sm" value="${pd.m2}" placeholder="m²" onchange="updateDienst('${pd.id}','m2',this.value)">
+                        <input type="number" class="input-field text-center py-2 text-sm" value="${pd.prijs}" placeholder="€/m²" onchange="updateDienst('${pd.id}','prijs',this.value)">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-green-600 font-semibold text-sm">€${(pd.m2*pd.prijs).toFixed(0)}</span>
+                            <button onclick="verwijderDienst('${pd.id}')" class="text-red-400 p-2">🗑️</button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            updateVerfKwaliteitVisibility();
+            bereken();
+        }
+
+        function updateVerfKwaliteitVisibility() {
+            const heeftSpuitwerk = projectDiensten.some(pd => [8, 11, 12, 13].includes(pd.dienstId));
+            document.getElementById('verfKwaliteitCard').style.display = heeftSpuitwerk ? 'block' : 'none';
+        }
+
+        function updateDienst(id, field, val) { const pd = projectDiensten.find(p => String(p.id) === String(id)); if (pd) pd[field] = parseFloat(val) || 0; renderDiensten(); }
+        function verwijderDienst(id) { projectDiensten = projectDiensten.filter(p => String(p.id) !== String(id)); renderDiensten(); }
+
+        function openDienstModal() {
+            document.getElementById('dienstZoek').value = '';
+            currentDienstCategorie = 'alle';
+            updateCategorieButtons('alle');
+            filterDienstenModal('', 'alle');
+            document.getElementById('customDienstForm').classList.add('hidden');
+            document.getElementById('dienstModal').classList.remove('hidden');
+        }
+        
+        function updateCategorieButtons(active) {
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                if (btn.dataset.cat === active) {
+                    btn.classList.remove('bg-gray-100');
+                    btn.classList.add('bg-indigo-600', 'text-white');
+                } else {
+                    btn.classList.add('bg-gray-100');
+                    btn.classList.remove('bg-indigo-600', 'text-white');
+                }
+            });
+        }
+        
+        function filterDienstenModal(zoekterm, categorie) {
+            if (categorie) {
+                currentDienstCategorie = categorie;
+                updateCategorieButtons(categorie);
+            }
+            
+            const search = (zoekterm || document.getElementById('dienstZoek').value || '').toLowerCase();
+            
+            let filtered = standaardDiensten;
+            
+            // Filter op categorie
+            if (currentDienstCategorie !== 'alle') {
+                filtered = filtered.filter(d => d.categorie === currentDienstCategorie);
+            }
+            
+            // Filter op zoekterm
+            if (search) {
+                filtered = filtered.filter(d => d.naam.toLowerCase().includes(search));
+            }
+            
+            const container = document.getElementById('beschikbareDiensten');
+            
+            if (filtered.length === 0) {
+                // Geen resultaten - toon optie om toe te voegen
+                container.innerHTML = `
+                    <div class="text-center py-4">
+                        <p class="text-gray-400 mb-2">Geen diensten gevonden voor "${search}"</p>
+                        <button onclick="toonCustomDienstForm('${search}')" class="btn-primary text-sm">+ "${search}" toevoegen als nieuwe dienst</button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = filtered.map(d => {
+                    const exists = projectDiensten.some(pd => pd.dienstId === d.id);
+                    return `<div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg ${exists?'opacity-50':'hover:bg-indigo-50 cursor-pointer'}" ${exists?'':`onclick="voegDienstToe(${d.id})"`}>
+                        <div><span class="font-medium text-sm">${d.naam}</span><span class="text-indigo-600 ml-2 text-sm">€${d.prijs}/m²</span></div>
+                        <span class="${exists?'text-green-600':'text-indigo-600'} font-bold">${exists?'✓':'+'}</span>
+                    </div>`;
+                }).join('');
+                
+                // Voeg optie toe om nieuwe dienst te maken onderaan
+                if (search && search.length >= 2) {
+                    container.innerHTML += `
+                        <div class="border-t mt-3 pt-3">
+                            <button onclick="toonCustomDienstForm('${search}')" class="text-amber-600 hover:text-amber-800 text-sm font-medium">
+                                + "${search}" toevoegen als nieuwe dienst
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        function toonCustomDienstForm(naam) {
+            document.getElementById('customDienstNaam').value = naam || '';
+            document.getElementById('customDienstPrijs').value = '';
+            document.getElementById('customDienstForm').classList.remove('hidden');
+            document.getElementById('customDienstNaam').focus();
+        }
+        
+        function voegCustomDienstToe() {
+            const naam = document.getElementById('customDienstNaam').value.trim();
+            const prijs = parseFloat(document.getElementById('customDienstPrijs').value) || 0;
+            const categorie = document.getElementById('customDienstCategorie').value;
+            
+            if (!naam) {
+                alert('Vul een naam in');
+                return;
+            }
+            if (prijs <= 0) {
+                alert('Vul een geldige prijs in');
+                return;
+            }
+            
+            // Maak nieuwe dienst ID
+            const newId = Math.max(...standaardDiensten.map(d => d.id), 100) + 1;
+            
+            // Voeg toe aan standaardDiensten
+            const nieuweDienst = { id: newId, naam: naam, prijs: prijs, categorie: categorie };
+            standaardDiensten.push(nieuweDienst);
+            
+            // Direct toevoegen aan project
+            projectDiensten.push({ id: Date.now(), dienstId: newId, m2: 0, prijs: prijs });
+            
+            sluitModal('dienstModal');
+            renderDiensten();
+        }
+        
+        // Oude renderDienstenModal voor backward compatibility
+        function renderDienstenModal(categorie) {
+            filterDienstenModal('', categorie);
+        }
+
+        function voegDienstToe(dienstId) {
+            const d = standaardDiensten.find(x => x.id === dienstId);
+            if (!d || projectDiensten.some(pd => pd.dienstId === dienstId)) return;
+            projectDiensten.push({ id: Date.now(), dienstId: d.id, m2: 0, prijs: d.prijs });
+            sluitModal('dienstModal'); renderDiensten();
+        }
+
+        function renderExtraMaterialen() {
+            const c = document.getElementById('extraMaterialenLijst');
+            if (extraMaterialen.length === 0) { c.innerHTML = '<p class="text-gray-400 text-sm">Geen extra materialen</p>'; bereken(); return; }
+            c.innerHTML = extraMaterialen.map(m => `<div class="extra-mat-row"><span class="text-sm">${m.naam}</span><input type="number" class="input-field py-1 text-center text-sm" value="${m.aantal}" min="1" onchange="updateExtraMat('${m.id}','aantal',this.value)"><span class="text-indigo-600 font-semibold text-sm">€${(m.aantal*m.prijs).toFixed(0)}</span><button onclick="verwijderExtraMat('${m.id}')" class="text-red-400">🗑️</button></div>`).join('');
+            bereken();
+        }
+
+        function updateExtraMat(id, field, val) { const m = extraMaterialen.find(x => String(x.id) === String(id)); if (m) m[field] = parseFloat(val) || 1; renderExtraMaterialen(); }
+        function verwijderExtraMat(id) { extraMaterialen = extraMaterialen.filter(m => String(m.id) !== String(id)); renderExtraMaterialen(); }
+
+        function openMateriaalModal() { filterMaterialen(); document.getElementById('materiaalModal').classList.remove('hidden'); }
+        function filterMaterialen() {
+            const zoek = (document.getElementById('matZoek')?.value || '').toLowerCase();
+            const lijst = materiaalDB.filter(m => m.naam.toLowerCase().includes(zoek)).slice(0, 50);
+            document.getElementById('beschikbareMaterialen').innerHTML = lijst.length === 0 ? '<p class="text-gray-400 text-center py-4 text-sm">Geen materialen gevonden</p>' : lijst.map(m => `<div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg"><div><span class="font-medium text-sm">${m.naam}</span><span class="text-indigo-600 ml-2 text-sm">€${(m.standaardPrijs||0).toFixed(2)}</span></div><button onclick="voegMateriaalToe('${m.id}')" class="btn-success">+</button></div>`).join('');
+        }
+
+        function voegMateriaalToe(matId) {
+            const m = materiaalDB.find(x => String(x.id) === String(matId));
+            if (!m) return;
+            const exists = extraMaterialen.find(em => String(em.matId) === String(matId));
+            if (exists) { exists.aantal++; } else { extraMaterialen.push({ id: Date.now(), matId: m.id, naam: m.naam, prijs: m.standaardPrijs || 0, aantal: 1 }); }
+            sluitModal('materiaalModal'); renderExtraMaterialen();
+        }
+
+        // ============================================
+        // CUSTOM TOESLAGEN
+        // ============================================
+        function voegToeslagToe() {
+            const naam = document.getElementById('nieuwToeslagNaam').value.trim();
+            const bedrag = parseFloat(document.getElementById('nieuwToeslagBedrag').value) || 0;
+            
+            if (!naam) {
+                alert('Vul een naam in');
+                return;
+            }
+            if (bedrag <= 0) {
+                alert('Vul een geldig bedrag in');
+                return;
+            }
+            
+            customToeslagen.push({
+                id: Date.now(),
+                naam: naam,
+                bedrag: bedrag,
+                checked: true
+            });
+            
+            document.getElementById('nieuwToeslagNaam').value = '';
+            document.getElementById('nieuwToeslagBedrag').value = '';
+            
+            renderCustomToeslagen();
+            bereken();
+        }
+        
+        function toggleCustomToeslag(id) {
+            const toeslag = customToeslagen.find(t => t.id === id);
+            if (toeslag) {
+                toeslag.checked = !toeslag.checked;
+                renderCustomToeslagen();
+                bereken();
+            }
+        }
+        
+        function verwijderCustomToeslag(id) {
+            customToeslagen = customToeslagen.filter(t => t.id !== id);
+            renderCustomToeslagen();
+            bereken();
+        }
+        
+        function renderCustomToeslagen() {
+            const container = document.getElementById('customToeslagenLijst');
+            if (customToeslagen.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            container.innerHTML = customToeslagen.map(t => `
+                <label class="checkbox-row">
+                    <input type="checkbox" ${t.checked ? 'checked' : ''} onchange="toggleCustomToeslag(${t.id})">
+                    <span class="flex-1 text-sm">${t.naam}</span>
+                    <span class="text-indigo-600 font-semibold text-sm">€${t.bedrag.toFixed(0)}</span>
+                    <button onclick="event.preventDefault(); verwijderCustomToeslag(${t.id})" class="text-red-400 ml-2">🗑️</button>
+                </label>
+            `).join('');
+        }
+
+        function berekenAutoMaterialen() {
+            const matMap = {};
+            const selectedVerfKwaliteit = document.getElementById('verfKwaliteitSelect')?.value || 'standaard';
+            const verf = verfKwaliteit[selectedVerfKwaliteit];
+            
+            projectDiensten.forEach(pd => {
+                if (pd.m2 <= 0) return;
+                
+                // Voor spuitwerk (id 8), gebruik de geselecteerde verfkwaliteit
+                let v;
+                if (pd.dienstId === 8) {
+                    v = [{ naam: verf.naam + ' 10L', m2: verf.m2, prijs: verf.prijs }];
+                } else {
+                    v = verbruik[pd.dienstId];
+                }
+                
+                if (!v) return;
+                v.forEach(mat => {
+                    const aantal = Math.ceil(pd.m2 / mat.m2);
+                    if (!matMap[mat.naam]) matMap[mat.naam] = { naam: mat.naam, aantal: 0, prijs: mat.prijs, totaal: 0 };
+                    matMap[mat.naam].aantal += aantal;
+                    matMap[mat.naam].totaal += aantal * mat.prijs;
+                });
+            });
+            berekendeMaterialen = Object.values(matMap);
+            return berekendeMaterialen;
+        }
+
+        function bereken() {
+            let arbeid = 0, totM2 = 0;
+            projectDiensten.forEach(pd => { if(pd.m2>0){ arbeid += pd.m2*pd.prijs; totM2 += pd.m2; }});
+
+            const autoMat = berekenAutoMaterialen();
+            let autoMatKosten = autoMat.reduce((s,m) => s + m.totaal, 0);
+            let extraMatKosten = extraMaterialen.reduce((s,m) => s + m.aantal*m.prijs, 0);
+            let totaalMatKosten = autoMatKosten + extraMatKosten;
+            document.getElementById('cbMateriaalBedrag').textContent = '€' + totaalMatKosten.toFixed(0);
+
+            const matC = document.getElementById('materialenLijst');
+            matC.innerHTML = autoMat.length === 0 ? '<p class="text-white/60 text-sm text-center py-2">Voeg m² toe</p>' : autoMat.map(m => `<div class="material-item"><span>${m.aantal}x ${m.naam}</span><span>€${m.totaal.toFixed(0)}</span></div>`).join('');
+            document.getElementById('materiaalKosten').textContent = '€' + autoMatKosten.toFixed(0);
+
+            let toeslagen = 0;
+            if (document.getElementById('cbMateriaal').checked) toeslagen += totaalMatKosten;
+            if (document.getElementById('cbAfval').checked) toeslagen += 50;
+            if (document.getElementById('cbFlat').checked) toeslagen += 150;
+            
+            // Custom toeslagen toevoegen
+            customToeslagen.forEach(t => {
+                if (t.checked) toeslagen += t.bedrag;
+            });
+
+            let subtotaal = arbeid + toeslagen;
+            const korting = parseFloat(document.getElementById('korting').value) || 0;
+            subtotaal -= subtotaal * (korting/100);
+            const winstmarge = parseFloat(document.getElementById('winstmarge').value) || 0;
+            subtotaal += subtotaal * (winstmarge/100);
+            const btwPerc = parseFloat(document.getElementById('btw').value) || 21;
+            const btw = subtotaal * (btwPerc/100);
+            const totaalIncl = subtotaal + btw;
+
+            document.getElementById('totaalIncl').textContent = '€' + totaalIncl.toFixed(0);
+            document.getElementById('totaalExcl').textContent = '€' + subtotaal.toFixed(0);
+            document.getElementById('totaalM2').textContent = totM2.toFixed(1);
+
+            let spec = [];
+            if (arbeid > 0) spec.push(`<div class="flex justify-between"><span>Arbeid</span><span>€${arbeid.toFixed(0)}</span></div>`);
+            if (document.getElementById('cbMateriaal').checked) spec.push(`<div class="flex justify-between"><span>Materialen</span><span>€${totaalMatKosten.toFixed(0)}</span></div>`);
+            if (document.getElementById('cbAfval').checked) spec.push(`<div class="flex justify-between"><span>Afval</span><span>€50</span></div>`);
+            if (document.getElementById('cbFlat').checked) spec.push(`<div class="flex justify-between"><span>Flat toeslag</span><span>€150</span></div>`);
+            // Custom toeslagen in specificatie
+            customToeslagen.forEach(t => {
+                if (t.checked) spec.push(`<div class="flex justify-between"><span>${t.naam}</span><span>€${t.bedrag.toFixed(0)}</span></div>`);
+            });
+            if (korting > 0) spec.push(`<div class="flex justify-between text-red-500"><span>Korting ${korting}%</span><span>-</span></div>`);
+            spec.push(`<div class="flex justify-between font-semibold border-t pt-2 mt-2"><span>Excl. BTW</span><span>€${subtotaal.toFixed(0)}</span></div>`);
+            spec.push(`<div class="flex justify-between"><span>BTW ${btwPerc}%</span><span>€${btw.toFixed(0)}</span></div>`);
+            document.getElementById('specificatie').innerHTML = spec.join('');
+        }
+
+        function exportBestellijst() {
+            if (berekendeMaterialen.length === 0 && extraMaterialen.length === 0) return alert('Geen materialen');
+            let tekst = `Bestellijst: ${document.getElementById('projectNaam').value || 'Project'}\n${new Date().toLocaleDateString('nl-NL')}\n\n`;
+            berekendeMaterialen.forEach(m => tekst += `${m.aantal}x ${m.naam}\n`);
+            if (extraMaterialen.length > 0) { tekst += '\nExtra:\n'; extraMaterialen.forEach(m => tekst += `${m.aantal}x ${m.naam}\n`); }
+            navigator.clipboard.writeText(tekst); alert('📋 Gekopieerd!');
+        }
+
+        async function verstuurNaarMoneybird() {
+            if (!selectedContact) return alert('Selecteer eerst een klant');
+            if (projectDiensten.length === 0) return alert('Voeg eerst diensten toe');
+            const btwPerc = parseFloat(document.getElementById('btw').value) || 21;
+            const taxRateId = getTaxRateId(btwPerc);
+            const details = [];
+            projectDiensten.forEach(pd => {
+                const d = standaardDiensten.find(x => x.id === pd.dienstId);
+                if (pd.m2 > 0) {
+                    const detail = { description: d?.naam || 'Stucwerk', price: pd.prijs.toString(), amount: pd.m2.toString() };
+                    if (taxRateId) detail.tax_rate_id = taxRateId;
+                    details.push(detail);
+                }
+            });
+            if (document.getElementById('cbMateriaal').checked) {
+                const matKosten = berekendeMaterialen.reduce((s,m) => s+m.totaal, 0) + extraMaterialen.reduce((s,m) => s+m.aantal*m.prijs, 0);
+                const detail = { description: 'Materiaalkosten', price: matKosten.toString(), amount: '1' };
+                if (taxRateId) detail.tax_rate_id = taxRateId;
+                details.push(detail);
+            }
+            if (document.getElementById('cbAfval').checked) { const detail = { description: 'Afval wegbrengen', price: '50', amount: '1' }; if (taxRateId) detail.tax_rate_id = taxRateId; details.push(detail); }
+            if (document.getElementById('cbFlat').checked) { const detail = { description: 'Flat toeslag', price: '150', amount: '1' }; if (taxRateId) detail.tax_rate_id = taxRateId; details.push(detail); }
+            
+            // Custom toeslagen toevoegen
+            customToeslagen.forEach(t => {
+                if (t.checked) {
+                    const detail = { description: t.naam, price: t.bedrag.toString(), amount: '1' };
+                    if (taxRateId) detail.tax_rate_id = taxRateId;
+                    details.push(detail);
+                }
+            });
+            
+            try {
+                const res = await fetch(API_BASE + '/estimates', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estimate: { contact_id: selectedContact.id, reference: document.getElementById('projectNaam').value || 'Offerte', details_attributes: details, prices_are_incl_tax: false } })
+                });
+                if (res.ok) { alert('✅ Offerte aangemaakt in Moneybird!'); } else { const data = await res.json(); alert('❌ Fout: ' + (data.error || 'Onbekend')); }
+            } catch (e) { alert('❌ Netwerk fout'); }
+        }
+
+        function opslaanProject() {
+            const project = { id: Date.now(), naam: document.getElementById('projectNaam').value || 'Naamloos', klant: selectedContact, diensten: projectDiensten, extraMaterialen, customToeslagen, datum: new Date().toISOString() };
+            let projecten = JSON.parse(localStorage.getItem('stuc_projecten') || '[]');
+            projecten.push(project);
+            localStorage.setItem('stuc_projecten', JSON.stringify(projecten));
+            alert('✅ Opgeslagen!');
+        }
+
+        function resetCalculator() {
+            projectDiensten = []; extraMaterialen = []; customToeslagen = []; selectedContact = null;
+            document.getElementById('projectNaam').value = '';
+            document.getElementById('klantSelect').value = '';
+            document.getElementById('klantSearch').value = '';
+            document.getElementById('klantInfo').classList.add('hidden');
+            document.getElementById('cbMateriaal').checked = false;
+            document.getElementById('cbAfval').checked = false;
+            document.getElementById('cbFlat').checked = false;
+            document.getElementById('korting').value = 0;
+            renderDiensten(); renderExtraMaterialen(); renderCustomToeslagen();
+        }
+
+        function sluitModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        // Parallel loading - alle data tegelijk ophalen
+        async function initPage() {
+            renderDiensten(); 
+            renderExtraMaterialen();
+            
+            // Load tax rates and contacts in parallel
+            await Promise.all([
+                loadTaxRates(),
+                loadContacts()
+            ]);
+        }
+        
+        initPage();
+    </script>
+<script src="/data-sync.js"></script>
+<script src="/sidebar.js"></script>
+</body>
+</html>

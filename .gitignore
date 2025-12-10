@@ -1,0 +1,33 @@
+# Environment
+.env
+
+# Dependencies
+node_modules/
+
+# Data files (bevatten klantgegevens)
+.data/
+*.json
+!package.json
+!package-lock.json
+!manifest.json
+
+# Users/sessions
+.users.json
+
+# Logs
+*.log
+
+# Python scripts (tijdelijke fix scripts)
+*.py
+
+# Backups
+*.tar.gz
+*.zip
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

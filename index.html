@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StucAdmin - Slimme Software voor Stukadoors & Schilders</title>
+    <meta name="description" content="StucAdmin is de complete bedrijfssoftware voor stukadoors- en schildersbedrijven. Planning, projecten, offertes, urenregistratie en boekhouding in één systeem.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#fef3e2', 100: '#fde4c4', 200: '#fbc78a', 300: '#f9a84f', 400: '#f97316', 500: '#ea580c', 600: '#c2410c', 700: '#9a3412', 800: '#7c2d12', 900: '#431407' },
+                        stuc: { 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed', 700: '#6d28d9', 800: '#5b21b6', 900: '#4c1d95' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        html { scroll-behavior: smooth; }
+        .gradient-hero { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%); }
+        .gradient-text { background: linear-gradient(135deg, #f97316 0%, #fb923c 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .feature-card { transition: all 0.3s ease; }
+        .feature-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .pricing-card { transition: all 0.3s ease; }
+        .pricing-card:hover { transform: scale(1.02); }
+        .pricing-card.popular { border: 3px solid #f97316; }
+        .btn-primary { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); transition: all 0.3s ease; }
+        .btn-primary:hover { background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); transform: translateY(-2px); box-shadow: 0 10px 30px rgba(249,115,22,0.3); }
+        .btn-secondary { transition: all 0.3s ease; }
+        .btn-secondary:hover { background: #f1f5f9; }
+        .float-animation { animation: float 6s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
+        .fade-in { opacity: 0; transform: translateY(20px); animation: fadeIn 0.6s ease forwards; }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        .stagger-1 { animation-delay: 0.1s; }
+        .stagger-2 { animation-delay: 0.2s; }
+        .stagger-3 { animation-delay: 0.3s; }
+        .stagger-4 { animation-delay: 0.4s; }
+        .testimonial-card { background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); }
+    </style>
+</head>
+<body class="bg-white">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 sm:h-20">
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center">
+                        <span class="text-white text-xl">🏗️</span>
+                    </div>
+                    <span class="text-xl font-bold text-gray-900">Stuc<span class="text-indigo-600">Admin</span></span>
+                </div>
+                <div class="hidden md:flex items-center gap-8">
+                    <a href="#features" class="text-gray-600 hover:text-gray-900 font-medium">Features</a>
+                    <a href="#pricing" class="text-gray-600 hover:text-gray-900 font-medium">Prijzen</a>
+                    <a href="#faq" class="text-gray-600 hover:text-gray-900 font-medium">FAQ</a>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="/login.html" class="hidden sm:inline-flex px-4 py-2 text-gray-700 font-medium hover:text-gray-900">Inloggen</a>
+                    <a href="/register.html" class="btn-primary px-5 py-2.5 rounded-xl text-white font-semibold text-sm">Gratis proberen</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="gradient-hero pt-32 pb-20 sm:pt-40 sm:pb-32 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div class="text-center lg:text-left">
+                    <div class="fade-in">
+                        <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white/90 text-sm font-medium mb-6">
+                            <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                            14 dagen gratis uitproberen
+                        </span>
+                    </div>
+                    <h1 class="fade-in stagger-1 text-4xl sm:text-5xl lg:text-6xl font-black text-white leading-tight mb-6">
+                        De software die<br>
+                        <span class="gradient-text">stukadoors & schilders</span> verdienen
+                    </h1>
+                    <p class="fade-in stagger-2 text-lg sm:text-xl text-indigo-100 mb-8 max-w-xl mx-auto lg:mx-0">
+                        Planning, projecten, offertes, urenregistratie en boekhouding. Alles in één overzichtelijk systeem, speciaal voor de afbouwbranche.
+                    </p>
+                    <div class="fade-in stagger-3 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                        <a href="/register.html" class="btn-primary px-8 py-4 rounded-xl text-white font-bold text-lg inline-flex items-center justify-center gap-2">
+                            Start gratis proefperiode
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                        </a>
+                        <a href="#demo" class="btn-secondary px-8 py-4 rounded-xl bg-white/10 text-white font-semibold inline-flex items-center justify-center gap-2 hover:bg-white/20">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Bekijk demo
+                        </a>
+                    </div>
+                    <div class="fade-in stagger-4 mt-10 flex items-center gap-6 justify-center lg:justify-start text-white/80 text-sm">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Geen creditcard nodig
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Direct aan de slag
+                        </div>
+                    </div>
+                </div>
+                <div class="hidden lg:block relative">
+                    <div class="float-animation">
+                        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md mx-auto">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-3 h-3 rounded-full bg-red-400"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-400"></div>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="h-8 bg-gradient-to-r from-indigo-100 to-purple-100 rounded-lg"></div>
+                                <div class="grid grid-cols-3 gap-3">
+                                    <div class="h-20 bg-indigo-50 rounded-lg flex items-center justify-center text-2xl">📅</div>
+                                    <div class="h-20 bg-orange-50 rounded-lg flex items-center justify-center text-2xl">🏗️</div>
+                                    <div class="h-20 bg-green-50 rounded-lg flex items-center justify-center text-2xl">💰</div>
+                                </div>
+                                <div class="h-32 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Floating elements -->
+                    <div class="absolute -top-4 -right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-semibold animate-bounce">
+                        +23% efficiëntie
+                    </div>
+                    <div class="absolute -bottom-4 -left-4 bg-white px-4 py-3 rounded-lg shadow-lg">
+                        <div class="flex items-center gap-2">
+                            <div class="flex -space-x-2">
+                                <div class="w-8 h-8 bg-indigo-500 rounded-full border-2 border-white"></div>
+                                <div class="w-8 h-8 bg-purple-500 rounded-full border-2 border-white"></div>
+                                <div class="w-8 h-8 bg-pink-500 rounded-full border-2 border-white"></div>
+                            </div>
+                            <span class="text-sm font-medium text-gray-700">50+ bedrijven</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Logos/Trust -->
+    <section class="py-12 bg-gray-50 border-y border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-gray-500 text-sm font-medium mb-8">Integreert naadloos met je bestaande tools</p>
+            <div class="flex flex-wrap items-center justify-center gap-8 sm:gap-12 opacity-60">
+                <div class="flex items-center gap-2 text-gray-700 font-semibold">
+                    <span class="text-2xl">🐦</span> Moneybird
+                </div>
+                <div class="flex items-center gap-2 text-gray-700 font-semibold">
+                    <span class="text-2xl">📅</span> Google Calendar
+                </div>
+                <div class="flex items-center gap-2 text-gray-700 font-semibold">
+                    <span class="text-2xl">📧</span> Gmail
+                </div>
+                <div class="flex items-center gap-2 text-gray-700 font-semibold">
+                    <span class="text-green-600 font-bold text-xl">E</span> Exact Online
+                </div>
+                <div class="flex items-center gap-2 text-gray-700 font-semibold">
+                    <span class="text-orange-500 text-xl">⚡</span> Snelstart
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 sm:py-32">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <span class="inline-block px-4 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-sm font-semibold mb-4">Features</span>
+                <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">Alles wat je nodig hebt</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">Van offerte tot factuur, van planning tot urenregistratie. StucAdmin stroomlijnt je hele bedrijfsvoering - of je nu stukadoor of schilder bent.</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+                <!-- Feature 1: Planning -->
+                <div class="feature-card bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm">
+                    <div class="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center text-2xl mb-5">📅</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Slimme Planning</h3>
+                    <p class="text-gray-600 mb-4">Plan projecten in met drag & drop. Automatische sync met Google Agenda. Medewerkers zien direct hun planning.</p>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Google Calendar sync</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> ZZP notificaties</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Weekoverzicht</li>
+                    </ul>
+                </div>
+
+                <!-- Feature 2: Projecten -->
+                <div class="feature-card bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm">
+                    <div class="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center text-2xl mb-5">🏗️</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Projectbeheer</h3>
+                    <p class="text-gray-600 mb-4">Volg al je projecten van start tot finish. Status updates, deadlines en voortgang in één overzicht.</p>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Status tracking</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Uren per project</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Budget bewaking</li>
+                    </ul>
+                </div>
+
+                <!-- Feature 3: Offertes -->
+                <div class="feature-card bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm">
+                    <div class="w-14 h-14 bg-orange-100 rounded-2xl flex items-center justify-center text-2xl mb-5">🧮</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Offerte Calculator</h3>
+                    <p class="text-gray-600 mb-4">Bereken offertes op basis van m², materialen en arbeid. Inclusief stuc- en schilderwerkopties. Professionele PDF direct naar klant.</p>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Automatische berekening</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> PDF generatie</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Direct naar boekhouding</li>
+                    </ul>
+                </div>
+
+                <!-- Feature 4: Urenregistratie -->
+                <div class="feature-card bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm">
+                    <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center text-2xl mb-5">⏱️</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Urenregistratie</h3>
+                    <p class="text-gray-600 mb-4">Medewerkers klokken in via hun telefoon met GPS-locatie. Uren automatisch gekoppeld aan projecten.</p>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> GPS check-in</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Medewerker portal</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Exporteren</li>
+                    </ul>
+                </div>
+
+                <!-- Feature 5: Materialen -->
+                <div class="feature-card bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm">
+                    <div class="w-14 h-14 bg-yellow-100 rounded-2xl flex items-center justify-center text-2xl mb-5">📦</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">Materialen Pro</h3>
+                    <p class="text-gray-600 mb-4">Beheer je materiaalkosten. Automatische categorisatie uit je boekhouding. Van stucmortel tot latex verf.</p>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Kostenoverzicht</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Leveranciers vergelijken</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Prijshistorie</li>
+                    </ul>
+                </div>
+
+                <!-- Feature 6: ZZP -->
+                <div class="feature-card bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm">
+                    <div class="w-14 h-14 bg-pink-100 rounded-2xl flex items-center justify-center text-2xl mb-5">👷</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">ZZP Inhuur</h3>
+                    <p class="text-gray-600 mb-4">Beheer je ZZP'ers. Wet DBA compliant modelovereenkomsten. Automatische notificaties bij inplanning.</p>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Wet DBA modelovereenkomsten</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> WhatsApp / Email alerts</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Documentbeheer</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <span class="inline-block px-4 py-1.5 bg-green-50 text-green-700 rounded-full text-sm font-semibold mb-4">Hoe het werkt</span>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">In 3 stappen aan de slag</h2>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">1</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Registreer gratis</h3>
+                    <p class="text-gray-600">Maak je account aan in 30 seconden. Geen creditcard nodig.</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">2</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Koppel je boekhouding</h3>
+                    <p class="text-gray-600">Verbind Moneybird, Exact of je favoriete boekhoudpakket.</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">3</div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">Start met plannen</h3>
+                    <p class="text-gray-600">Je klanten en facturen worden automatisch gesynchroniseerd.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="py-20 sm:py-32">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <span class="inline-block px-4 py-1.5 bg-orange-50 text-orange-700 rounded-full text-sm font-semibold mb-4">Prijzen</span>
+                <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">Eenvoudige, eerlijke prijzen</h2>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">Start gratis. Upgrade wanneer je groeit. Geen verborgen kosten.</p>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                <!-- Starter -->
+                <div class="pricing-card bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
+                    <div class="text-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">Starter</h3>
+                        <p class="text-gray-500 text-sm">Voor ZZP'ers en kleine bedrijven</p>
+                    </div>
+                    <div class="text-center mb-6">
+                        <span class="text-5xl font-bold text-gray-900">€49</span>
+                        <span class="text-gray-500">/maand</span>
+                    </div>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Tot 3 gebruikers
+                        </li>
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Planning & Projecten
+                        </li>
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Urenregistratie
+                        </li>
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            1 boekhouding koppeling
+                        </li>
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Email support
+                        </li>
+                    </ul>
+                    <a href="/register.html" class="block w-full py-3 px-6 text-center border-2 border-gray-200 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition">
+                        Start gratis trial
+                    </a>
+                </div>
+
+                <!-- Professional - Popular -->
+                <div class="pricing-card popular bg-white rounded-2xl p-8 shadow-xl relative">
+                    <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                        <span class="bg-orange-500 text-white px-4 py-1 rounded-full text-sm font-semibold">Meest gekozen</span>
+                    </div>
+                    <div class="text-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">Professional</h3>
+                        <p class="text-gray-500 text-sm">Voor groeiende bedrijven</p>
+                    </div>
+                    <div class="text-center mb-6">
+                        <span class="text-5xl font-bold text-gray-900">€99</span>
+                        <span class="text-gray-500">/maand</span>
+                    </div>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Tot 10 gebruikers
+                        </li>
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Alles van Starter
+                        </li>
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Materialen Pro
+                        </li>
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            ZZP Inhuur module
+                        </li>
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Prioriteit support
+                        </li>
+                    </ul>
+                    <a href="/register.html" class="btn-primary block w-full py-3 px-6 text-center rounded-xl font-semibold text-white">
+                        Start gratis trial
+                    </a>
+                </div>
+
+                <!-- Enterprise -->
+                <div class="pricing-card bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
+                    <div class="text-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">Enterprise</h3>
+                        <p class="text-gray-500 text-sm">Voor grote organisaties</p>
+                    </div>
+                    <div class="text-center mb-6">
+                        <span class="text-5xl font-bold text-gray-900">€199</span>
+                        <span class="text-gray-500">/maand</span>
+                    </div>
+                    <ul class="space-y-3 mb-8">
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Onbeperkt gebruikers
+                        </li>
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Alles van Professional
+                        </li>
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            API toegang
+                        </li>
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Custom integraties
+                        </li>
+                        <li class="flex items-center gap-3 text-gray-600">
+                            <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                            Dedicated support
+                        </li>
+                    </ul>
+                    <a href="/register.html" class="block w-full py-3 px-6 text-center border-2 border-gray-200 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 transition">
+                        Start gratis trial
+                    </a>
+                </div>
+            </div>
+            
+            <p class="text-center text-gray-500 mt-8">Alle prijzen zijn exclusief BTW. Maandelijks opzegbaar.</p>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="py-20 bg-gray-50">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <span class="inline-block px-4 py-1.5 bg-purple-50 text-purple-700 rounded-full text-sm font-semibold mb-4">FAQ</span>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900">Veelgestelde vragen</h2>
+            </div>
+            
+            <div class="space-y-4">
+                <details class="bg-white rounded-xl p-6 shadow-sm group" open>
+                    <summary class="font-semibold text-gray-900 cursor-pointer list-none flex items-center justify-between">
+                        Is er een gratis proefperiode?
+                        <svg class="w-5 h-5 text-gray-500 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </summary>
+                    <p class="text-gray-600 mt-4">Ja! Je kunt StucAdmin 14 dagen gratis uitproberen, zonder creditcard. Na de proefperiode kies je zelf of je wilt upgraden.</p>
+                </details>
+                
+                <details class="bg-white rounded-xl p-6 shadow-sm group">
+                    <summary class="font-semibold text-gray-900 cursor-pointer list-none flex items-center justify-between">
+                        Welke boekhoudpakketten worden ondersteund?
+                        <svg class="w-5 h-5 text-gray-500 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </summary>
+                    <p class="text-gray-600 mt-4">We ondersteunen Moneybird, Exact Online, Snelstart, e-Boekhouden, Twinfield en Visma eAccounting. Mis je een pakket? Laat het ons weten!</p>
+                </details>
+                
+                <details class="bg-white rounded-xl p-6 shadow-sm group">
+                    <summary class="font-semibold text-gray-900 cursor-pointer list-none flex items-center justify-between">
+                        Kan ik maandelijks opzeggen?
+                        <svg class="w-5 h-5 text-gray-500 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </summary>
+                    <p class="text-gray-600 mt-4">Ja, je zit nergens aan vast. Je kunt elk moment opzeggen en je abonnement loopt dan tot het einde van de betaalde periode.</p>
+                </details>
+                
+                <details class="bg-white rounded-xl p-6 shadow-sm group">
+                    <summary class="font-semibold text-gray-900 cursor-pointer list-none flex items-center justify-between">
+                        Is mijn data veilig?
+                        <svg class="w-5 h-5 text-gray-500 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </summary>
+                    <p class="text-gray-600 mt-4">Absoluut. We gebruiken AES-256 encryptie voor alle gevoelige data. Je boekhouding tokens worden versleuteld opgeslagen en zijn alleen toegankelijk met jouw wachtwoord.</p>
+                </details>
+                
+                <details class="bg-white rounded-xl p-6 shadow-sm group">
+                    <summary class="font-semibold text-gray-900 cursor-pointer list-none flex items-center justify-between">
+                        Kunnen mijn medewerkers ook inloggen?
+                        <svg class="w-5 h-5 text-gray-500 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </summary>
+                    <p class="text-gray-600 mt-4">Ja! Medewerkers krijgen een eigen portal waar ze kunnen inklokken, hun planning zien en uren registreren. Ze hebben geen toegang tot financiële gegevens.</p>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-20 sm:py-32 gradient-hero">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">Klaar om je bedrijf te stroomlijnen?</h2>
+            <p class="text-xl text-indigo-100 mb-8 max-w-2xl mx-auto">Start vandaag nog met StucAdmin en ontdek hoeveel tijd je bespaart. 14 dagen gratis, geen creditcard nodig.</p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/register.html" class="btn-primary px-8 py-4 rounded-xl text-white font-bold text-lg inline-flex items-center justify-center gap-2">
+                    Start gratis proefperiode
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                </a>
+            </div>
+            <p class="text-indigo-200 text-sm mt-6">Geen creditcard nodig • 14 dagen gratis • Direct aan de slag</p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center">
+                            <span class="text-white text-xl">🏗️</span>
+                        </div>
+                        <span class="text-xl font-bold text-white">StucAdmin</span>
+                    </div>
+                    <p class="text-sm">De complete bedrijfssoftware voor stukadoors- en schildersbedrijven.</p>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Product</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#features" class="hover:text-white">Features</a></li>
+                        <li><a href="#pricing" class="hover:text-white">Prijzen</a></li>
+                        <li><a href="#faq" class="hover:text-white">FAQ</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Support</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="mailto:info@stucadmin.nl" class="hover:text-white">info@stucadmin.nl</a></li>
+                        <li><a href="#" class="hover:text-white">Documentatie</a></li>
+                        <li><a href="#" class="hover:text-white">Status</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Juridisch</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="/privacy.html" class="hover:text-white">Privacy Policy</a></li>
+                        <li><a href="/voorwaarden.html" class="hover:text-white">Algemene Voorwaarden</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-8 text-center text-sm">
+                <p>&copy; 2025 StucAdmin. Alle rechten voorbehouden.</p>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

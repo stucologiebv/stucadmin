@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Inkoop Analyse - StucAdmin Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/sidebar.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; }
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; }
+        .kpi-card { position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent, #6366f1); }
+        .kpi-value { font-size: 1.75rem; font-weight: 800; color: var(--accent, #6366f1); }
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .data-table { width: 100%; }
+        .data-table th { text-align: left; padding: 12px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: #94a3b8; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+        .data-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.875rem; }
+        main { padding: 24px; min-height: 100vh; }
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            main { margin-left: 0; padding: 70px 12px 24px 12px; }
+            .kpi-value { font-size: 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
+    <div class="flex min-h-screen">
+        <aside class="sidebar">
+            <div class="p-4 border-b border-gray-100"><img src="/logo-stucologie.jpg" alt="Stucologie B.V." style="max-width: 180px; height: auto;"></div>
+            <nav class="flex-1 p-4 overflow-y-auto">
+                <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+                <a href="omzet.html" class="nav-item">💹 Omzet</a>
+                <a href="crm.html" class="nav-item">👥 Klanten</a>
+                <a href="planning.html" class="nav-item">📅 Planning</a>
+                <a href="opname.html" class="nav-item">📋 Opname</a>
+                <a href="offerteaanvragen.html" class="nav-item">📩 Offertes</a>
+                <a href="zzp-inhuur.html" class="nav-item">🤝 ZZP Inhuur</a>
+                <a href="uren.html" class="nav-item">⏱️ Uren</a>
+                <a href="calculator.html" class="nav-item">🧮 Calculator</a>
+                <a href="materials.html" class="nav-item active">📊 Inkoop Analyse</a>
+                <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
+                <a href="stucie.html" class="nav-item">🤖 Stucie</a>
+            </nav>
+            <div class="p-4 border-t border-gray-100"><button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button></div>
+        </aside>
+
+        <main class="flex-1">
+            <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div><h1 class="text-lg sm:text-xl font-bold">📊 Inkoop Analyse</h1><p class="text-gray-500 text-sm">Materiaalkosten overzicht</p></div>
+                <button onclick="location.reload()" class="btn-secondary text-sm">🔄 Vernieuwen</button>
+            </header>
+
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                <div class="card kpi-card p-4" style="--accent: #ef4444"><p class="text-gray-500 text-xs">Totaal inkoop</p><p class="kpi-value" id="kpiTotaal">€0</p></div>
+                <div class="card kpi-card p-4" style="--accent: #f59e0b"><p class="text-gray-500 text-xs">Deze maand</p><p class="kpi-value" id="kpiMaand">€0</p></div>
+                <div class="card kpi-card p-4" style="--accent: #3b82f6"><p class="text-gray-500 text-xs">Facturen</p><p class="kpi-value" id="kpiAantal">0</p></div>
+                <div class="card kpi-card p-4" style="--accent: #10b981"><p class="text-gray-500 text-xs">Gem/factuur</p><p class="kpi-value" id="kpiGem">€0</p></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="card p-4"><h2 class="font-bold mb-4 text-sm">📈 Inkoop per maand</h2><div class="h-48"><canvas id="inkoopChart"></canvas></div></div>
+                <div class="card p-4"><h2 class="font-bold mb-4 text-sm">📦 Top leveranciers</h2><div class="h-48"><canvas id="leverancierChart"></canvas></div></div>
+            </div>
+
+            <div class="card p-4">
+                <h2 class="font-bold mb-4 text-sm">📄 Recente inkoopfacturen</h2>
+                <div class="overflow-x-auto">
+                    <table class="data-table">
+                        <thead><tr><th>Leverancier</th><th>Datum</th><th>Bedrag</th></tr></thead>
+                        <tbody id="inkoopTabel"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let purchases = [];
+        function toggleMenu() { document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open'); }
+        async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login.html'; }
+
+        async function init() {
+            try {
+                purchases = await fetch('/api/purchase_invoices').then(r => r.json());
+                renderAll();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderAll() {
+            const totaal = purchases.reduce((s, p) => s + parseFloat(p.total_price_incl_tax || 0), 0);
+            const now = new Date();
+            const maand = purchases.filter(p => {
+                const d = new Date(p.date);
+                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            }).reduce((s, p) => s + parseFloat(p.total_price_incl_tax || 0), 0);
+
+            document.getElementById('kpiTotaal').textContent = '€' + totaal.toLocaleString('nl-NL', {maximumFractionDigits: 0});
+            document.getElementById('kpiMaand').textContent = '€' + maand.toLocaleString('nl-NL', {maximumFractionDigits: 0});
+            document.getElementById('kpiAantal').textContent = purchases.length;
+            document.getElementById('kpiGem').textContent = purchases.length ? '€' + Math.round(totaal / purchases.length) : '€0';
+
+            renderCharts();
+            renderTabel();
+        }
+
+        function renderCharts() {
+            const months = ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+            const jaar = new Date().getFullYear();
+            const maandData = months.map((m, i) => {
+                return purchases.filter(p => {
+                    const d = new Date(p.date);
+                    return d.getMonth() === i && d.getFullYear() === jaar;
+                }).reduce((s, p) => s + parseFloat(p.total_price_incl_tax || 0), 0);
+            });
+
+            new Chart(document.getElementById('inkoopChart'), {
+                type: 'line',
+                data: { labels: months, datasets: [{ data: maandData, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.3 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString() } } } }
+            });
+
+            // Top leveranciers
+            const leveranciers = {};
+            purchases.forEach(p => {
+                const naam = p.contact?.company_name || 'Onbekend';
+                leveranciers[naam] = (leveranciers[naam] || 0) + parseFloat(p.total_price_incl_tax || 0);
+            });
+            const topLev = Object.entries(leveranciers).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+            new Chart(document.getElementById('leverancierChart'), {
+                type: 'doughnut',
+                data: { labels: topLev.map(l => l[0]), datasets: [{ data: topLev.map(l => l[1]), backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } } }
+            });
+        }
+
+        function renderTabel() {
+            document.getElementById('inkoopTabel').innerHTML = purchases.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 15).map(p => `
+                <tr>
+                    <td class="font-medium">${p.contact?.company_name || 'Onbekend'}</td>
+                    <td class="text-gray-500">${new Date(p.date).toLocaleDateString('nl-NL')}</td>
+                    <td class="font-semibold">€${parseFloat(p.total_price_incl_tax || 0).toFixed(0)}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="3" class="text-center text-gray-400 py-8">Geen inkoopfacturen</td></tr>';
+        }
+
+        init();
+    </script>
+<script src="/data-sync.js"></script>
+<script src="/sidebar.js"></script>
+</body>
+</html>

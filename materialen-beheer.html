@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Materialen Pro - StucAdmin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/sidebar.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; }
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; }
+        .btn { padding: 10px 16px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; min-height: 44px; transition: all 0.2s; }
+        .btn-secondary { background: #f1f5f9; color: #475569; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-success { background: #dcfce7; color: #15803d; }
+        .btn-success:hover { background: #bbf7d0; }
+        .btn-warning { background: #fef3c7; color: #b45309; }
+        .btn-warning:hover { background: #fde68a; }
+        .btn-danger { background: #fee2e2; color: #dc2626; }
+        .btn-danger:hover { background: #fecaca; }
+        .btn-gradient { background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; }
+        .input-field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; width: 100%; font-size: 16px; min-height: 44px; }
+        .input-field:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+        .tab { padding: 10px 16px; border-radius: 10px; cursor: pointer; font-weight: 500; font-size: 14px; white-space: nowrap; transition: all 0.2s; }
+        .tab:hover { background: #f1f5f9; }
+        .tab.active { background: #6366f1; color: white; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; opacity: 0; visibility: hidden; transition: all 0.2s; }
+        .modal-overlay.show { opacity: 1; visibility: visible; }
+        .modal-content { background: white; border-radius: 16px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; transform: scale(0.95); transition: transform 0.2s; }
+        .modal-overlay.show .modal-content { transform: scale(1); }
+        .modal-lg { max-width: 900px; }
+        .badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .badge-success { background: #dcfce7; color: #15803d; }
+        .badge-warning { background: #fef3c7; color: #b45309; }
+        .badge-danger { background: #fee2e2; color: #dc2626; }
+        .badge-info { background: #dbeafe; color: #1d4ed8; }
+        .stat-card { background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px; }
+        .stat-value { font-size: 28px; font-weight: 700; color: #1e293b; }
+        .stat-label { font-size: 13px; color: #64748b; margin-top: 4px; }
+        .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+        .alert-item { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 12px; border-left: 4px solid; transition: all 0.2s; cursor: pointer; }
+        .alert-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .alert-high { border-left-color: #ef4444; }
+        .alert-medium { border-left-color: #f59e0b; }
+        .alert-low { border-left-color: #3b82f6; }
+        .progress-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+        .mat-table-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 12px; padding: 12px 16px; background: #f8fafc; font-weight: 600; color: #64748b; font-size: 12px; text-transform: uppercase; border-radius: 8px 8px 0 0; border-bottom: 1px solid #e5e7eb; }
+        .table-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #f1f5f9; align-items: center; }
+        .table-row:hover { background: #f8fafc; }
+        .table-header.table-row { display: grid !important; grid-template-columns: 2fr 1fr 1fr 1fr 1fr !important; gap: 12px; padding: 12px 16px; background: #f8fafc; font-weight: 600; color: #64748b; font-size: 12px; text-transform: uppercase; border-radius: 8px 8px 0 0; }
+        main { padding: 24px; min-height: 100vh; }
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            main { margin-left: 0; padding: 70px 12px 24px 12px; }
+            .table-row { grid-template-columns: 1fr 1fr; font-size: 14px; }
+            .hide-mobile { display: none; }
+        }
+        .loading { display: flex; align-items: center; justify-content: center; padding: 40px; }
+        .spinner { width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #6366f1; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .kit-dropdown { left: 0; top: 100%; }
+        .kit-dropdown div:hover { background: #eef2ff; }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
+    <div class="flex min-h-screen">
+        <!-- Sidebar wordt geladen door sidebar.js -->
+
+        <main class="flex-1">
+            <!-- Header -->
+            <header class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold">📦 Materialen Pro</h1>
+                    <p class="text-gray-500 text-sm">Beheer, analyse & kostenbesparing</p>
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="syncMaterials()" class="btn btn-secondary text-sm">🔄 Sync</button>
+                    <button onclick="openModal('importModal')" class="btn btn-warning text-sm">📤 Import</button>
+                    <button onclick="openModal('kitModal')" class="btn btn-success text-sm">📦 Kits</button>
+                    <button onclick="openModal('addMaterialModal')" class="btn btn-primary text-sm">+ Materiaal</button>
+                </div>
+            </header>
+
+            <!-- Tip Banner -->
+            <div class="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 rounded-xl p-3 mb-4 flex items-center gap-3">
+                <span class="text-xl">🔄</span>
+                <p class="text-sm text-orange-700"><strong>Slimme categorisatie</strong> — Materiaalkosten uit je boekhouding worden automatisch gecategoriseerd (Stucwerk, Spuitwerk, Isolatie, Gereedschap). Prijsalerts waarschuwen bij afwijkingen.</p>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="stat-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="stat-value" id="statMaterialen">0</div>
+                            <div class="stat-label">Materialen</div>
+                        </div>
+                        <div class="stat-icon bg-indigo-100">📦</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="stat-value" id="statLeveranciers">0</div>
+                            <div class="stat-label">Leveranciers</div>
+                        </div>
+                        <div class="stat-icon bg-green-100">🏪</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="stat-value text-orange-500" id="statAlerts">0</div>
+                            <div class="stat-label">Prijsalerts</div>
+                        </div>
+                        <div class="stat-icon bg-orange-100">⚠️</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="stat-value text-green-500" id="statBesparing">€0</div>
+                            <div class="stat-label">Mogelijke besparing</div>
+                        </div>
+                        <div class="stat-icon bg-green-100">💰</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+                <div class="tab active" data-tab="database" onclick="setTab('database')">📋 Database</div>
+                <div class="tab" data-tab="facturen" onclick="setTab('facturen')">🧾 Facturen</div>
+                <div class="tab" data-tab="vergelijking" onclick="setTab('vergelijking')">⚖️ Vergelijking</div>
+                <div class="tab" data-tab="historie" onclick="setTab('historie')">📈 Historie</div>
+                <div class="tab" data-tab="kits" onclick="setTab('kits')">📦 Kits</div>
+                <div class="tab" data-tab="projecten" onclick="setTab('projecten')">💼 Projecten</div>
+            </div>
+
+            <!-- Zoekbalk -->
+            <div class="card p-4 mb-6">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <input type="text" id="searchInput" class="input-field flex-1" placeholder="🔍 Zoek materiaal, leverancier..." onkeyup="handleSearch()">
+                    <select id="filterCategory" class="input-field sm:w-48" onchange="handleFilter()">
+                        <option value="">Alle categorieën</option>
+                    </select>
+                    <select id="filterSupplier" class="input-field sm:w-48" onchange="handleFilter()">
+                        <option value="">Alle leveranciers</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div id="contentArea">
+                <!-- Wordt dynamisch gevuld -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal: Nieuw Materiaal -->
+    <div id="addMaterialModal" class="modal-overlay" onclick="closeModalOnOverlay(event, 'addMaterialModal')">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold">➕ Nieuw Materiaal</h2>
+                <button onclick="closeModal('addMaterialModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <form onsubmit="saveMaterial(event)" class="space-y-4">
+                <input type="hidden" id="materialId">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="text-sm text-gray-600 mb-1 block">Naam *</label>
+                        <input type="text" id="matNaam" class="input-field" required placeholder="Bijv. Knauf MP75">
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 mb-1 block">Artikelnummer</label>
+                        <input type="text" id="matArtikelnummer" class="input-field" placeholder="Bijv. 123456">
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 mb-1 block">Categorie</label>
+                        <input type="text" id="matCategorie" class="input-field" list="categorieList" placeholder="Bijv. Gips">
+                        <datalist id="categorieList"></datalist>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 mb-1 block">Standaard Prijs (€)</label>
+                        <input type="number" id="matPrijs" class="input-field" step="0.01" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 mb-1 block">Eenheid</label>
+                        <select id="matEenheid" class="input-field">
+                            <option value="stuk">Stuk</option>
+                            <option value="zak">Zak</option>
+                            <option value="kg">Kilogram</option>
+                            <option value="m²">Vierkante meter</option>
+                            <option value="m">Strekkende meter</option>
+                            <option value="liter">Liter</option>
+                            <option value="rol">Rol</option>
+                            <option value="pallet">Pallet</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 mb-1 block">Leverancier</label>
+                        <input type="text" id="matLeverancier" class="input-field" list="leverancierList" placeholder="Bijv. BMN">
+                        <datalist id="leverancierList"></datalist>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 mb-1 block">Verbruik per m²</label>
+                        <input type="number" id="matVerbruik" class="input-field" step="0.01" placeholder="Optioneel">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="text-sm text-gray-600 mb-1 block">Notities</label>
+                        <textarea id="matNotities" class="input-field" rows="2" placeholder="Extra informatie..."></textarea>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" class="btn btn-primary flex-1">💾 Opslaan</button>
+                    <button type="button" onclick="deleteMaterial()" id="btnDeleteMat" class="btn btn-danger hidden">🗑️</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Import -->
+    <div id="importModal" class="modal-overlay" onclick="closeModalOnOverlay(event, 'importModal')">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold">📤 Materialen Importeren</h2>
+                <button onclick="closeModal('importModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-indigo-400 transition-colors" id="dropZone">
+                    <input type="file" id="importFile" accept=".csv,.xlsx,.xls" class="hidden" onchange="handleImportFile(event)">
+                    <div class="text-4xl mb-3">📁</div>
+                    <p class="text-gray-500 mb-4">Sleep een CSV of Excel bestand hierheen</p>
+                    <button type="button" onclick="document.getElementById('importFile').click()" class="btn btn-secondary">Selecteer bestand</button>
+                </div>
+                <div id="importPreview" class="hidden">
+                    <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                        <p class="font-semibold mb-2">📊 Preview</p>
+                        <div id="importPreviewContent" class="text-sm overflow-x-auto"></div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-500"><span id="importCount">0</span> materialen gevonden</span>
+                        <button onclick="executeImport()" class="btn btn-success">✅ Importeren</button>
+                    </div>
+                </div>
+                <div class="text-sm text-gray-400 bg-gray-50 rounded-lg p-4">
+                    <p class="font-semibold mb-2">📋 Ondersteunde formaten:</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>CSV (naam, categorie, prijs, eenheid, leverancier)</li>
+                        <li>BMN PRICAT Excel bestanden</li>
+                        <li>Stiho prijslijsten</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Material Kit -->
+    <div id="kitModal" class="modal-overlay" onclick="closeModalOnOverlay(event, 'kitModal')">
+        <div class="modal-content modal-lg">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold">📦 Materiaal Kit</h2>
+                <button onclick="closeModal('kitModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <form onsubmit="saveKit(event)" class="space-y-4">
+                <input type="hidden" id="kitId">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-sm text-gray-600 mb-1 block">Kit Naam *</label>
+                        <input type="text" id="kitNaam" class="input-field" required placeholder="Bijv. Glad Stucwerk Pakket">
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 mb-1 block">Categorie</label>
+                        <select id="kitCategorie" class="input-field">
+                            <option value="Stucwerk">Stucwerk</option>
+                            <option value="Sierpleister">Sierpleister</option>
+                            <option value="Reparatie">Reparatie</option>
+                            <option value="Overig">Overig</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="text-sm text-gray-600 mb-1 block">Omschrijving</label>
+                        <input type="text" id="kitOmschrijving" class="input-field" placeholder="Kort beschrijving van de kit">
+                    </div>
+                </div>
+                
+                <div class="border-t pt-4 mt-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <label class="font-semibold">Materialen in Kit</label>
+                        <button type="button" onclick="addKitMaterial()" class="btn btn-secondary text-sm">+ Materiaal</button>
+                    </div>
+                    <div id="kitMaterialsList" class="space-y-2">
+                        <!-- Dynamisch gevuld -->
+                    </div>
+                    <div class="mt-4 p-3 bg-indigo-50 rounded-lg flex justify-between items-center">
+                        <span class="font-semibold">Totaal Kit Prijs:</span>
+                        <span class="text-xl font-bold text-indigo-600" id="kitTotaal">€0.00</span>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" class="btn btn-primary flex-1">💾 Kit Opslaan</button>
+                    <button type="button" onclick="deleteKit()" id="btnDeleteKit" class="btn btn-danger hidden">🗑️</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Factuur Details -->
+    <div id="factuurModal" class="modal-overlay" onclick="closeModalOnOverlay(event, 'factuurModal')">
+        <div class="modal-content modal-lg">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold">🧾 Factuur Details</h2>
+                <button onclick="closeModal('factuurModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div id="factuurContent">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Prijshistorie -->
+    <div id="historieModal" class="modal-overlay" onclick="closeModalOnOverlay(event, 'historieModal')">
+        <div class="modal-content modal-lg">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-lg font-bold">📈 Prijshistorie</h2>
+                <button onclick="closeModal('historieModal')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div id="historieContent">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+    <script>
+    // ============================================
+    // GLOBAL STATE
+    // ============================================
+    let materialen = [];
+    let facturen = [];
+    let kits = [];
+    let alerts = [];
+    let prijsHistorie = [];
+    let leveranciers = [];
+    let activeTab = 'database';
+    let importData = [];
+    let currentKitMaterials = [];
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Parallel loading - beide tegelijk
+        await Promise.all([
+            loadMaterials(),
+            loadSuppliers()
+        ]);
+        
+        updateStats();
+        renderContent();
+        setupDragDrop();
+    });
+
+    // Server sync helper
+    async function syncToServer() {
+        try {
+            await fetch('/api/data/materialen', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: { materialen, kits, prijsHistorie } })
+            });
+            // Synced to server
+        } catch (e) {
+            // Server sync failed
+        }
+    }
+
+    async function loadMaterials() {
+        // First try to load from server
+        try {
+            const res = await fetch('/api/data/materialen');
+            if (res.ok) {
+                const result = await res.json();
+                if (result.data && result.data.materialen) {
+                    materialen = result.data.materialen;
+                    kits = result.data.kits || [];
+                    prijsHistorie = result.data.prijsHistorie || [];
+                    // Also update localStorage as backup
+                    localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
+                    localStorage.setItem('stuc_materiaal_kits', JSON.stringify(kits)); syncToServer();
+                    localStorage.setItem('stuc_prijs_historie', JSON.stringify(prijsHistorie));
+                    // Loaded from server
+                    return;
+                }
+            }
+        } catch (e) {
+            // Server load failed
+        }
+        
+        // Fallback to localStorage
+        materialen = JSON.parse(localStorage.getItem('stuc_materialen_db') || '[]');
+        kits = JSON.parse(localStorage.getItem('stuc_materiaal_kits') || '[]');
+        prijsHistorie = JSON.parse(localStorage.getItem('stuc_prijs_historie') || '[]');
+    }
+
+    async function loadSuppliers() {
+        // Get unique suppliers from materials
+        leveranciers = [...new Set(materialen.map(m => m.leverancier).filter(Boolean))];
+        
+        // Try to get from Moneybird
+        try {
+            const res = await fetch('/api/suppliers');
+            if (res.ok) {
+                const data = await res.json();
+                const mbSuppliers = data.suppliers?.map(s => s.name) || [];
+                leveranciers = [...new Set([...leveranciers, ...mbSuppliers])].sort();
+            }
+        } catch (e) {
+            // Could not load suppliers
+        }
+        
+        updateFilterOptions();
+    }
+
+    function updateFilterOptions() {
+        const categories = [...new Set(materialen.map(m => m.categorie).filter(Boolean))].sort();
+        
+        document.getElementById('filterCategory').innerHTML = 
+            '<option value="">Alle categorieën</option>' + 
+            categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        
+        document.getElementById('filterSupplier').innerHTML = 
+            '<option value="">Alle leveranciers</option>' + 
+            leveranciers.map(l => `<option value="${l}">${l}</option>`).join('');
+        
+        document.getElementById('categorieList').innerHTML = 
+            categories.map(c => `<option value="${c}">`).join('');
+        
+        document.getElementById('leverancierList').innerHTML = 
+            leveranciers.map(l => `<option value="${l}">`).join('');
+    }
+
+    function updateStats() {
+        document.getElementById('statMaterialen').textContent = materialen.length;
+        document.getElementById('statLeveranciers').textContent = leveranciers.length;
+        document.getElementById('statAlerts').textContent = alerts.length;
+        
+        const totalSavings = alerts
+            .filter(a => a.savings > 0)
+            .reduce((sum, a) => sum + a.savings, 0);
+        document.getElementById('statBesparing').textContent = `€${totalSavings.toFixed(0)}`;
+    }
+
+    // ============================================
+    // NAVIGATION
+    // ============================================
+    function toggleMenu() {
+        document.querySelector('.sidebar').classList.toggle('open');
+        document.querySelector('.sidebar-overlay').classList.toggle('open');
+    }
+
+    async function logout() {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/login.html';
+    }
+
+    function setTab(tab) {
+        activeTab = tab;
+        document.querySelectorAll('.tab').forEach(t => {
+            t.classList.toggle('active', t.dataset.tab === tab);
+        });
+        renderContent();
+    }
+
+    // ============================================
+    // MODAL HANDLING
+    // ============================================
+    function openModal(id) {
+        document.getElementById(id).classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    function closeModalOnOverlay(event, id) {
+        if (event.target.classList.contains('modal-overlay')) {
+            closeModal(id);
+        }
+    }
+
+    // ============================================
+    // TOAST NOTIFICATIONS
+    // ============================================
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `p-4 rounded-lg shadow-lg fade-in ${
+            type === 'success' ? 'bg-green-500' : 
+            type === 'error' ? 'bg-red-500' : 
+            type === 'warning' ? 'bg-orange-500' : 'bg-indigo-500'
+        } text-white`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+
+    // ============================================
+    // SEARCH & FILTER
+    // ============================================
+    function handleSearch() {
+        renderContent();
+    }
+
+    function handleFilter() {
+        renderContent();
+    }
+
+    function getFilteredMaterials() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const category = document.getElementById('filterCategory').value;
+        const supplier = document.getElementById('filterSupplier').value;
+        
+        return materialen.filter(m => {
+            const matchSearch = !search || 
+                m.naam?.toLowerCase().includes(search) ||
+                m.artikelnummer?.toLowerCase().includes(search) ||
+                m.leverancier?.toLowerCase().includes(search);
+            const matchCategory = !category || m.categorie === category;
+            const matchSupplier = !supplier || m.leverancier === supplier;
+            return matchSearch && matchCategory && matchSupplier;
+        });
+    }
+
+    // ============================================
+    // SYNC
+    // ============================================
+    async function syncMaterials() {
+        showToast('Synchroniseren...', 'info');
+        
+        try {
+            // Sync to server
+            await fetch('/api/materials/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ materials: materialen })
+            });
+            
+            showToast('✅ Gesynchroniseerd!', 'success');
+        } catch (e) {
+            showToast('Sync opgeslagen in browser', 'warning');
+        }
+        
+        localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
+    }
+    // ============================================
+    // RENDER FUNCTIONS (voeg toe aan part1 script)
+    // ============================================
+    
+    function renderContent() {
+        const content = document.getElementById('contentArea');
+        
+        switch(activeTab) {
+            case 'database':
+                renderDatabase();
+                break;
+            case 'facturen':
+                renderFacturen();
+                break;
+            case 'vergelijking':
+                renderVergelijking();
+                break;
+            case 'historie':
+                renderHistorie();
+                break;
+            case 'kits':
+                renderKits();
+                break;
+            case 'projecten':
+                renderProjecten();
+                break;
+            default:
+                renderDatabase();
+        }
+    }
+
+    // ============================================
+    // DATABASE TAB
+    // ============================================
+    function renderDatabase() {
+        const filtered = getFilteredMaterials();
+        const content = document.getElementById('contentArea');
+        
+        content.innerHTML = `
+            <div class="flex flex-wrap gap-2 mb-4 justify-between items-center">
+                <div class="text-sm text-gray-500">
+                    ${filtered.length} materialen ${filtered.length !== materialen.length ? '(gefilterd van ' + materialen.length + ')' : ''}
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="openModal('importModal')" class="btn btn-secondary text-xs">📥 Importeren</button>
+                    <button onclick="clearAllMaterials()" class="btn text-xs bg-red-100 text-red-600 hover:bg-red-200">🗑️ Alles verwijderen</button>
+                </div>
+            </div>
+            <div class="card overflow-hidden">
+                <div class="mat-table-header">
+                    <div>Materiaal</div>
+                    <div>Categorie</div>
+                    <div class="hide-mobile">Leverancier</div>
+                    <div>Prijs</div>
+                    <div class="hide-mobile">Acties</div>
+                </div>
+                ${filtered.length === 0 ? `
+                    <div class="p-8 text-center text-gray-400">
+                        <div class="text-4xl mb-2">📦</div>
+                        <p>Geen materialen gevonden</p>
+                        <button onclick="openModal('addMaterialModal')" class="btn btn-primary mt-4">+ Eerste materiaal toevoegen</button>
+                    </div>
+                ` : filtered.slice(0, 100).map(m => `
+                    <div class="table-row cursor-pointer hover:bg-indigo-50" onclick="editMaterial('${m.id}')">
+                        <div>
+                            <div class="font-semibold">${m.naam}</div>
+                            ${m.artikelnummer ? '<div class="text-xs text-gray-400">#' + m.artikelnummer + '</div>' : ''}
+                        </div>
+                        <div><span class="badge badge-info">${m.categorie || 'Geen'}</span></div>
+                        <div class="hide-mobile text-gray-600">${m.leverancier || '-'}</div>
+                        <div class="font-semibold text-indigo-600">€${(m.standaardPrijs || 0).toFixed(2)} <span class="text-xs text-gray-400">/${m.eenheid || 'stuk'}</span></div>
+                        <div class="hide-mobile flex gap-2">
+                            <button onclick="event.stopPropagation(); showPriceHistory('${m.id}')" class="btn btn-secondary text-xs px-2">📈</button>
+                            <button onclick="event.stopPropagation(); editMaterial('${m.id}')" class="btn btn-secondary text-xs px-2">✏️</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            ${filtered.length > 100 ? '<p class="text-center text-gray-400 mt-4">Toont 100 van ' + filtered.length + ' resultaten</p>' : ''}
+        `;
+    }
+
+    // ============================================
+    // FACTUREN TAB (Moneybird)
+    // ============================================
+    async function renderFacturen() {
+        const content = document.getElementById('contentArea');
+        content.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+        
+        try {
+            const res = await fetch('/api/purchase-invoices?period=6m');
+            if (!res.ok) throw new Error('Kon facturen niet laden');
+            
+            const data = await res.json();
+            facturen = data.invoices || [];
+            
+            content.innerHTML = `
+                <div class="flex flex-col lg:flex-row gap-4 mb-4">
+                    <select id="factuurPeriod" class="input-field lg:w-48" onchange="filterFacturen()">
+                        <option value="3m">Laatste 3 maanden</option>
+                        <option value="6m" selected>Laatste 6 maanden</option>
+                        <option value="1y">Laatste jaar</option>
+                    </select>
+                    <select id="factuurSupplier" class="input-field lg:w-48" onchange="filterFacturen()">
+                        <option value="">Alle leveranciers</option>
+                        ${[...new Set(facturen.map(f => f.supplier))].sort().map(s => 
+                            `<option value="${s}">${s}</option>`
+                        ).join('')}
+                    </select>
+                    <div class="flex-1"></div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-indigo-600">€${facturen.reduce((s, f) => s + f.totalExcl, 0).toFixed(0)}</div>
+                        <div class="text-xs text-gray-500">Totaal ${facturen.length} facturen</div>
+                    </div>
+                </div>
+                
+                <div class="card overflow-hidden">
+                    <div class="table-header table-row">
+                        <div>Factuur</div>
+                        <div>Leverancier</div>
+                        <div class="hide-mobile">Datum</div>
+                        <div>Bedrag</div>
+                        <div class="hide-mobile">Acties</div>
+                    </div>
+                    ${facturen.length === 0 ? `
+                        <div class="p-8 text-center text-gray-400">
+                            <div class="text-4xl mb-2">🧾</div>
+                            <p>Geen inkoopfacturen gevonden in Moneybird</p>
+                        </div>
+                    ` : facturen.map(f => `
+                        <div class="table-row cursor-pointer hover:bg-indigo-50" onclick="showFactuurDetails('${f.id}')">
+                            <div>
+                                <div class="font-semibold">${f.invoiceNumber || 'Geen nummer'}</div>
+                                <div class="text-xs text-gray-400">${f.details?.length || 0} regels</div>
+                            </div>
+                            <div class="font-medium">${f.supplier}</div>
+                            <div class="hide-mobile text-gray-600">${new Date(f.date).toLocaleDateString('nl-NL')}</div>
+                            <div class="font-semibold">€${f.totalExcl.toFixed(2)}</div>
+                            <div class="hide-mobile">
+                                <button onclick="event.stopPropagation(); compareFactuur('${f.id}')" class="btn btn-warning text-xs px-2">⚖️ Vergelijk</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } catch (error) {
+            content.innerHTML = `
+                <div class="card p-8 text-center">
+                    <div class="text-4xl mb-4">⚠️</div>
+                    <h3 class="font-bold mb-2">Kon facturen niet laden</h3>
+                    <p class="text-gray-500 mb-4">${error.message}</p>
+                    <p class="text-sm text-gray-400">Controleer of de Moneybird koppeling actief is</p>
+                </div>
+            `;
+        }
+    }
+
+    async function filterFacturen() {
+        const period = document.getElementById('factuurPeriod').value;
+        const supplier = document.getElementById('factuurSupplier').value;
+        
+        const content = document.getElementById('contentArea');
+        content.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+        
+        try {
+            let url = `/api/purchase-invoices?period=${period}`;
+            if (supplier) url += `&supplier=${encodeURIComponent(supplier)}`;
+            
+            const res = await fetch(url);
+            const data = await res.json();
+            facturen = data.invoices || [];
+            renderFacturen();
+        } catch (e) {
+            showToast('Fout bij laden facturen', 'error');
+        }
+    }
+
+    async function showFactuurDetails(id) {
+        openModal('factuurModal');
+        const content = document.getElementById('factuurContent');
+        content.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+        
+        try {
+            const res = await fetch(`/api/purchase-invoices/${id}/details`);
+            const data = await res.json();
+            
+            content.innerHTML = `
+                <div class="mb-4 p-4 bg-gray-50 rounded-lg">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-xs text-gray-500">Factuurnummer</div>
+                            <div class="font-semibold">${data.invoiceNumber || 'Geen'}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500">Leverancier</div>
+                            <div class="font-semibold">${data.supplier}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500">Datum</div>
+                            <div class="font-semibold">${new Date(data.date).toLocaleDateString('nl-NL')}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-500">Aantal regels</div>
+                            <div class="font-semibold">${data.materials?.length || 0}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h3 class="font-bold mb-3">📦 Materialen op factuur</h3>
+                <div class="space-y-2 max-h-96 overflow-y-auto">
+                    ${data.materials?.map(m => `
+                        <div class="border rounded-lg p-3 flex justify-between items-center">
+                            <div class="flex-1">
+                                <div class="font-medium">${m.description}</div>
+                                <div class="text-sm text-gray-500">${m.quantity} x €${m.unitPrice.toFixed(2)}</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-bold">€${m.totalPrice.toFixed(2)}</div>
+                                <button onclick="addMaterialFromInvoice('${encodeURIComponent(JSON.stringify(m))}')" class="text-xs text-indigo-600 hover:underline">+ Toevoegen</button>
+                            </div>
+                        </div>
+                    `).join('') || '<p class="text-gray-400">Geen details beschikbaar</p>'}
+                </div>
+                
+                <div class="mt-4 pt-4 border-t flex justify-between">
+                    <button onclick="compareFactuur('${id}')" class="btn btn-warning">⚖️ Vergelijk met database</button>
+                    <button onclick="closeModal('factuurModal')" class="btn btn-secondary">Sluiten</button>
+                </div>
+            `;
+        } catch (e) {
+            content.innerHTML = `<p class="text-red-500">Kon details niet laden: ${e.message}</p>`;
+        }
+    }
+
+    // ============================================
+    // VERGELIJKING TAB
+    // ============================================
+    async function renderVergelijking() {
+        const content = document.getElementById('contentArea');
+        
+        content.innerHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Alerts Column -->
+                <div class="lg:col-span-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-lg">⚠️ Prijsafwijkingen</h3>
+                        <button onclick="scanAllInvoices()" class="btn btn-primary text-sm">🔍 Scan alle facturen</button>
+                    </div>
+                    <div id="alertsList">
+                        ${alerts.length === 0 ? `
+                            <div class="card p-8 text-center text-gray-400">
+                                <div class="text-4xl mb-2">✅</div>
+                                <p>Geen prijsafwijkingen gevonden</p>
+                                <p class="text-sm mt-2">Klik op "Scan alle facturen" om te controleren</p>
+                            </div>
+                        ` : alerts.map(a => `
+                            <div class="alert-item alert-${a.severity}">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <div class="font-semibold">${a.material}</div>
+                                        <div class="text-sm text-gray-600">${a.message}</div>
+                                        <div class="text-xs text-gray-400 mt-1">
+                                            Factuur: €${a.invoicePrice?.toFixed(2)} | Database: €${a.expectedPrice?.toFixed(2)}
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="badge ${a.type === 'overprice' ? 'badge-danger' : 'badge-success'}">
+                                            ${a.type === 'overprice' ? '+' : '-'}€${Math.abs(a.savings || 0).toFixed(2)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <!-- Summary Column -->
+                <div>
+                    <div class="card p-6 mb-4">
+                        <h3 class="font-bold mb-4">📊 Samenvatting</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Gescande facturen</span>
+                                <span class="font-semibold" id="scanCount">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Afwijkingen</span>
+                                <span class="font-semibold text-orange-500">${alerts.length}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Te veel betaald</span>
+                                <span class="font-semibold text-red-500">€${alerts.filter(a => a.type === 'overprice').reduce((s, a) => s + (a.savings || 0), 0).toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between border-t pt-3">
+                                <span class="text-gray-600">Besparing mogelijk</span>
+                                <span class="font-bold text-green-500 text-lg">€${alerts.filter(a => a.savings > 0).reduce((s, a) => s + a.savings, 0).toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <h3 class="font-bold mb-4">💡 Tips</h3>
+                        <div class="space-y-3 text-sm">
+                            <div class="p-3 bg-blue-50 rounded-lg">
+                                <div class="font-semibold text-blue-700">Onderhandel</div>
+                                <p class="text-blue-600">Bij afwijkingen >10% kun je vaak korting krijgen</p>
+                            </div>
+                            <div class="p-3 bg-green-50 rounded-lg">
+                                <div class="font-semibold text-green-700">Update prijzen</div>
+                                <p class="text-green-600">Houd je database actueel voor nauwkeurige offertes</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    async function compareFactuur(id) {
+        showToast('Vergelijken...', 'info');
+        
+        try {
+            // Get invoice details
+            const invRes = await fetch(`/api/purchase-invoices/${id}/details`);
+            const invData = await invRes.json();
+            
+            // Compare with database
+            const compareRes = await fetch('/api/materials/compare-prices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    invoiceMaterials: invData.materials,
+                    databaseMaterials: materialen
+                })
+            });
+            
+            const compareData = await compareRes.json();
+            
+            // Add to alerts
+            alerts = [...alerts, ...compareData.alerts];
+            localStorage.setItem('stuc_alerts', JSON.stringify(alerts));
+            
+            updateStats();
+            showToast(`✅ ${compareData.alerts.length} afwijkingen gevonden`, compareData.alerts.length > 0 ? 'warning' : 'success');
+            
+            // Switch to vergelijking tab
+            setTab('vergelijking');
+            
+        } catch (e) {
+            showToast('Fout bij vergelijken: ' + e.message, 'error');
+        }
+    }
+
+    async function scanAllInvoices() {
+        showToast('Alle facturen scannen...', 'info');
+        alerts = [];
+        
+        try {
+            const res = await fetch('/api/purchase-invoices?period=3m');
+            const data = await res.json();
+            
+            let scanned = 0;
+            for (const inv of data.invoices.slice(0, 20)) {
+                await compareFactuur(inv.id);
+                scanned++;
+            }
+            
+            document.getElementById('scanCount').textContent = scanned;
+            showToast(`✅ ${scanned} facturen gescand`, 'success');
+            
+        } catch (e) {
+            showToast('Fout bij scannen', 'error');
+        }
+    }
+
+    // ============================================
+    // HISTORIE TAB
+    // ============================================
+    function renderHistorie() {
+        const content = document.getElementById('contentArea');
+        
+        // Group by material
+        const historyByMaterial = {};
+        prijsHistorie.forEach(h => {
+            if (!historyByMaterial[h.materialId]) {
+                historyByMaterial[h.materialId] = {
+                    naam: h.materialName,
+                    entries: []
+                };
+            }
+            historyByMaterial[h.materialId].entries.push(h);
+        });
+        
+        content.innerHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <div class="card p-6 mb-6">
+                        <h3 class="font-bold mb-4">📈 Inkoop Trends (laatste 12 maanden)</h3>
+                        <canvas id="purchaseChart" height="200"></canvas>
+                    </div>
+                    
+                    <h3 class="font-bold mb-4">📊 Prijshistorie per Materiaal</h3>
+                    ${Object.keys(historyByMaterial).length === 0 ? `
+                        <div class="card p-8 text-center text-gray-400">
+                            <p>Nog geen prijshistorie. Deze wordt opgebouwd wanneer je facturen vergelijkt.</p>
+                        </div>
+                    ` : Object.entries(historyByMaterial).map(([id, data]) => `
+                        <div class="card p-4 mb-3">
+                            <div class="flex justify-between items-center cursor-pointer" onclick="showPriceHistory('${id}')">
+                                <div>
+                                    <div class="font-semibold">${data.naam}</div>
+                                    <div class="text-sm text-gray-500">${data.entries.length} prijswijzigingen</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-bold">€${data.entries[0]?.price?.toFixed(2) || '0.00'}</div>
+                                    <div class="text-xs text-gray-400">Laatste prijs</div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                <div>
+                    <div class="card p-6">
+                        <h3 class="font-bold mb-4">🏆 Top Leveranciers</h3>
+                        <div id="topSuppliers" class="space-y-3">
+                            <p class="text-gray-400 text-sm">Laden...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        loadPurchaseHistory();
+    }
+
+    async function loadPurchaseHistory() {
+        try {
+            const res = await fetch('/api/purchase-history?months=12');
+            const data = await res.json();
+            
+            // Render chart
+            if (data.monthlyData?.length > 0) {
+                const ctx = document.getElementById('purchaseChart')?.getContext('2d');
+                if (ctx) {
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.monthlyData.map(m => m.month),
+                            datasets: [{
+                                label: 'Inkoop (€)',
+                                data: data.monthlyData.map(m => m.total),
+                                borderColor: '#6366f1',
+                                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                                fill: true,
+                                tension: 0.3
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { beginAtZero: true, ticks: { callback: v => '€' + v } }
+                            }
+                        }
+                    });
+                }
+            }
+            
+            // Render top suppliers
+            const suppliersDiv = document.getElementById('topSuppliers');
+            if (data.supplierRanking?.length > 0) {
+                suppliersDiv.innerHTML = data.supplierRanking.slice(0, 5).map((s, i) => `
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '📦'}</span>
+                            <span class="font-medium">${s.name}</span>
+                        </div>
+                        <span class="font-semibold">€${s.total.toFixed(0)}</span>
+                    </div>
+                `).join('');
+            }
+            
+        } catch (e) {
+            // Could not load purchase history
+        }
+    }
+
+    async function showPriceHistory(materialId) {
+        openModal('historieModal');
+        const content = document.getElementById('historieContent');
+        content.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+        
+        const mat = materialen.find(m => m.id === materialId);
+        const history = prijsHistorie.filter(h => h.materialId === materialId).sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        content.innerHTML = `
+            <div class="mb-4 p-4 bg-gray-50 rounded-lg">
+                <h3 class="font-bold">${mat?.naam || 'Materiaal'}</h3>
+                <p class="text-sm text-gray-500">${history.length} prijswijzigingen geregistreerd</p>
+            </div>
+            
+            <div class="mb-6">
+                <canvas id="materialPriceChart" height="150"></canvas>
+            </div>
+            
+            <div class="space-y-2 max-h-64 overflow-y-auto">
+                ${history.map(h => `
+                    <div class="flex justify-between items-center p-3 border rounded-lg">
+                        <div>
+                            <div class="text-sm">${h.supplier || 'Onbekend'}</div>
+                            <div class="text-xs text-gray-400">${new Date(h.date).toLocaleDateString('nl-NL')}</div>
+                        </div>
+                        <div class="font-bold">€${h.price.toFixed(2)}</div>
+                    </div>
+                `).join('') || '<p class="text-gray-400 text-center">Nog geen historie</p>'}
+            </div>
+        `;
+        
+        // Render chart
+        if (history.length > 1) {
+            const ctx = document.getElementById('materialPriceChart')?.getContext('2d');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: history.map(h => new Date(h.date).toLocaleDateString('nl-NL')).reverse(),
+                        datasets: [{
+                            label: 'Prijs (€)',
+                            data: history.map(h => h.price).reverse(),
+                            borderColor: '#6366f1',
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+        }
+    }
+
+    // ============================================
+    // MATERIAL CRUD
+    // ============================================
+    function editMaterial(id) {
+        const mat = materialen.find(m => m.id === id);
+        if (!mat) return;
+        
+        document.getElementById('materialId').value = mat.id;
+        document.getElementById('matNaam').value = mat.naam || '';
+        document.getElementById('matArtikelnummer').value = mat.artikelnummer || '';
+        document.getElementById('matCategorie').value = mat.categorie || '';
+        document.getElementById('matPrijs').value = mat.standaardPrijs || '';
+        document.getElementById('matEenheid').value = mat.eenheid || 'stuk';
+        document.getElementById('matLeverancier').value = mat.leverancier || '';
+        document.getElementById('matVerbruik').value = mat.verbruikPerM2 || '';
+        document.getElementById('matNotities').value = mat.notities || '';
+        document.getElementById('btnDeleteMat').classList.remove('hidden');
+        
+        openModal('addMaterialModal');
+    }
+
+    function saveMaterial(e) {
+        e.preventDefault();
+        
+        const id = document.getElementById('materialId').value;
+        const mat = {
+            id: id || Date.now().toString(),
+            naam: document.getElementById('matNaam').value,
+            artikelnummer: document.getElementById('matArtikelnummer').value,
+            categorie: document.getElementById('matCategorie').value,
+            standaardPrijs: parseFloat(document.getElementById('matPrijs').value) || 0,
+            eenheid: document.getElementById('matEenheid').value,
+            leverancier: document.getElementById('matLeverancier').value,
+            verbruikPerM2: parseFloat(document.getElementById('matVerbruik').value) || null,
+            notities: document.getElementById('matNotities').value,
+            updatedAt: new Date().toISOString()
+        };
+        
+        if (id) {
+            materialen = materialen.map(m => m.id === id ? { ...m, ...mat } : m);
+            showToast('✅ Materiaal bijgewerkt', 'success');
+        } else {
+            materialen.push(mat);
+            showToast('✅ Materiaal toegevoegd', 'success');
+        }
+        
+        localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
+        closeModal('addMaterialModal');
+        resetMaterialForm();
+        updateFilterOptions();
+        renderContent();
+    }
+
+    function deleteMaterial() {
+        const id = document.getElementById('materialId').value;
+        if (!id) return;
+        
+        if (confirm('Materiaal verwijderen?')) {
+            materialen = materialen.filter(m => m.id !== id);
+            localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
+            closeModal('addMaterialModal');
+            resetMaterialForm();
+            showToast('🗑️ Materiaal verwijderd', 'info');
+            renderContent();
+        }
+    }
+
+    function resetMaterialForm() {
+        document.getElementById('materialId').value = '';
+        document.getElementById('matNaam').value = '';
+        document.getElementById('matArtikelnummer').value = '';
+        document.getElementById('matCategorie').value = '';
+        document.getElementById('matPrijs').value = '';
+        document.getElementById('matEenheid').value = 'stuk';
+        document.getElementById('matLeverancier').value = '';
+        document.getElementById('matVerbruik').value = '';
+        document.getElementById('matNotities').value = '';
+        document.getElementById('btnDeleteMat').classList.add('hidden');
+    }
+
+    function addMaterialFromInvoice(jsonStr) {
+        const m = JSON.parse(decodeURIComponent(jsonStr));
+        document.getElementById('matNaam').value = m.description || '';
+        document.getElementById('matPrijs').value = m.unitPrice || '';
+        openModal('addMaterialModal');
+        closeModal('factuurModal');
+    }
+    // ============================================
+    // KITS TAB (voeg toe aan script)
+    // ============================================
+    function renderKits() {
+        const content = document.getElementById('contentArea');
+        
+        content.innerHTML = `
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h3 class="font-bold text-lg">📦 Materiaal Kits</h3>
+                    <p class="text-gray-500 text-sm">Vaste materiaalcombinaties voor snelle berekeningen</p>
+                </div>
+                <button onclick="openNewKit()" class="btn btn-primary">+ Nieuwe Kit</button>
+            </div>
+            
+            ${kits.length === 0 ? `
+                <div class="card p-8 text-center text-gray-400">
+                    <div class="text-5xl mb-4">📦</div>
+                    <h3 class="font-semibold text-gray-600 mb-2">Nog geen kits aangemaakt</h3>
+                    <p class="mb-4">Maak materiaal kits voor vaak gebruikte combinaties</p>
+                    <button onclick="openNewKit()" class="btn btn-primary">+ Eerste kit maken</button>
+                    <div class="mt-6 text-left max-w-md mx-auto">
+                        <p class="font-semibold mb-2">💡 Voorbeelden:</p>
+                        <ul class="text-sm space-y-1">
+                            <li>• <strong>Glad Stucwerk</strong> - Gipspleister + Spraykontakt + Hoekprofielen</li>
+                            <li>• <strong>Sierpleister Kit</strong> - Primer + Sierpleister + Afwerktools</li>
+                            <li>• <strong>Reparatie Set</strong> - Vulpasta + Schuurpapier + Primer</li>
+                        </ul>
+                    </div>
+                </div>
+            ` : `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${kits.map(kit => `
+                        <div class="card p-5 hover:shadow-lg transition-shadow cursor-pointer" onclick="editKit('${kit.id}')">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h4 class="font-bold">${kit.name}</h4>
+                                    <span class="badge badge-info text-xs">${kit.category}</span>
+                                </div>
+                                <span class="text-2xl">📦</span>
+                            </div>
+                            ${kit.description ? `<p class="text-sm text-gray-500 mb-3">${kit.description}</p>` : ''}
+                            <div class="text-sm text-gray-600 mb-3">
+                                ${kit.materials?.length || 0} materialen
+                            </div>
+                            <div class="flex justify-between items-center pt-3 border-t">
+                                <span class="text-xs text-gray-400">Kit totaal</span>
+                                <span class="font-bold text-indigo-600 text-lg">€${calculateKitTotal(kit).toFixed(2)}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `}
+            
+            <!-- Standaard Kits Suggesties -->
+            ${kits.length === 0 ? '' : `
+                <div class="mt-8">
+                    <h4 class="font-semibold mb-3 text-gray-600">💡 Snel kit gebruiken</h4>
+                    <div class="flex gap-2 flex-wrap">
+                        ${kits.map(kit => `
+                            <button onclick="useKit('${kit.id}')" class="btn btn-secondary text-sm">
+                                📦 ${kit.name} - €${calculateKitTotal(kit).toFixed(0)}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `}
+        `;
+    }
+
+    function calculateKitTotal(kit) {
+        if (!kit.materials || kit.materials.length === 0) return 0;
+        
+        return kit.materials.reduce((total, kitMat) => {
+            const dbMat = materialen.find(m => m.id === kitMat.materialId);
+            const price = dbMat?.standaardPrijs || kitMat.prijs || 0;
+            return total + (price * (kitMat.quantity || 1));
+        }, 0);
+    }
+
+    function openNewKit() {
+        document.getElementById('kitId').value = '';
+        document.getElementById('kitNaam').value = '';
+        document.getElementById('kitCategorie').value = 'Stucwerk';
+        document.getElementById('kitOmschrijving').value = '';
+        document.getElementById('btnDeleteKit').classList.add('hidden');
+        currentKitMaterials = [];
+        renderKitMaterials();
+        openModal('kitModal');
+    }
+
+    function editKit(id) {
+        const kit = kits.find(k => k.id === id);
+        if (!kit) return;
+        
+        document.getElementById('kitId').value = kit.id;
+        document.getElementById('kitNaam').value = kit.name || '';
+        document.getElementById('kitCategorie').value = kit.category || 'Stucwerk';
+        document.getElementById('kitOmschrijving').value = kit.description || '';
+        document.getElementById('btnDeleteKit').classList.remove('hidden');
+        currentKitMaterials = [...(kit.materials || [])];
+        renderKitMaterials();
+        openModal('kitModal');
+    }
+
+    function renderKitMaterials() {
+        const container = document.getElementById('kitMaterialsList');
+        
+        if (currentKitMaterials.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-gray-400 py-4 border-2 border-dashed rounded-lg">
+                    Nog geen materialen toegevoegd
+                </div>
+            `;
+        } else {
+            container.innerHTML = currentKitMaterials.map((km, index) => `
+                <div class="flex gap-3 items-center p-3 bg-gray-50 rounded-lg">
+                    <div class="flex-1 relative">
+                        <input type="text" 
+                               class="input-field w-full kit-material-search" 
+                               placeholder="🔍 Zoek materiaal..."
+                               value="${km.naam || ''}"
+                               data-index="${index}"
+                               onfocus="showKitMaterialDropdown(${index})"
+                               oninput="filterKitMaterials(${index}, this.value)">
+                        <div id="kitDropdown${index}" class="kit-dropdown hidden absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1">
+                        </div>
+                    </div>
+                    <input type="number" class="input-field w-20" value="${km.quantity || 1}" 
+                           onchange="updateKitMaterial(${index}, 'quantity', this.value)" 
+                           placeholder="Aantal" min="0.1" step="0.1">
+                    <span class="text-gray-400 text-sm w-16">${getKitMaterialUnit(km)}</span>
+                    <span class="font-semibold w-20 text-right">€${getKitMaterialPrice(km).toFixed(2)}</span>
+                    <button type="button" onclick="removeKitMaterial(${index})" class="text-red-500 hover:text-red-700">✕</button>
+                </div>
+            `).join('');
+        }
+        
+        updateKitTotal();
+    }
+    
+    function showKitMaterialDropdown(index) {
+        filterKitMaterials(index, '');
+        document.getElementById('kitDropdown' + index).classList.remove('hidden');
+    }
+    
+    function filterKitMaterials(index, searchText) {
+        const dropdown = document.getElementById('kitDropdown' + index);
+        const search = searchText.toLowerCase();
+        
+        const filtered = materialen
+            .filter(m => !search || m.naam.toLowerCase().includes(search))
+            .slice(0, 50); // Limit to 50 results for performance
+        
+        dropdown.innerHTML = filtered.map(m => `
+            <div class="p-2 hover:bg-indigo-50 cursor-pointer border-b text-sm"
+                 onclick="selectKitMaterial(${index}, '${m.id}')">
+                <div class="font-medium">${m.naam}</div>
+                <div class="text-gray-500 text-xs">€${(m.standaardPrijs || 0).toFixed(2)}/${m.eenheid || 'stuk'} • ${m.categorie || ''}</div>
+            </div>
+        `).join('') || '<div class="p-3 text-gray-400 text-center">Geen resultaten</div>';
+        
+        dropdown.classList.remove('hidden');
+    }
+    
+    function selectKitMaterial(index, materialId) {
+        const mat = materialen.find(m => m.id === materialId);
+        if (mat) {
+            currentKitMaterials[index].materialId = materialId;
+            currentKitMaterials[index].naam = mat.naam;
+            currentKitMaterials[index].prijs = mat.standaardPrijs || 0;
+            currentKitMaterials[index].eenheid = mat.eenheid || 'stuk';
+        }
+        document.getElementById('kitDropdown' + index).classList.add('hidden');
+        renderKitMaterials();
+    }
+    
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.kit-material-search') && !e.target.closest('.kit-dropdown')) {
+            document.querySelectorAll('.kit-dropdown').forEach(d => d.classList.add('hidden'));
+        }
+    });
+
+    function addKitMaterial() {
+        currentKitMaterials.push({
+            materialId: '',
+            quantity: 1,
+            naam: '',
+            prijs: 0
+        });
+        renderKitMaterials();
+    }
+
+    function updateKitMaterial(index, field, value) {
+        if (field === 'materialId') {
+            const mat = materialen.find(m => m.id === value);
+            currentKitMaterials[index].materialId = value;
+            currentKitMaterials[index].naam = mat?.naam || '';
+            currentKitMaterials[index].prijs = mat?.standaardPrijs || 0;
+            currentKitMaterials[index].eenheid = mat?.eenheid || 'stuk';
+        } else if (field === 'quantity') {
+            currentKitMaterials[index].quantity = parseFloat(value) || 1;
+        }
+        renderKitMaterials();
+    }
+
+    function removeKitMaterial(index) {
+        currentKitMaterials.splice(index, 1);
+        renderKitMaterials();
+    }
+
+    function getKitMaterialUnit(km) {
+        const mat = materialen.find(m => m.id === km.materialId);
+        return mat?.eenheid || km.eenheid || 'stuk';
+    }
+
+    function getKitMaterialPrice(km) {
+        const mat = materialen.find(m => m.id === km.materialId);
+        const price = mat?.standaardPrijs || km.prijs || 0;
+        return price * (km.quantity || 1);
+    }
+
+    function updateKitTotal() {
+        const total = currentKitMaterials.reduce((sum, km) => sum + getKitMaterialPrice(km), 0);
+        document.getElementById('kitTotaal').textContent = `€${total.toFixed(2)}`;
+    }
+
+    function saveKit(e) {
+        e.preventDefault();
+        
+        const id = document.getElementById('kitId').value;
+        const kit = {
+            id: id || Date.now().toString(),
+            name: document.getElementById('kitNaam').value,
+            category: document.getElementById('kitCategorie').value,
+            description: document.getElementById('kitOmschrijving').value,
+            materials: currentKitMaterials.filter(km => km.materialId),
+            updatedAt: new Date().toISOString()
+        };
+        
+        if (id) {
+            kits = kits.map(k => k.id === id ? kit : k);
+            showToast('✅ Kit bijgewerkt', 'success');
+        } else {
+            kit.createdAt = new Date().toISOString();
+            kits.push(kit);
+            showToast('✅ Kit aangemaakt', 'success');
+        }
+        
+        localStorage.setItem('stuc_materiaal_kits', JSON.stringify(kits)); syncToServer();
+        closeModal('kitModal');
+        renderContent();
+    }
+
+    function deleteKit() {
+        const id = document.getElementById('kitId').value;
+        if (!id) return;
+        
+        if (confirm('Kit verwijderen?')) {
+            kits = kits.filter(k => k.id !== id);
+            localStorage.setItem('stuc_materiaal_kits', JSON.stringify(kits)); syncToServer();
+            closeModal('kitModal');
+            showToast('🗑️ Kit verwijderd', 'info');
+            renderContent();
+        }
+    }
+
+    function useKit(id) {
+        const kit = kits.find(k => k.id === id);
+        if (!kit) return;
+        
+        // Copy kit materials to clipboard or trigger calculator
+        const materials = kit.materials.map(km => {
+            const mat = materialen.find(m => m.id === km.materialId);
+            return `${mat?.naam || km.naam}: ${km.quantity} ${km.eenheid || 'stuk'}`;
+        }).join('\n');
+        
+        showToast(`📋 Kit "${kit.name}" klaar voor gebruik`, 'success');
+        
+        // Store for calculator integration
+        localStorage.setItem('stuc_selected_kit', JSON.stringify(kit));
+    }
+
+    // ============================================
+    // PROJECTEN TAB
+    // ============================================
+    function renderProjecten() {
+        const content = document.getElementById('contentArea');
+        
+        content.innerHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <div class="card p-6 mb-6">
+                        <h3 class="font-bold mb-4">💼 Kostprijs Analyse per Project</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="text-sm text-gray-600 mb-1 block">Project / Referentie</label>
+                                <input type="text" id="projectSearch" class="input-field" placeholder="Bijv. Jansen, Verbouwing">
+                            </div>
+                            <div>
+                                <label class="text-sm text-gray-600 mb-1 block">Periode</label>
+                                <select id="projectPeriod" class="input-field">
+                                    <option value="1m">Laatste maand</option>
+                                    <option value="3m" selected>Laatste 3 maanden</option>
+                                    <option value="6m">Laatste 6 maanden</option>
+                                    <option value="1y">Laatste jaar</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button onclick="analyzeProject()" class="btn btn-primary w-full">🔍 Analyseer Kosten</button>
+                    </div>
+                    
+                    <div id="projectResults">
+                        <div class="card p-8 text-center text-gray-400">
+                            <div class="text-4xl mb-2">💼</div>
+                            <p>Voer een projectnaam of referentie in om de kosten te analyseren</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="card p-6 mb-4">
+                        <h3 class="font-bold mb-4">📊 Recente Projecten</h3>
+                        <div id="recentProjects" class="space-y-3">
+                            <p class="text-gray-400 text-sm">Nog geen analyses uitgevoerd</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <h3 class="font-bold mb-4">💡 Tips</h3>
+                        <div class="space-y-3 text-sm">
+                            <p class="text-gray-600">• Gebruik klantnaam of projectcode als referentie</p>
+                            <p class="text-gray-600">• Voeg referenties toe aan je inkoopfacturen in Moneybird</p>
+                            <p class="text-gray-600">• Vergelijk werkelijke kosten met je offerte</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    async function analyzeProject() {
+        const projectName = document.getElementById('projectSearch').value;
+        const period = document.getElementById('projectPeriod').value;
+        
+        if (!projectName) {
+            showToast('Voer een projectnaam in', 'warning');
+            return;
+        }
+        
+        const resultsDiv = document.getElementById('projectResults');
+        resultsDiv.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+        
+        // Calculate date range
+        const endDate = new Date().toISOString().split('T')[0];
+        const startDate = new Date();
+        if (period === '1m') startDate.setMonth(startDate.getMonth() - 1);
+        if (period === '3m') startDate.setMonth(startDate.getMonth() - 3);
+        if (period === '6m') startDate.setMonth(startDate.getMonth() - 6);
+        if (period === '1y') startDate.setFullYear(startDate.getFullYear() - 1);
+        
+        try {
+            const res = await fetch('/api/projects/cost-analysis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    projectName,
+                    startDate: startDate.toISOString().split('T')[0],
+                    endDate
+                })
+            });
+            
+            const data = await res.json();
+            
+            resultsDiv.innerHTML = `
+                <div class="card p-6 mb-4">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="font-bold text-lg">${data.project}</h3>
+                            <p class="text-sm text-gray-500">${data.period.startDate} - ${data.period.endDate}</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-3xl font-bold text-indigo-600">€${data.summary.totalCost.toFixed(2)}</div>
+                            <div class="text-xs text-gray-500">Totale materiaalkosten</div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <div class="text-xl font-bold">${data.summary.totalInvoices}</div>
+                            <div class="text-xs text-gray-500">Facturen</div>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <div class="text-xl font-bold">${data.summary.uniqueMaterials}</div>
+                            <div class="text-xs text-gray-500">Materialen</div>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <div class="text-xl font-bold">€${(data.summary.totalCost / Math.max(data.summary.totalInvoices, 1)).toFixed(0)}</div>
+                            <div class="text-xs text-gray-500">Gem. per factuur</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card p-6 mb-4">
+                    <h4 class="font-bold mb-4">📦 Top Materialen</h4>
+                    <div class="space-y-3">
+                        ${data.materials?.slice(0, 10).map(m => `
+                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <div>
+                                    <div class="font-medium">${m.name}</div>
+                                    <div class="text-xs text-gray-500">${m.totalQuantity.toFixed(1)} stuks over ${m.purchases.length} aankopen</div>
+                                </div>
+                                <div class="font-bold">€${m.totalCost.toFixed(2)}</div>
+                            </div>
+                        `).join('') || '<p class="text-gray-400">Geen materialen gevonden</p>'}
+                    </div>
+                </div>
+                
+                <div class="card p-6">
+                    <h4 class="font-bold mb-4">🧾 Facturen</h4>
+                    <div class="space-y-2">
+                        ${data.invoices?.map(inv => `
+                            <div class="flex justify-between items-center p-3 border rounded-lg">
+                                <div>
+                                    <div class="font-medium">${inv.reference || 'Geen nummer'}</div>
+                                    <div class="text-xs text-gray-500">${inv.supplier} • ${new Date(inv.date).toLocaleDateString('nl-NL')}</div>
+                                </div>
+                                <div class="font-bold">€${inv.total.toFixed(2)}</div>
+                            </div>
+                        `).join('') || '<p class="text-gray-400">Geen facturen gevonden</p>'}
+                    </div>
+                </div>
+            `;
+            
+            // Save to recent
+            saveRecentProject(projectName, data.summary.totalCost);
+            
+        } catch (e) {
+            resultsDiv.innerHTML = `
+                <div class="card p-8 text-center">
+                    <div class="text-4xl mb-4">⚠️</div>
+                    <p class="text-gray-600">${e.message}</p>
+                </div>
+            `;
+        }
+    }
+
+    function saveRecentProject(name, cost) {
+        let recent = JSON.parse(localStorage.getItem('stuc_recent_projects') || '[]');
+        recent = recent.filter(r => r.name !== name);
+        recent.unshift({ name, cost, date: new Date().toISOString() });
+        recent = recent.slice(0, 5);
+        localStorage.setItem('stuc_recent_projects', JSON.stringify(recent));
+    }
+
+    // ============================================
+    // IMPORT FUNCTIONALITY
+    // ============================================
+    function setupDragDrop() {
+        const dropZone = document.getElementById('dropZone');
+        if (!dropZone) return;
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-indigo-500', 'bg-indigo-50');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+            
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                processImportFile(file);
+            }
+        });
+    }
+
+    function handleImportFile(event) {
+        const file = event.target.files[0];
+        if (file) {
+            processImportFile(file);
+        }
+    }
+
+    function processImportFile(file) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const content = e.target.result;
+            parseImportData(content, file.name);
+        };
+        
+        reader.readAsText(file);
+    }
+
+    function parseImportData(content, filename) {
+        const lines = content.split('\n').filter(l => l.trim());
+        importData = [];
+        
+        if (lines.length < 2) {
+            showToast('Bestand is leeg of ongeldig', 'error');
+            return;
+        }
+        
+        // Detect delimiter (check first non-quoted section)
+        const firstLine = lines[0];
+        let delimiter = ',';
+        if (firstLine.includes('\t')) delimiter = '\t';
+        else if (firstLine.includes(';') && !firstLine.includes(',')) delimiter = ';';
+        
+        // CSV-aware split function (handles quoted fields with commas inside)
+        function csvSplit(line, delim) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === delim && !inQuotes) {
+                    result.push(current.trim().replace(/^["']|["']$/g, ''));
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim().replace(/^["']|["']$/g, ''));
+            return result;
+        }
+        
+        // Parse header to find column indexes (use CSV-aware split)
+        const headerCols = csvSplit(lines[0], delimiter).map(c => c.toUpperCase());
+        
+        // Smart column detection
+        let colMap = { artikelnummer: -1, naam: -1, prijs: -1, categorie: -1, eenheid: -1, leverancier: -1 };
+        
+        headerCols.forEach((col, idx) => {
+            const c = col.replace(/['"]/g, '');
+            // Artikelnummer
+            if (c.includes('ARTIKEL') || c.includes('ARTNR') || c.includes('SKU') || c === 'CODE' || c === 'NR') {
+                if (colMap.artikelnummer === -1) colMap.artikelnummer = idx;
+            }
+            // Naam
+            if (c.includes('NAAM') || c.includes('OMSCHRIJVING') || c.includes('DESCRIPTION') || c.includes('PRODUCT') || c.includes('MATERIAAL')) {
+                colMap.naam = idx;
+            }
+            // Prijs - check for various price column names
+            if (c.includes('PRIJS') || c.includes('PRICE') || c.includes('BEDRAG') || c.includes('NETTO') || c.includes('BRUTO') || c.includes('EUR') || c.includes('INKOOP')) {
+                colMap.prijs = idx;
+            }
+            // Categorie
+            if (c.includes('CATEGORIE') || c.includes('CATEGORY') || c.includes('GROEP') || c.includes('GROUP') || c.includes('TYPE')) {
+                colMap.categorie = idx;
+            }
+            // Eenheid
+            if (c.includes('EENHEID') || c.includes('UNIT') || c.includes('VPE') || c.includes('VERPAKKING')) {
+                colMap.eenheid = idx;
+            }
+            // Leverancier
+            if (c.includes('LEVERANCIER') || c.includes('SUPPLIER') || c.includes('VENDOR') || c.includes('MERK') || c.includes('BRAND')) {
+                colMap.leverancier = idx;
+            }
+        });
+        
+        // Fallback: als we geen naam kolom vonden, probeer eerste tekstkolom
+        if (colMap.naam === -1) {
+            if (lines.length > 1) {
+                const firstDataCols = csvSplit(lines[1], delimiter);
+                for (let i = 0; i < firstDataCols.length; i++) {
+                    const val = firstDataCols[i];
+                    if (val.length > 3 && isNaN(parseFloat(val.replace(',', '.')))) {
+                        colMap.naam = i;
+                        break;
+                    }
+                }
+            }
+            if (colMap.naam === -1) colMap.naam = 0;
+        }
+        
+        // Fallback: als we geen prijs kolom vonden via header, zoek naar kolom met decimale getallen
+        if (colMap.prijs === -1) {
+            if (lines.length > 1) {
+                const firstDataCols = csvSplit(lines[1], delimiter);
+                for (let i = 0; i < firstDataCols.length; i++) {
+                    if (i === colMap.naam || i === colMap.artikelnummer) continue;
+                    const val = firstDataCols[i].replace(',', '.');
+                    const num = parseFloat(val);
+                    if (!isNaN(num) && num > 0 && num < 100000) {
+                        colMap.prijs = i;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Detecteer leverancier uit filename
+        let defaultLeverancier = '';
+        const fnLower = filename.toLowerCase();
+        if (fnLower.includes('bmn') || fnLower.includes('pricat')) defaultLeverancier = 'BMN';
+        else if (fnLower.includes('stiho')) defaultLeverancier = 'Stiho';
+        else if (fnLower.includes('hornbach')) defaultLeverancier = 'Hornbach';
+        else if (fnLower.includes('gamma')) defaultLeverancier = 'Gamma';
+        else if (fnLower.includes('praxis')) defaultLeverancier = 'Praxis';
+        
+        // Import kolom mapping
+        // Default leverancier set
+        
+        // Parse data rows (skip header)
+        for (let i = 1; i < lines.length; i++) {
+            const cols = csvSplit(lines[i], delimiter);
+            
+            if (cols.length >= 2) {
+                const naam = cols[colMap.naam] || '';
+                
+                // Skip lege rijen of header-achtige rijen
+                if (!naam || naam.length < 2 || naam.toUpperCase() === 'NAAM' || naam.toUpperCase() === 'OMSCHRIJVING') {
+                    continue;
+                }
+                
+                // Parse prijs
+                let prijs = 0;
+                if (colMap.prijs >= 0 && cols[colMap.prijs]) {
+                    const prijsStr = cols[colMap.prijs].replace(/[€$\s]/g, '').replace(',', '.');
+                    prijs = parseFloat(prijsStr) || 0;
+                }
+                
+                const mat = {
+                    id: Date.now().toString() + '_' + i,
+                    artikelnummer: colMap.artikelnummer >= 0 ? (cols[colMap.artikelnummer] || '') : '',
+                    naam: naam,
+                    categorie: colMap.categorie >= 0 ? (cols[colMap.categorie] || defaultLeverancier || 'Overig') : (defaultLeverancier || 'Overig'),
+                    standaardPrijs: prijs,
+                    eenheid: colMap.eenheid >= 0 ? (cols[colMap.eenheid] || 'stuk') : 'stuk',
+                    leverancier: colMap.leverancier >= 0 ? (cols[colMap.leverancier] || defaultLeverancier) : defaultLeverancier
+                };
+                
+                importData.push(mat);
+            }
+        }
+        
+        if (importData.length === 0) {
+            showToast('Geen geldige materialen gevonden in bestand', 'error');
+            return;
+        }
+        
+        showImportPreview();
+    }
+
+    function showImportPreview() {
+        const previewDiv = document.getElementById('importPreview');
+        const contentDiv = document.getElementById('importPreviewContent');
+        const countSpan = document.getElementById('importCount');
+        
+        previewDiv.classList.remove('hidden');
+        countSpan.textContent = importData.length;
+        
+        const preview = importData.slice(0, 5);
+        contentDiv.innerHTML = `
+            <table class="w-full">
+                <thead>
+                    <tr class="text-gray-500 text-left">
+                        <th class="pb-2">Naam</th>
+                        <th class="pb-2">Cat</th>
+                        <th class="pb-2">Prijs</th>
+                        <th class="pb-2">Lev</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${preview.map(m => `
+                        <tr>
+                            <td class="py-1 truncate max-w-32">${m.naam}</td>
+                            <td class="py-1">${m.categorie}</td>
+                            <td class="py-1">€${m.standaardPrijs.toFixed(2)}</td>
+                            <td class="py-1">${m.leverancier}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            ${importData.length > 5 ? `<p class="text-gray-400 mt-2">... en ${importData.length - 5} meer</p>` : ''}
+        `;
+    }
+
+    function executeImport() {
+        if (importData.length === 0) {
+            showToast('Geen data om te importeren', 'warning');
+            return;
+        }
+        
+        let updated = 0;
+        let added = 0;
+        
+        // Create lookup map for existing materials (by name, case-insensitive)
+        const existingMap = new Map();
+        materialen.forEach((m, idx) => {
+            existingMap.set(m.naam.toLowerCase().trim(), idx);
+        });
+        
+        // Process import data - UPDATE existing, ADD new
+        for (const importMat of importData) {
+            const key = importMat.naam.toLowerCase().trim();
+            
+            if (existingMap.has(key)) {
+                // UPDATE existing material with new price and data
+                const idx = existingMap.get(key);
+                materialen[idx].standaardPrijs = importMat.standaardPrijs;
+                materialen[idx].categorie = importMat.categorie || materialen[idx].categorie;
+                materialen[idx].eenheid = importMat.eenheid || materialen[idx].eenheid;
+                materialen[idx].leverancier = importMat.leverancier || materialen[idx].leverancier;
+                if (importMat.artikelnummer) materialen[idx].artikelnummer = importMat.artikelnummer;
+                updated++;
+            } else {
+                // ADD new material
+                materialen.push(importMat);
+                added++;
+            }
+        }
+        
+        localStorage.setItem('stuc_materialen_db', JSON.stringify(materialen)); syncToServer();
+        
+        let message = '✅ Import voltooid: ';
+        if (added > 0) message += added + ' nieuw';
+        if (added > 0 && updated > 0) message += ', ';
+        if (updated > 0) message += updated + ' bijgewerkt';
+        
+        showToast(message, 'success');
+        
+        closeModal('importModal');
+        importData = [];
+        document.getElementById('importPreview').classList.add('hidden');
+        document.getElementById('importFile').value = '';
+        
+        updateFilterOptions();
+        updateStats();
+        renderContent();
+    }
+    
+    function clearAllMaterials() {
+        if (confirm('Weet je zeker dat je ALLE materialen wilt verwijderen? Dit kan niet ongedaan worden!')) {
+            materialen = [];
+            localStorage.removeItem('stuc_materialen_db');
+            showToast('Alle materialen verwijderd', 'success');
+            updateFilterOptions();
+            updateStats();
+            renderContent();
+        }
+    }
+    </script>
+<script src="/data-sync.js"></script>
+<script src="/sidebar.js"></script>
+</body>
+</html>

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dashboard - StucAdmin Pro</title>
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#f97316">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Stucologie">
+    <link rel="apple-touch-icon" href="/logo-stucologie.jpg">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/sidebar.js"></script>
+    <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; color: #1a1a2e; }
+        
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        
+        .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; }
+        .kpi-card { position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent, #6366f1); }
+        .kpi-value { font-size: 2rem; font-weight: 800; color: var(--accent, #6366f1); }
+        
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        
+        /* Google Reviews Widget */
+        .reviews-widget { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #f59e0b; }
+        .star { color: #f59e0b; }
+        
+        .status-online { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #ecfdf5; color: #059669; border-radius: 20px; font-size: 0.875rem; font-weight: 500; }
+        .status-online::before { content: ''; width: 8px; height: 8px; background: #10b981; border-radius: 50%; }
+        
+        .module-card { padding: 16px; cursor: pointer; transition: all 0.2s; text-decoration: none; color: inherit; display: block; }
+        .module-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+        
+        .data-table { width: 100%; }
+        .data-table th { text-align: left; padding: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #94a3b8; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+        .data-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+        
+        main { padding: 32px; min-height: 100vh; }
+        
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            main { margin-left: 0 !important; padding: 70px 16px 24px 16px; }
+            .kpi-value { font-size: 1.5rem; }
+        }
+        
+        @media (max-width: 640px) {
+            main { padding: 65px 12px 20px 12px; }
+            .card { border-radius: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
+    <div class="flex min-h-screen">
+        <!-- Sidebar wordt geladen door sidebar.js -->
+
+        <main class="flex-1">
+            <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold">Welkom terug 👋</h1>
+                    <p class="text-gray-500 text-sm">Overzicht van je bedrijf</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="status-online text-xs" id="syncStatus">🔄 Data laden...</span>
+                    <button onclick="location.reload()" class="btn-secondary text-sm">🔄</button>
+                </div>
+            </header>
+
+            <!-- Trial Banner (hidden by default) -->
+            <div id="trialBanner" class="hidden bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl p-4 mb-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">⏳</span>
+                    <div>
+                        <p class="font-semibold">Je gratis proefperiode loopt over <span id="trialDaysLeft">0</span> dagen af</p>
+                        <p class="text-sm text-orange-100">Upgrade nu om toegang te behouden tot alle features.</p>
+                    </div>
+                </div>
+                <a href="/abonnement.html" class="bg-white text-orange-600 px-4 py-2 rounded-lg font-semibold hover:bg-orange-50 transition whitespace-nowrap">
+                    Bekijk abonnementen →
+                </a>
+            </div>
+
+            <!-- Live data indicator -->
+            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-xl p-3 mb-4 flex items-center gap-3">
+                <span class="text-xl">📊</span>
+                <p class="text-sm text-indigo-700"><strong>Live data</strong> — Alle cijfers worden automatisch opgehaald uit je boekhouding en projecten. <a href="/instellingen.html" class="underline">Integraties beheren →</a></p>
+            </div>
+
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+                <div class="card kpi-card p-4" style="--accent: #6366f1">
+                    <p class="text-gray-500 text-xs mb-1">Actieve projecten</p>
+                    <p class="kpi-value text-lg sm:text-2xl" id="kpiProjecten">0</p>
+                </div>
+                <div class="card kpi-card p-4" style="--accent: #10b981">
+                    <p class="text-gray-500 text-xs mb-1">Gepland deze week</p>
+                    <p class="kpi-value text-lg sm:text-2xl" id="kpiWeek">0</p>
+                </div>
+                <div class="card kpi-card p-4" style="--accent: #f59e0b">
+                    <p class="text-gray-500 text-xs mb-1">Openstaand</p>
+                    <p class="kpi-value text-lg sm:text-2xl" id="kpiOpen">€0</p>
+                    <p class="text-gray-400 text-xs" id="kpiOpenAantal">0 facturen</p>
+                </div>
+                <div class="card kpi-card p-4" style="--accent: #ec4899">
+                    <p class="text-gray-500 text-xs mb-1">Uren deze week</p>
+                    <p class="kpi-value text-lg sm:text-2xl" id="kpiUren">0</p>
+                </div>
+                <div class="card kpi-card p-4" style="--accent: #8b5cf6">
+                    <p class="text-gray-500 text-xs mb-1">Omzet maand</p>
+                    <p class="kpi-value text-lg sm:text-2xl" id="kpiOmzet">€0</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
+                <div class="card p-4 lg:col-span-2">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="font-bold text-sm sm:text-base">📈 Omzet per maand</h2>
+                        <span class="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">Auto-sync uit facturen</span>
+                    </div>
+                    <div class="h-48"><canvas id="omzetChart"></canvas></div>
+                </div>
+                <div class="card p-4">
+                    <h2 class="font-bold mb-4 text-sm sm:text-base">⚡ Snelle acties</h2>
+                    <div class="space-y-2">
+                        <a href="planning.html?newProject=true" class="module-card card block border-l-4 border-indigo-500"><span class="text-xl">📅</span><p class="font-medium text-sm mt-1">Nieuw project plannen</p></a>
+                        <a href="projecten.html" class="module-card card block border-l-4 border-green-500"><span class="text-xl">🏗️</span><p class="font-medium text-sm mt-1">Projecten overzicht</p></a>
+                        <a href="materialen-beheer.html" class="module-card card block"><span class="text-xl">📦</span><p class="font-medium text-sm mt-1">Materialen bestellen</p></a>
+                        <a href="zzp-inhuur.html" class="module-card card block"><span class="text-xl">👷</span><p class="font-medium text-sm mt-1">ZZP'er inplannen</p></a>
+                        <a href="calculator.html" class="module-card card block"><span class="text-xl">🧮</span><p class="font-medium text-sm mt-1">Offerte maken</p></a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <div class="card p-4">
+                    <h2 class="font-bold mb-4 text-sm sm:text-base">📅 Planning deze week</h2>
+                    <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Project</th><th>Locatie</th><th>Datum</th><th>Status</th></tr></thead><tbody id="weekPlanning"></tbody></table></div>
+                </div>
+                <div class="card p-4">
+                    <h2 class="font-bold mb-4 text-sm sm:text-base">📊 Materialen & Uren</h2>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl">📦</span>
+                                <div>
+                                    <p class="font-medium text-sm">Materiaalkosten deze maand</p>
+                                    <p class="text-xs text-gray-500">Alle inkopen</p>
+                                </div>
+                            </div>
+                            <span class="font-bold text-lg" id="matKosten">€0</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl">⏱️</span>
+                                <div>
+                                    <p class="font-medium text-sm">Gewerkte uren deze maand</p>
+                                    <p class="text-xs text-gray-500">Alle medewerkers</p>
+                                </div>
+                            </div>
+                            <span class="font-bold text-lg" id="totaalUren">0 uur</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="text-2xl">👷</span>
+                                <div>
+                                    <p class="font-medium text-sm">Actieve medewerkers</p>
+                                    <p class="text-xs text-gray-500">Ingeklokt vandaag</p>
+                                </div>
+                            </div>
+                            <span class="font-bold text-lg" id="activeMedewerkers">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Google Reviews Widget -->
+            <div class="card reviews-widget p-4 mt-4 sm:mt-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="text-4xl">⭐</div>
+                        <div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-3xl font-bold text-amber-700">5.0</span>
+                                <div class="flex text-xl star">★★★★★</div>
+                            </div>
+                            <p class="text-amber-700 text-sm">Google Reviews</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <a href="https://www.google.com/maps/place/Stucologie+B.V/@52.4891775,5.496488,17z/data=!4m8!3m7!1s0x47c626e6ab0d4f65:0x92f563860c099fa2!8m2!3d52.4891775!4d5.496488!9m1!1b1!16s%2Fg%2F11g01wtmbk" target="_blank" class="bg-white text-amber-700 px-4 py-2 rounded-lg font-medium text-sm text-center hover:bg-amber-50 border border-amber-300">
+                            📖 Bekijk reviews
+                        </a>
+                        <a href="https://g.page/r/CaKfCQyGY_WSEBM/review" target="_blank" class="bg-amber-600 text-white px-4 py-2 rounded-lg font-medium text-sm text-center hover:bg-amber-700">
+                            ✍️ Vraag review aan klant
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleMenu() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.querySelector('.sidebar-overlay').classList.toggle('open');
+        }
+        
+        // Wacht tot sidebar is geladen door sidebar.js
+        function setupNavListeners() {
+            document.querySelectorAll('.nav-item').forEach(l => l.addEventListener('click', () => {
+                document.querySelector('.sidebar').classList.remove('open');
+                document.querySelector('.sidebar-overlay').classList.remove('open');
+            }));
+        }
+        // Roep aan na korte delay zodat sidebar.js eerst laadt
+        setTimeout(setupNavListeners, 100);
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
+
+        async function init() {
+            // Check trial status first
+            try {
+                const subRes = await fetch('/api/subscription');
+                if (subRes.ok) {
+                    const subData = await subRes.json();
+                    if (subData.plan === 'trial' && subData.trialEnds) {
+                        const daysLeft = Math.ceil((new Date(subData.trialEnds) - new Date()) / (1000 * 60 * 60 * 24));
+                        if (daysLeft > 0 && daysLeft <= 14) {
+                            document.getElementById('trialBanner').classList.remove('hidden');
+                            document.getElementById('trialDaysLeft').textContent = daysLeft;
+                        }
+                    }
+                }
+            } catch (e) { console.log('Trial check:', e); }
+            
+            // Toon loading state
+            document.getElementById('kpiProjecten').textContent = '...';
+            document.getElementById('kpiWeek').textContent = '...';
+            document.getElementById('kpiOpen').textContent = '...';
+            document.getElementById('kpiUren').textContent = '...';
+            document.getElementById('kpiOmzet').textContent = '...';
+            
+            try {
+                const [invRes, conRes, projRes] = await Promise.all([
+                    fetch('/api/invoices'), 
+                    fetch('/api/contacts'),
+                    fetch('/api/projecten').catch(() => ({ ok: false }))
+                ]);
+                
+                // Check if unauthorized - redirect to login
+                if (invRes.status === 401 || conRes.status === 401) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                const invoices = await invRes.json();
+                const contacts = await conRes.json();
+                
+                // Projecten laden van server
+                let projecten = [];
+                if (projRes.ok) {
+                    projecten = await projRes.json();
+                } else {
+                    // Fallback naar localStorage
+                    projecten = JSON.parse(localStorage.getItem('stuc_planning_projecten') || '[]');
+                }
+                
+                // Ensure we have arrays
+                const invoiceArray = Array.isArray(invoices) ? invoices : [];
+                const contactArray = Array.isArray(contacts) ? contacts : (contacts.contacts || []);
+                
+                const now = new Date();
+                
+                // Uren en medewerkers laden
+                let uren = [];
+                let medewerkers = [];
+                try {
+                    const urenRes = await fetch('/api/medewerker/uren');
+                    if (urenRes.ok) uren = await urenRes.json();
+                    const medRes = await fetch('/api/medewerkers');
+                    if (medRes.ok) medewerkers = await medRes.json();
+                } catch (e) { console.log('Uren/medewerkers laden:', e); }
+                
+                // Week berekeningen
+                const weekStart = new Date(now);
+                weekStart.setDate(now.getDate() - now.getDay() + 1);
+                weekStart.setHours(0,0,0,0);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 6);
+                weekEnd.setHours(23,59,59,999);
+                
+                // KPI: Actieve projecten (status actief of gepland)
+                const actieveProjecten = projecten.filter(p => p.status === 'actief' || p.status === 'gepland' || !p.status);
+                document.getElementById('kpiProjecten').textContent = actieveProjecten.length;
+                
+                // KPI: Gepland deze week
+                const weekProjecten = projecten.filter(p => {
+                    const startDatum = new Date(p.startDatum || p.start);
+                    return startDatum >= weekStart && startDatum <= weekEnd;
+                });
+                document.getElementById('kpiWeek').textContent = weekProjecten.length;
+                
+                // KPI: Openstaande facturen
+                const open = invoiceArray.filter(i => i.state === 'open' || i.state === 'late' || i.state === 'reminded');
+                document.getElementById('kpiOpen').textContent = '€' + open.reduce((s,i) => s + parseFloat(i.total_price_incl_tax||0), 0).toLocaleString('nl-NL', {maximumFractionDigits:0});
+                document.getElementById('kpiOpenAantal').textContent = open.length + ' facturen';
+                
+                // KPI: Uren deze week
+                const weekUren = uren.filter(u => {
+                    const d = new Date(u.datum);
+                    return d >= weekStart && d <= weekEnd;
+                }).reduce((s, u) => s + (u.totaalUren || 0), 0);
+                document.getElementById('kpiUren').textContent = Math.round(weekUren);
+                
+                // KPI: Omzet deze maand
+                const thisMonth = invoiceArray.filter(inv => { 
+                    if (inv.state === 'draft') return false;
+                    const dateStr = inv.invoice_date || inv.created_at;
+                    if (!dateStr) return false;
+                    const d = new Date(dateStr); 
+                    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); 
+                });
+                document.getElementById('kpiOmzet').textContent = '€' + thisMonth.reduce((s,i) => s + parseFloat(i.total_price_incl_tax||0), 0).toLocaleString('nl-NL', {maximumFractionDigits:0});
+                
+                // Tabel: Planning deze week
+                const statusKleuren = {
+                    'gepland': '<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">Gepland</span>',
+                    'actief': '<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Actief</span>',
+                    'afgerond': '<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Afgerond</span>'
+                };
+                document.getElementById('weekPlanning').innerHTML = weekProjecten.length ? 
+                    weekProjecten.slice(0,5).map(p => `<tr>
+                        <td class="text-sm font-medium">${p.naam || p.title || '-'}</td>
+                        <td class="text-sm text-gray-500">${p.adres || p.locatie || '-'}</td>
+                        <td class="text-sm text-indigo-600">${new Date(p.startDatum || p.start).toLocaleDateString('nl-NL', {weekday:'short', day:'numeric', month:'short'})}</td>
+                        <td class="text-sm">${statusKleuren[p.status] || statusKleuren['gepland']}</td>
+                    </tr>`).join('') : 
+                    '<tr><td colspan="4" class="text-gray-400 text-center py-4 text-sm">Geen projecten deze week</td></tr>';
+                
+                // Materiaalkosten deze maand (placeholder - zou van materialen API moeten komen)
+                document.getElementById('matKosten').textContent = '€0';
+                
+                // Totaal uren deze maand
+                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                const maandUren = uren.filter(u => new Date(u.datum) >= monthStart).reduce((s, u) => s + (u.totaalUren || 0), 0);
+                document.getElementById('totaalUren').textContent = Math.round(maandUren) + ' uur';
+                
+                // Actieve medewerkers (vandaag ingeklokt)
+                const vandaag = now.toISOString().split('T')[0];
+                const vandaagUren = uren.filter(u => u.datum === vandaag);
+                const uniekeMedewerkers = [...new Set(vandaagUren.map(u => u.medewerkerId))];
+                document.getElementById('activeMedewerkers').textContent = uniekeMedewerkers.length;
+                
+                // Omzet grafiek
+                const ctx = document.getElementById('omzetChart').getContext('2d');
+                const months = ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+                const data = [];
+                for (let i = 5; i >= 0; i--) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    const m = invoiceArray.filter(inv => { 
+                        if (inv.state === 'draft') return false;
+                        const dateStr = inv.invoice_date || inv.created_at;
+                        if (!dateStr) return false;
+                        const id = new Date(dateStr); 
+                        return id.getMonth() === d.getMonth() && id.getFullYear() === d.getFullYear(); 
+                    });
+                    data.push({ month: months[d.getMonth()], total: m.reduce((s,i) => s + parseFloat(i.total_price_incl_tax||0), 0) });
+                }
+                new Chart(ctx, { type: 'bar', data: { labels: data.map(d => d.month), datasets: [{ data: data.map(d => d.total), backgroundColor: '#6366f1', borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString() } } } } });
+                
+                // Update sync status
+                document.getElementById('syncStatus').innerHTML = '✅ Alles gesynchroniseerd';
+                document.getElementById('syncStatus').className = 'status-online text-xs';
+            } catch (e) { 
+                console.error(e);
+                document.getElementById('syncStatus').innerHTML = '⚠️ Sync probleem';
+                document.getElementById('syncStatus').style.background = '#fef3c7';
+                document.getElementById('syncStatus').style.color = '#d97706';
+            }
+        }
+        init();
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('✅ Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed:', err));
+        }
+    </script>
+<script src="/sidebar.js"></script>
+</body>
+</html>

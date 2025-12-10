@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stucie - AI Assistent | StucAdmin</title>
+    <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/sidebar.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', system-ui, sans-serif; }
+        
+        /* Main Layout */
+        .main-content { height: 100vh; display: flex; flex-direction: column; background: #f8fafc; }
+        
+        /* Chat Area */
+        .chat-container { flex: 1; overflow-y: auto; padding: 24px; scroll-behavior: smooth; }
+        
+        /* Messages */
+        .message { display: flex; gap: 12px; margin-bottom: 20px; max-width: 85%; animation: slideIn 0.3s ease; }
+        .message.user { margin-left: auto; flex-direction: row-reverse; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .message-avatar { 
+            width: 44px; height: 44px; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 20px; flex-shrink: 0; 
+        }
+        .message.assistant .message-avatar { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+        .message.user .message-avatar { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        
+        .message-content { 
+            padding: 16px 20px; border-radius: 20px; 
+            font-size: 15px; line-height: 1.6;
+        }
+        .message.assistant .message-content { background: white; border: 1px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .message.user .message-content { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; }
+        
+        .message-time { font-size: 11px; color: #94a3b8; margin-top: 6px; }
+        .message.user .message-time { color: rgba(255,255,255,0.7); text-align: right; }
+        
+        /* Typing Indicator */
+        .typing-dot { 
+            width: 10px; height: 10px; background: #94a3b8; border-radius: 50%; 
+            animation: bounce 1.4s infinite; 
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        
+        /* Quick Actions */
+        .quick-section { padding: 12px 24px; background: white; border-bottom: 1px solid #e5e7eb; }
+        .quick-label { font-size: 11px; text-transform: uppercase; color: #94a3b8; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .quick-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .quick-btn { 
+            padding: 10px 16px; background: #f8fafc; border: 1px solid #e5e7eb; 
+            border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 500;
+            transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+        }
+        .quick-btn:hover { border-color: #6366f1; color: #6366f1; background: #f5f3ff; transform: translateY(-1px); }
+        .quick-btn.primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border: none; }
+        .quick-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
+        
+        /* Input Area */
+        .chat-input-area { padding: 20px 24px; background: white; border-top: 1px solid #e5e7eb; }
+        .chat-input-wrapper { 
+            display: flex; gap: 12px; align-items: center; 
+            background: #f8fafc; border: 2px solid #e5e7eb; 
+            border-radius: 12px; padding: 8px 12px;
+            transition: all 0.2s;
+        }
+        .chat-input-wrapper:focus-within { border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99,102,241,0.1); }
+        
+        .chat-input { 
+            flex: 1; border: none; background: none; 
+            padding: 10px 4px; font-size: 15px; outline: none; 
+        }
+        .chat-input::placeholder { color: #94a3b8; }
+        
+        .input-btn { 
+            width: 44px; height: 44px; border-radius: 50%; border: none; 
+            cursor: pointer; font-size: 18px; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .voice-btn { background: #f1f5f9; color: #64748b; }
+        .voice-btn:hover { background: #e5e7eb; color: #1e293b; }
+        .voice-btn.recording { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); } 50% { box-shadow: 0 0 0 12px transparent; } }
+        
+        .send-btn { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; }
+        .send-btn:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
+        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        /* Action Buttons in Messages */
+        .action-btn { 
+            padding: 8px 14px; background: #f1f5f9; border: 1px solid #e5e7eb;
+            border-radius: 8px; font-size: 12px; cursor: pointer; margin-top: 8px; margin-right: 6px;
+            transition: all 0.2s;
+        }
+        .action-btn:hover { background: #6366f1; color: white; border-color: #6366f1; }
+        
+        /* Status Badge */
+        .status-badge { 
+            display: inline-flex; align-items: center; gap: 6px; 
+            padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+        }
+        .status-badge.online { background: #dcfce7; color: #16a34a; }
+        
+        /* Handsfree Mode */
+        .handsfree-bar { 
+            background: linear-gradient(135deg, #6366f1, #8b5cf6); 
+            color: white; padding: 12px 24px; 
+            display: none; align-items: center; justify-content: space-between;
+        }
+        .handsfree-bar.active { display: flex; }
+        
+        /* Modal */
+        .modal-overlay { 
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5); 
+            display: none; align-items: center; justify-content: center; z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal { background: white; border-radius: 16px; padding: 24px; width: 90%; max-width: 500px; }
+        
+        /* Dark Mode */
+        body.dark { background: #0f172a; }
+        body.dark .sidebar { background: #1e293b; border-color: #334155; }
+        body.dark .nav-item { color: #94a3b8; }
+        body.dark .nav-item:hover { background: #334155; color: white; }
+        body.dark .main-content { background: #0f172a; }
+        body.dark .message.assistant .message-content { background: #1e293b; border-color: #334155; color: white; }
+        body.dark .chat-input-area, body.dark .quick-section { background: #1e293b; border-color: #334155; }
+        body.dark .chat-input-wrapper { background: #0f172a; border-color: #334155; }
+        body.dark .chat-input { color: white; }
+        body.dark .quick-btn { background: #0f172a; border-color: #334155; color: #94a3b8; }
+        body.dark .quick-btn:hover { color: #a5b4fc; border-color: #6366f1; }
+        body.dark .modal { background: #1e293b; color: white; }
+        body.dark .modal input, body.dark .modal select, body.dark .modal textarea { background: #0f172a; border-color: #334155; color: white; }
+        body.dark header { background: #1e293b; border-color: #334155; }
+        body.dark h1, body.dark .font-semibold, body.dark .font-medium, body.dark .font-bold { color: white; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; }
+            .quick-section { display: none; }
+            .chat-input-area { padding: 12px 16px; }
+            .chat-container { padding: 16px; }
+            header { padding: 12px 16px !important; }
+            header h1 { font-size: 18px !important; }
+            header .w-14 { width: 40px !important; height: 40px !important; font-size: 24px !important; }
+        }
+        
+        @media (max-width: 1024px) {
+            .quick-section { padding: 8px 16px; }
+            .quick-label { font-size: 10px; margin-bottom: 4px; }
+            .quick-btn { padding: 6px 12px; font-size: 12px; }
+            .quick-row { gap: 6px; }
+        }
+        
+        /* History Panel */
+        .history-panel {
+            position: fixed; right: -350px; top: 0; width: 350px; height: 100vh;
+            background: white; border-left: 1px solid #e5e7eb; z-index: 100;
+            transition: right 0.3s ease; display: flex; flex-direction: column;
+        }
+        .history-panel.open { right: 0; }
+        body.dark .history-panel { background: #1e293b; border-color: #334155; }
+        
+        .history-item {
+            padding: 12px 16px; border-bottom: 1px solid #e5e7eb; cursor: pointer;
+            transition: background 0.2s;
+        }
+        .history-item:hover { background: #f8fafc; }
+        body.dark .history-item { border-color: #334155; color: white; }
+        body.dark .history-item:hover { background: #334155; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Sidebar wordt geladen door sidebar.js -->
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Handsfree Mode Bar -->
+        <div class="handsfree-bar" id="handsfreeBar">
+            <div class="flex items-center gap-3">
+                <span class="animate-pulse">🎙️</span>
+                <span class="font-medium">Handsfree modus actief - Ik luister...</span>
+            </div>
+            <button onclick="toggleHandsfree()" class="px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30">Stop</button>
+        </div>
+
+        <!-- Header -->
+        <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl shadow-lg">
+                    🤖
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-800">Stucie</h1>
+                    <div class="status-badge online">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        AI-assistent voor StucAdmin
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="toggleHistory()" class="p-3 hover:bg-gray-100 rounded-xl transition" title="Chat geschiedenis">📜</button>
+                <button onclick="toggleDarkMode()" class="p-3 hover:bg-gray-100 rounded-xl transition" title="Dark/Light mode" id="darkModeBtn">🌙</button>
+                <button onclick="toggleHandsfree()" class="p-3 hover:bg-gray-100 rounded-xl transition" title="Handsfree modus" id="handsfreeBtn">🎙️</button>
+                <button onclick="clearChat()" class="p-3 hover:bg-gray-100 rounded-xl transition" title="Wis gesprek">🗑️</button>
+            </div>
+        </header>
+
+        <!-- Info Banner -->
+        <div class="bg-gradient-to-r from-violet-50 to-purple-50 border-b border-violet-100 px-6 py-3 flex items-center gap-3">
+            <span class="text-lg">🤖</span>
+            <p class="text-sm text-violet-700"><strong>Stucie kent je bedrijf</strong> — Vraag om rapporten, analyses of hulp met projecten. Stucie heeft toegang tot al je data en kan direct acties uitvoeren.</p>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-section">
+            <div class="quick-label">⚡ Meest gebruikt</div>
+            <div class="quick-row mb-3">
+                <button class="quick-btn primary" onclick="sendQuick('Geef me een bedrijfsoverzicht')">📊 Bedrijfsoverzicht</button>
+                <button class="quick-btn" onclick="sendQuick('Wat staat er morgen gepland?')">📅 Planning morgen</button>
+                <button class="quick-btn" onclick="sendQuick('Hoeveel nieuwe offerteaanvragen zijn er?')">📩 Nieuwe aanvragen</button>
+                <button class="quick-btn" onclick="sendQuick('Wat is mijn omzet deze maand?')">💰 Omzet</button>
+            </div>
+            <div class="quick-label">🚀 Snel uitvoeren</div>
+            <div class="quick-row">
+                <button class="quick-btn" onclick="startAction('email')">✉️ Email schrijven</button>
+                <button class="quick-btn" onclick="startAction('afspraak')">📅 Afspraak inplannen</button>
+                <button class="quick-btn" onclick="startAction('offerte')">📄 Offerte maken</button>
+                <button class="quick-btn" onclick="sendQuick('Geef me het weekrapport')">📈 Weekrapport</button>
+                <button class="quick-btn" onclick="sendQuick('Welke klanten moet ik nabellen?')">📞 Nabellen</button>
+                <button class="quick-btn" onclick="sendQuick('Check de materiaalvoorraad')">🧱 Materialen</button>
+            </div>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="chat-container" id="chatMessages">
+            <!-- Welcome Message -->
+            <div class="message assistant">
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <div class="font-semibold text-lg mb-2" id="welcomeGreeting">Welkom! 👋</div>
+                    <p class="mb-3">Ik ben <strong>Stucie</strong>, jouw persoonlijke AI-assistent.</p>
+                    
+                    <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 mb-3">
+                        <div class="font-medium mb-2">💡 Wat kan ik voor je doen?</div>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div>📊 Bedrijfsinzichten</div>
+                            <div>📅 Agenda beheren</div>
+                            <div>✉️ Emails versturen</div>
+                            <div>📄 Offertes maken</div>
+                            <div>👥 Klanten zoeken</div>
+                            <div>🧾 Facturen aanmaken</div>
+                            <div>📱 Social media posts</div>
+                            <div>📈 Rapporten genereren</div>
+                        </div>
+                    </div>
+                    
+                    <p class="text-sm text-gray-500">💬 Typ je vraag, gebruik de snelknoppen, of druk op 🎤 om te spreken!</p>
+                    <div class="message-time" id="welcomeTime"></div>
+                </div>
+            </div>
+            
+            <!-- Typing Indicator -->
+            <div id="typingIndicator" class="message assistant" style="display: none;">
+                <div class="message-avatar">🤖</div>
+                <div class="message-content flex gap-2 py-5 px-6">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="chat-input-area">
+            <div class="chat-input-wrapper">
+                <button class="input-btn voice-btn" id="voiceBtn" onclick="toggleVoice()" title="Spraak invoer (V)">🎤</button>
+                <input 
+                    type="text" 
+                    id="chatInput" 
+                    class="chat-input" 
+                    placeholder="Vraag iets aan Stucie... (druk Enter om te versturen)"
+                    onkeydown="handleKeyDown(event)"
+                    autocomplete="off"
+                >
+                <button class="input-btn" onclick="attachFile()" title="Bestand toevoegen" style="background: #f1f5f9; color: #64748b;">📎</button>
+                <button class="input-btn send-btn" id="sendBtn" onclick="sendMessage()" title="Verstuur (Enter)">➤</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- History Panel -->
+    <div class="history-panel" id="historyPanel">
+        <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="font-semibold">📜 Chat Geschiedenis</h3>
+            <button onclick="toggleHistory()" class="p-2 hover:bg-gray-100 rounded-lg">✕</button>
+        </div>
+        <div class="p-4">
+            <input type="text" id="historySearch" placeholder="🔍 Zoeken..." class="w-full px-4 py-2 border rounded-lg text-sm" oninput="searchHistory()">
+        </div>
+        <div class="flex-1 overflow-y-auto" id="historyList">
+        </div>
+        <div class="p-4 border-t border-gray-200">
+            <button onclick="clearHistory()" class="w-full py-2 text-red-500 hover:bg-red-50 rounded-lg text-sm">🗑️ Wis alle geschiedenis</button>
+        </div>
+    </div>
+
+    <!-- Action Modal -->
+    <div class="modal-overlay" id="actionModal">
+        <div class="modal">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold" id="modalTitle">Actie</h3>
+                <button onclick="closeModal()" class="p-2 hover:bg-gray-100 rounded-lg">✕</button>
+            </div>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // Auth check
+        fetch('/api/auth/check').then(r => r.json()).then(d => {
+            if (!d.authenticated) window.location.href = '/login.html';
+        });
+        
+        // State
+        let isRecording = false;
+        let recognition = null;
+        let handsfreeMode = false;
+        let darkMode = localStorage.getItem('darkMode') === 'true';
+        let chatHistory = JSON.parse(localStorage.getItem('stucieHistory') || '[]');
+        let currentConversation = [];
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initSpeechRecognition();
+            initDarkMode();
+            loadHistory();
+            setWelcomeTime();
+            document.getElementById('chatInput').focus();
+        });
+        
+        function setWelcomeTime() {
+            const now = new Date();
+            const time = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('welcomeTime').textContent = time;
+        }
+        
+        // Speech Recognition
+        function initSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.lang = 'nl-NL';
+                recognition.continuous = false;
+                recognition.interimResults = true;
+                
+                recognition.onstart = () => {
+                    document.getElementById('voiceBtn').classList.add('recording');
+                    document.getElementById('voiceStatus').textContent = '🔴 Luisteren...';
+                };
+                
+                recognition.onresult = (event) => {
+                    const transcript = Array.from(event.results)
+                        .map(result => result[0].transcript)
+                        .join('');
+                    document.getElementById('chatInput').value = transcript;
+                    
+                    if (event.results[0].isFinal) {
+                        stopRecording();
+                        if (handsfreeMode) {
+                            setTimeout(() => sendMessage(), 500);
+                        }
+                    }
+                };
+                
+                recognition.onerror = (event) => {
+                    console.error('Speech error:', event.error);
+                    stopRecording();
+                    document.getElementById('voiceStatus').textContent = '❌ Spraakfout: ' + event.error;
+                };
+                
+                recognition.onend = () => {
+                    if (handsfreeMode && !isRecording) {
+                        setTimeout(() => {
+                            if (handsfreeMode) startRecording();
+                        }, 1000);
+                    } else {
+                        stopRecording();
+                    }
+                };
+            }
+        }
+        
+        function toggleVoice() {
+            if (!recognition) {
+                alert('Spraakherkenning wordt niet ondersteund in deze browser.');
+                return;
+            }
+            isRecording ? stopRecording() : startRecording();
+        }
+        
+        function startRecording() {
+            isRecording = true;
+            document.getElementById('voiceBtn').classList.add('recording');
+            document.getElementById('voiceBtn').innerHTML = '⏹️';
+            recognition.start();
+        }
+        
+        function stopRecording() {
+            isRecording = false;
+            document.getElementById('voiceBtn').classList.remove('recording');
+            document.getElementById('voiceBtn').innerHTML = '🎤';
+            document.getElementById('voiceStatus').textContent = '';
+            try { recognition.stop(); } catch(e) {}
+        }
+        
+        function toggleHandsfree() {
+            handsfreeMode = !handsfreeMode;
+            const bar = document.getElementById('handsfreeBar');
+            const btn = document.getElementById('handsfreeBtn');
+            
+            if (handsfreeMode) {
+                bar.classList.add('active');
+                btn.style.background = '#6366f1';
+                btn.style.color = 'white';
+                speak('Handsfree modus geactiveerd. Ik luister.');
+                setTimeout(() => startRecording(), 2000);
+            } else {
+                bar.classList.remove('active');
+                btn.style.background = '';
+                btn.style.color = '';
+                stopRecording();
+                speak('Handsfree modus uitgeschakeld.');
+            }
+        }
+        
+        // Text to Speech
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                const clean = text.replace(/<[^>]*>/g, '').replace(/[*_#]/g, '');
+                const utterance = new SpeechSynthesisUtterance(clean);
+                utterance.lang = 'nl-NL';
+                utterance.rate = 1.0;
+                speechSynthesis.speak(utterance);
+            }
+        }
+        
+        // Messaging
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            } else if (event.key === 'Escape') {
+                document.getElementById('chatInput').value = '';
+                stopRecording();
+            }
+        }
+        
+        function sendQuick(text) {
+            document.getElementById('chatInput').value = text;
+            sendMessage();
+        }
+        
+        function addMessage(text, isUser, options = {}) {
+            const time = new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+            const div = document.createElement('div');
+            div.className = 'message ' + (isUser ? 'user' : 'assistant');
+            
+            let actionsHtml = '';
+            if (options.actions) {
+                actionsHtml = '<div class="mt-3">' + options.actions.map(a => 
+                    `<button class="action-btn" onclick="${a.onclick}">${a.icon} ${a.label}</button>`
+                ).join('') + '</div>';
+            }
+            
+            div.innerHTML = `
+                <div class="message-avatar">${isUser ? '👤' : '🤖'}</div>
+                <div class="message-content">
+                    ${text}
+                    ${actionsHtml}
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+            
+            document.getElementById('typingIndicator').before(div);
+            scrollToBottom();
+            
+            currentConversation.push({ role: isUser ? 'user' : 'assistant', content: text, time });
+            
+            if (!isUser && handsfreeMode) {
+                speak(text);
+            }
+        }
+        
+        function scrollToBottom() {
+            const container = document.getElementById('chatMessages');
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if (!msg) return;
+            
+            addMessage(msg, true);
+            input.value = '';
+            
+            document.getElementById('typingIndicator').style.display = 'flex';
+            scrollToBottom();
+            
+            try {
+                const r = await fetch('/api/stucie/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg })
+                });
+                const d = await r.json();
+                document.getElementById('typingIndicator').style.display = 'none';
+                
+                if (d.error) {
+                    addMessage('❌ ' + d.error, false);
+                } else {
+                    const options = {};
+                    if (d.response.includes('email') || d.response.includes('mail')) {
+                        options.actions = [{ icon: '✉️', label: 'Email opstellen', onclick: "startAction('email')" }];
+                    }
+                    if (d.response.includes('afspraak') || d.response.includes('planning')) {
+                        options.actions = options.actions || [];
+                        options.actions.push({ icon: '📅', label: 'Inplannen', onclick: "startAction('afspraak')" });
+                    }
+                    addMessage(d.response, false, options);
+                }
+            } catch (e) {
+                document.getElementById('typingIndicator').style.display = 'none';
+                addMessage('❌ Verbindingsfout. Probeer opnieuw.', false);
+            }
+        }
+        
+        // Actions
+        function startAction(type) {
+            const modal = document.getElementById('actionModal');
+            const title = document.getElementById('modalTitle');
+            const content = document.getElementById('modalContent');
+            
+            if (type === 'email') {
+                title.textContent = '✉️ Email schrijven';
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Aan (klant/email)</label>
+                            <input type="text" id="emailTo" class="w-full px-4 py-2 border rounded-lg" placeholder="Zoek klant of typ email...">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Onderwerp</label>
+                            <input type="text" id="emailSubject" class="w-full px-4 py-2 border rounded-lg" placeholder="Onderwerp">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Wat moet erin staan?</label>
+                            <textarea id="emailContent" class="w-full px-4 py-2 border rounded-lg h-24" placeholder="Beschrijf kort..."></textarea>
+                        </div>
+                        <button onclick="generateEmail()" class="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">
+                            ✨ Genereer email met AI
+                        </button>
+                    </div>
+                `;
+            } else if (type === 'afspraak') {
+                title.textContent = '📅 Afspraak inplannen';
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Type</label>
+                            <select id="afspraakType" class="w-full px-4 py-2 border rounded-lg">
+                                <option value="opname">📋 Opname</option>
+                                <option value="project">🏗️ Project</option>
+                                <option value="overleg">💬 Overleg</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Klant</label>
+                            <input type="text" id="afspraakKlant" class="w-full px-4 py-2 border rounded-lg" placeholder="Zoek klant...">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Datum</label>
+                                <input type="date" id="afspraakDatum" class="w-full px-4 py-2 border rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Tijd</label>
+                                <input type="time" id="afspraakTijd" class="w-full px-4 py-2 border rounded-lg" value="09:00">
+                            </div>
+                        </div>
+                        <button onclick="createAfspraak()" class="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">
+                            📅 Inplannen
+                        </button>
+                    </div>
+                `;
+                document.getElementById('afspraakDatum').valueAsDate = new Date();
+            } else if (type === 'offerte') {
+                title.textContent = '📄 Offerte maken';
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Klant</label>
+                            <input type="text" id="offerteKlant" class="w-full px-4 py-2 border rounded-lg" placeholder="Zoek klant...">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Type werk</label>
+                            <select id="offerteType" class="w-full px-4 py-2 border rounded-lg">
+                                <option value="stucwerk">Stucwerk</option>
+                                <option value="sierpleister">Sierpleister</option>
+                                <option value="spuitwerk">Spuitwerk</option>
+                                <option value="renovatie">Renovatie</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Omschrijving</label>
+                            <textarea id="offerteOmschrijving" class="w-full px-4 py-2 border rounded-lg h-24" placeholder="Beschrijf werkzaamheden..."></textarea>
+                        </div>
+                        <button onclick="generateOfferte()" class="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">
+                            ✨ Genereer offerte tekst
+                        </button>
+                    </div>
+                `;
+            }
+            modal.classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('actionModal').classList.remove('active');
+        }
+        
+        async function generateEmail() {
+            const to = document.getElementById('emailTo').value;
+            const subject = document.getElementById('emailSubject').value;
+            const content = document.getElementById('emailContent').value;
+            if (!to || !content) { alert('Vul alle velden in'); return; }
+            closeModal();
+            document.getElementById('chatInput').value = `Schrijf een professionele email aan ${to} met onderwerp "${subject}". Inhoud: ${content}.`;
+            sendMessage();
+        }
+        
+        async function createAfspraak() {
+            const type = document.getElementById('afspraakType').value;
+            const klant = document.getElementById('afspraakKlant').value;
+            const datum = document.getElementById('afspraakDatum').value;
+            const tijd = document.getElementById('afspraakTijd').value;
+            if (!klant || !datum) { alert('Vul alle velden in'); return; }
+            closeModal();
+            document.getElementById('chatInput').value = `Plan een ${type} afspraak in met ${klant} op ${datum} om ${tijd}.`;
+            sendMessage();
+        }
+        
+        async function generateOfferte() {
+            const klant = document.getElementById('offerteKlant').value;
+            const type = document.getElementById('offerteType').value;
+            const omschrijving = document.getElementById('offerteOmschrijving').value;
+            if (!klant || !omschrijving) { alert('Vul alle velden in'); return; }
+            closeModal();
+            document.getElementById('chatInput').value = `Maak een professionele offerte tekst voor ${klant}. Type: ${type}. Werkzaamheden: ${omschrijving}.`;
+            sendMessage();
+        }
+        
+        // History
+        function toggleHistory() {
+            document.getElementById('historyPanel').classList.toggle('open');
+        }
+        
+        function loadHistory() {
+            const list = document.getElementById('historyList');
+            list.innerHTML = chatHistory.length === 0 
+                ? '<div class="p-4 text-center text-gray-400">Geen geschiedenis</div>'
+                : chatHistory.slice().reverse().map((conv, i) => `
+                    <div class="history-item" onclick="loadConversation(${chatHistory.length - 1 - i})">
+                        <div class="font-medium text-sm truncate">${conv.title || 'Gesprek'}</div>
+                        <div class="text-xs text-gray-400">${conv.date}</div>
+                    </div>
+                `).join('');
+        }
+        
+        function saveToHistory() {
+            if (currentConversation.length > 1) {
+                const title = currentConversation[0]?.content?.substring(0, 50) || 'Gesprek';
+                chatHistory.push({ title, date: new Date().toLocaleDateString('nl-NL'), messages: currentConversation });
+                localStorage.setItem('stucieHistory', JSON.stringify(chatHistory.slice(-50)));
+                loadHistory();
+            }
+        }
+        
+        function loadConversation(index) {
+            const conv = chatHistory[index];
+            if (!conv) return;
+            clearChat(false);
+            conv.messages.forEach(m => addMessage(m.content, m.role === 'user'));
+            toggleHistory();
+        }
+        
+        function searchHistory() {
+            const query = document.getElementById('historySearch').value.toLowerCase();
+            document.querySelectorAll('.history-item').forEach(item => {
+                item.style.display = item.textContent.toLowerCase().includes(query) ? 'block' : 'none';
+            });
+        }
+        
+        function clearHistory() {
+            if (confirm('Alle geschiedenis wissen?')) {
+                chatHistory = [];
+                localStorage.removeItem('stucieHistory');
+                loadHistory();
+            }
+        }
+        
+        // Dark Mode
+        function initDarkMode() {
+            if (darkMode) {
+                document.body.classList.add('dark');
+                document.getElementById('darkModeBtn').textContent = '☀️';
+            }
+        }
+        
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            document.body.classList.toggle('dark');
+            document.getElementById('darkModeBtn').textContent = darkMode ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', darkMode);
+        }
+        
+        // Utilities
+        function clearChat(confirm_ = true) {
+            if (confirm_ && !confirm('Gesprek wissen?')) return;
+            saveToHistory();
+            currentConversation = [];
+            const container = document.getElementById('chatMessages');
+            container.querySelectorAll('.message').forEach((m, i) => {
+                if (i > 0 && m.id !== 'typingIndicator') m.remove();
+            });
+        }
+        
+        function attachFile() {
+            alert('📎 Bestand uploaden komt binnenkort!');
+        }
+        
+        function logout() {
+            saveToHistory();
+            fetch('/api/auth/logout', { method: 'POST' }).then(() => window.location.href = '/login.html');
+        }
+        
+        // Keyboard shortcut
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'v' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                toggleVoice();
+            }
+        });
+        
+        window.addEventListener('beforeunload', saveToHistory);
+    </script>
+    <script src="/sidebar.js"></script>
+</body>
+</html>

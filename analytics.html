@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Analytics - StucAdmin Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/sidebar.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; }
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; }
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .insight-card { padding: 16px; border-radius: 12px; border-left: 4px solid; }
+        .insight-warning { background: #fef3c7; border-left-color: #f59e0b; }
+        .insight-success { background: #dcfce7; border-left-color: #10b981; }
+        .insight-info { background: #dbeafe; border-left-color: #3b82f6; }
+        .insight-danger { background: #fee2e2; border-left-color: #ef4444; }
+        main { padding: 24px; min-height: 100vh; }
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            main { margin-left: 0; padding: 70px 12px 24px 12px; }
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
+    <div class="flex min-h-screen">
+        <aside class="sidebar">
+            <div class="p-6 border-b border-gray-100">
+                <h1 class="text-xl font-bold text-indigo-600">StucAdmin</h1>
+                <p class="text-xs text-gray-400 mt-1">Professional Suite</p>
+            </div>
+            <nav class="flex-1 p-4 overflow-y-auto">
+                <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
+                <a href="omzet.html" class="nav-item">💹 Omzet</a>
+                <a href="klanten360.html" class="nav-item">🎯 Klanten 360</a>
+                <a href="planning.html" class="nav-item">📅 Planning</a>
+                <a href="opname.html" class="nav-item">📋 Opname</a>
+                <a href="offerteaanvragen.html" class="nav-item">📩 Offertes</a>
+                <a href="zzp-inhuur.html" class="nav-item">🤝 ZZP Inhuur</a>
+                <a href="uren-pro.html" class="nav-item">⏱️ Uren Pro+</a>
+                <a href="calculator.html" class="nav-item">🧮 Calculator</a>
+                <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
+                <a href="stucie.html" class="nav-item">🤖 Stucie</a>
+            </nav>
+            <div class="p-4 border-t border-gray-100">
+                <button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button>
+            </div>
+        </aside>
+
+        <main class="flex-1">
+            <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold">📈 Advanced Analytics</h1>
+                    <p class="text-gray-500 text-sm">Diepgaande analyse & inzichten</p>
+                </div>
+                <div class="flex gap-2">
+                    <select id="periodSelect" class="btn-secondary text-sm" onchange="refreshAnalytics()">
+                        <option value="3">Laatste 3 maanden</option>
+                        <option value="6" selected>Laatste 6 maanden</option>
+                        <option value="12">Laatste 12 maanden</option>
+                    </select>
+                    <button onclick="refreshAnalytics()" class="btn-primary text-sm">🔄 Refresh</button>
+                </div>
+            </header>
+
+            <!-- KPI Summary -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                <div class="card p-4 text-center">
+                    <p class="text-gray-500 text-xs">Totale Inkoop</p>
+                    <p class="text-2xl font-bold text-indigo-600" id="totalSpent">€0</p>
+                </div>
+                <div class="card p-4 text-center">
+                    <p class="text-gray-500 text-xs">Gem. per Maand</p>
+                    <p class="text-2xl font-bold text-green-600" id="avgMonth">€0</p>
+                </div>
+                <div class="card p-4 text-center">
+                    <p class="text-gray-500 text-xs">Leveranciers</p>
+                    <p class="text-2xl font-bold text-orange-600" id="supplierCount">0</p>
+                </div>
+                <div class="card p-4 text-center">
+                    <p class="text-gray-500 text-xs">Facturen</p>
+                    <p class="text-2xl font-bold text-purple-600" id="invoiceCount">0</p>
+                </div>
+            </div>
+
+            <!-- Charts Row 1 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="card p-4">
+                    <h3 class="font-bold mb-4 text-sm">💰 Kosten Distributie per Leverancier</h3>
+                    <div class="h-64"><canvas id="distributionChart"></canvas></div>
+                </div>
+                <div class="card p-4">
+                    <h3 class="font-bold mb-4 text-sm">📊 Maandelijkse Vergelijking</h3>
+                    <div class="h-64"><canvas id="comparisonChart"></canvas></div>
+                </div>
+            </div>
+
+            <!-- Charts Row 2 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div class="card p-4 lg:col-span-2">
+                    <h3 class="font-bold mb-4 text-sm">📅 Kosten Trend</h3>
+                    <div class="h-48"><canvas id="trendChart"></canvas></div>
+                </div>
+                <div class="card p-4">
+                    <h3 class="font-bold mb-4 text-sm">⚡ Inzichten</h3>
+                    <div id="insightsList" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <!-- Top Suppliers Table -->
+            <div class="card p-4">
+                <h3 class="font-bold mb-4 text-sm">🏆 Top 10 Leveranciers</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left py-2 text-gray-500 font-medium">#</th>
+                                <th class="text-left py-2 text-gray-500 font-medium">Leverancier</th>
+                                <th class="text-right py-2 text-gray-500 font-medium">Totaal</th>
+                                <th class="text-right py-2 text-gray-500 font-medium">Facturen</th>
+                                <th class="text-right py-2 text-gray-500 font-medium">Gem.</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suppliersTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let charts = {};
+        let purchases = [];
+
+        function toggleMenu() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.querySelector('.sidebar-overlay').classList.toggle('open');
+        }
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
+
+        async function refreshAnalytics() {
+            try {
+                const months = parseInt(document.getElementById('periodSelect').value);
+                
+                // Fetch purchase invoices (relatieve URL - werkt overal)
+                const res = await fetch('/api/purchase_invoices');
+                purchases = await res.json();
+                
+                // Filter op periode
+                const cutoffDate = new Date();
+                cutoffDate.setMonth(cutoffDate.getMonth() - months);
+                
+                const filtered = purchases.filter(p => new Date(p.date) >= cutoffDate);
+                
+                // Bereken statistieken
+                const totalSpent = filtered.reduce((sum, p) => sum + parseFloat(p.total_price_incl_tax || 0), 0);
+                const avgMonth = totalSpent / months;
+                
+                // Groepeer per leverancier
+                const suppliers = {};
+                filtered.forEach(p => {
+                    const name = p.contact?.company_name || 'Onbekend';
+                    if (!suppliers[name]) {
+                        suppliers[name] = { total: 0, count: 0 };
+                    }
+                    suppliers[name].total += parseFloat(p.total_price_incl_tax || 0);
+                    suppliers[name].count += 1;
+                });
+                
+                // Update KPIs
+                document.getElementById('totalSpent').textContent = '€' + totalSpent.toLocaleString('nl-NL', {maximumFractionDigits: 0});
+                document.getElementById('avgMonth').textContent = '€' + avgMonth.toLocaleString('nl-NL', {maximumFractionDigits: 0});
+                document.getElementById('supplierCount').textContent = Object.keys(suppliers).length;
+                document.getElementById('invoiceCount').textContent = filtered.length;
+                
+                // Render alles
+                renderCharts(filtered, suppliers, months);
+                renderInsights(filtered, suppliers, totalSpent);
+                renderSuppliersTable(suppliers);
+                
+            } catch (error) {
+                console.error('Analytics refresh failed:', error);
+            }
+        }
+
+        function renderCharts(filtered, suppliers, months) {
+            // Destroy existing charts
+            Object.values(charts).forEach(c => c?.destroy());
+            
+            // Distribution Chart (Pie)
+            const topSuppliers = Object.entries(suppliers)
+                .sort((a, b) => b[1].total - a[1].total)
+                .slice(0, 6);
+            
+            const distCtx = document.getElementById('distributionChart').getContext('2d');
+            charts.distribution = new Chart(distCtx, {
+                type: 'pie',
+                data: {
+                    labels: topSuppliers.map(s => s[0].substring(0, 15)),
+                    datasets: [{
+                        data: topSuppliers.map(s => s[1].total),
+                        backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }
+                    }
+                }
+            });
+
+            // Monthly Comparison Chart
+            const monthNames = ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+            const monthlyData = {};
+            
+            filtered.forEach(p => {
+                const d = new Date(p.date);
+                const key = `${d.getFullYear()}-${d.getMonth()}`;
+                if (!monthlyData[key]) {
+                    monthlyData[key] = { label: monthNames[d.getMonth()], total: 0 };
+                }
+                monthlyData[key].total += parseFloat(p.total_price_incl_tax || 0);
+            });
+            
+            const sortedMonths = Object.entries(monthlyData)
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .slice(-months);
+
+            const compCtx = document.getElementById('comparisonChart').getContext('2d');
+            charts.comparison = new Chart(compCtx, {
+                type: 'bar',
+                data: {
+                    labels: sortedMonths.map(m => m[1].label),
+                    datasets: [{
+                        label: 'Inkoop',
+                        data: sortedMonths.map(m => m[1].total),
+                        backgroundColor: '#6366f1',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            ticks: { callback: v => '€' + v.toLocaleString() }
+                        }
+                    }
+                }
+            });
+
+            // Trend Chart
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            charts.trend = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: sortedMonths.map(m => m[1].label),
+                    datasets: [{
+                        label: 'Kosten',
+                        data: sortedMonths.map(m => m[1].total),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => '€' + v.toLocaleString() }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderInsights(filtered, suppliers, totalSpent) {
+            const container = document.getElementById('insightsList');
+            const insights = [];
+            
+            // Top supplier insight
+            const topSupplier = Object.entries(suppliers).sort((a, b) => b[1].total - a[1].total)[0];
+            if (topSupplier) {
+                const percentage = ((topSupplier[1].total / totalSpent) * 100).toFixed(0);
+                insights.push({
+                    type: percentage > 40 ? 'warning' : 'info',
+                    icon: '🏢',
+                    title: 'Top Leverancier',
+                    text: `${topSupplier[0].substring(0, 20)} = ${percentage}% van inkoop`
+                });
+            }
+            
+            // Average invoice insight
+            const avgInvoice = filtered.length > 0 ? totalSpent / filtered.length : 0;
+            insights.push({
+                type: 'info',
+                icon: '📄',
+                title: 'Gem. Factuur',
+                text: `€${avgInvoice.toLocaleString('nl-NL', {maximumFractionDigits: 0})} per factuur`
+            });
+            
+            // High value invoices
+            const highValue = filtered.filter(p => parseFloat(p.total_price_incl_tax || 0) > 1000);
+            if (highValue.length > 0) {
+                insights.push({
+                    type: highValue.length > 5 ? 'danger' : 'warning',
+                    icon: '⚠️',
+                    title: 'Grote Facturen',
+                    text: `${highValue.length} facturen boven €1000`
+                });
+            }
+            
+            // Supplier diversity
+            const supplierCount = Object.keys(suppliers).length;
+            insights.push({
+                type: supplierCount > 5 ? 'success' : 'warning',
+                icon: '🎯',
+                title: 'Diversiteit',
+                text: `${supplierCount} verschillende leveranciers`
+            });
+            
+            container.innerHTML = insights.map(i => `
+                <div class="insight-card insight-${i.type}">
+                    <p class="font-bold text-sm">${i.icon} ${i.title}</p>
+                    <p class="text-xs mt-1">${i.text}</p>
+                </div>
+            `).join('');
+        }
+
+        function renderSuppliersTable(suppliers) {
+            const sorted = Object.entries(suppliers)
+                .sort((a, b) => b[1].total - a[1].total)
+                .slice(0, 10);
+            
+            document.getElementById('suppliersTable').innerHTML = sorted.map((s, i) => {
+                const avg = s[1].total / s[1].count;
+                const emoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+                return `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="py-3">${emoji}</td>
+                        <td class="py-3 font-medium">${s[0]}</td>
+                        <td class="py-3 text-right font-semibold text-indigo-600">€${s[1].total.toLocaleString('nl-NL', {maximumFractionDigits: 0})}</td>
+                        <td class="py-3 text-right text-gray-500">${s[1].count}</td>
+                        <td class="py-3 text-right text-gray-500">€${avg.toLocaleString('nl-NL', {maximumFractionDigits: 0})}</td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="5" class="py-8 text-center text-gray-400">Geen data</td></tr>';
+        }
+
+        // Load on page load
+        refreshAnalytics();
+    </script>
+<script src="/data-sync.js"></script>
+</body>
+</html>

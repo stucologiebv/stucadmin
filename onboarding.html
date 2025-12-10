@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onboarding - StucAdmin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f8fafc; min-height: 100vh; }
+        .step { display: none; }
+        .step.active { display: block; }
+        .input-field { background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; width: 100%; font-size: 16px; }
+        .input-field:focus { outline: none; border-color: #f97316; }
+        .btn-primary { background: #f97316; color: white; padding: 14px 28px; border-radius: 12px; font-weight: 600; border: none; cursor: pointer; }
+        .btn-primary:hover { background: #ea580c; }
+        .btn-secondary { background: #e2e8f0; color: #475569; padding: 14px 28px; border-radius: 12px; font-weight: 600; border: none; cursor: pointer; }
+        .btn-skip { color: #94a3b8; text-decoration: underline; cursor: pointer; }
+        .provider-card { border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s; }
+        .provider-card:hover { border-color: #f97316; background: #fff7ed; }
+        .provider-card.selected { border-color: #f97316; background: #fff7ed; }
+        .provider-card .check { display: none; }
+        .provider-card.selected .check { display: block; }
+    </style>
+</head>
+<body>
+    <div class="max-w-2xl mx-auto p-6 pt-12">
+        <!-- Progress -->
+        <div class="flex justify-between mb-8">
+            <div class="step-indicator flex items-center gap-2" id="ind1">
+                <div class="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold">1</div>
+                <span class="text-sm font-medium">Bedrijf</span>
+            </div>
+            <div class="step-indicator flex items-center gap-2" id="ind2">
+                <div class="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-bold">2</div>
+                <span class="text-sm text-gray-500">Boekhouding</span>
+            </div>
+            <div class="step-indicator flex items-center gap-2" id="ind3">
+                <div class="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-bold">3</div>
+                <span class="text-sm text-gray-500">Agenda</span>
+            </div>
+        </div>
+
+        <!-- Step 1: Bedrijfsgegevens -->
+        <div class="step active" id="step1">
+            <div class="bg-white rounded-2xl p-8 shadow-lg">
+                <h1 class="text-2xl font-bold mb-2">Welkom bij StucAdmin! 🎉</h1>
+                <p class="text-gray-500 mb-6">Laten we je account instellen. Vul je bedrijfsgegevens aan.</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">KVK-nummer</label>
+                        <input type="text" id="kvk" class="input-field" placeholder="12345678">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">BTW-nummer</label>
+                        <input type="text" id="btw" class="input-field" placeholder="NL123456789B01">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Adres</label>
+                        <input type="text" id="adres" class="input-field" placeholder="Straatnaam 123, 1234 AB Plaats">
+                    </div>
+                </div>
+                
+                <div class="flex justify-end mt-8">
+                    <button onclick="saveStep1()" class="btn-primary">Volgende →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Boekhouding Keuze -->
+        <div class="step" id="step2">
+            <div class="bg-white rounded-2xl p-8 shadow-lg">
+                <h1 class="text-2xl font-bold mb-2">Kies je Boekhouding</h1>
+                <p class="text-gray-500 mb-6">Selecteer je boekhoudpakket om klanten en facturen te synchroniseren.</p>
+                
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <!-- Moneybird -->
+                    <div class="provider-card" onclick="selectProvider('moneybird')">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white text-lg">🐦</span>
+                                </div>
+                                <div>
+                                    <div class="font-semibold">Moneybird</div>
+                                    <div class="text-xs text-gray-500">Populair in NL</div>
+                                </div>
+                            </div>
+                            <span class="check text-orange-500 text-xl">✓</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Exact Online -->
+                    <div class="provider-card" onclick="selectProvider('exact')">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold">E</span>
+                                </div>
+                                <div>
+                                    <div class="font-semibold">Exact Online</div>
+                                    <div class="text-xs text-gray-500">Complete ERP</div>
+                                </div>
+                            </div>
+                            <span class="check text-orange-500 text-xl">✓</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Snelstart -->
+                    <div class="provider-card" onclick="selectProvider('snelstart')">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+                                    <span class="text-white text-lg">⚡</span>
+                                </div>
+                                <div>
+                                    <div class="font-semibold">Snelstart</div>
+                                    <div class="text-xs text-gray-500">ZZP & MKB</div>
+                                </div>
+                            </div>
+                            <span class="check text-orange-500 text-xl">✓</span>
+                        </div>
+                    </div>
+                    
+                    <!-- e-Boekhouden -->
+                    <div class="provider-card" onclick="selectProvider('eboekhouden')">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold text-sm">eB</span>
+                                </div>
+                                <div>
+                                    <div class="font-semibold">e-Boekhouden</div>
+                                    <div class="text-xs text-gray-500">Online boekhouden</div>
+                                </div>
+                            </div>
+                            <span class="check text-orange-500 text-xl">✓</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Twinfield -->
+                    <div class="provider-card" onclick="selectProvider('twinfield')">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold">T</span>
+                                </div>
+                                <div>
+                                    <div class="font-semibold">Twinfield</div>
+                                    <div class="text-xs text-gray-500">Wolters Kluwer</div>
+                                </div>
+                            </div>
+                            <span class="check text-orange-500 text-xl">✓</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Visma -->
+                    <div class="provider-card" onclick="selectProvider('visma')">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
+                                    <span class="text-white font-bold">V</span>
+                                </div>
+                                <div>
+                                    <div class="font-semibold">Visma</div>
+                                    <div class="text-xs text-gray-500">eAccounting</div>
+                                </div>
+                            </div>
+                            <span class="check text-orange-500 text-xl">✓</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between mt-8">
+                    <button onclick="nextStep(1)" class="btn-secondary">← Terug</button>
+                    <div class="flex gap-4">
+                        <span onclick="nextStep(3)" class="btn-skip self-center">Overslaan</span>
+                        <button onclick="goToProviderConfig()" class="btn-primary" id="btnProviderNext" disabled>Volgende →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2b: Provider Configuratie -->
+        <div class="step" id="step2b">
+            <div class="bg-white rounded-2xl p-8 shadow-lg">
+                <h1 class="text-2xl font-bold mb-2" id="providerTitle">Boekhouding Koppelen</h1>
+                <p class="text-gray-500 mb-6" id="providerSubtitle">Vul je API gegevens in.</p>
+                
+                <div id="providerHelp" class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                    <!-- Dynamisch gevuld -->
+                </div>
+                
+                <div id="providerFields" class="space-y-4">
+                    <!-- Dynamisch gevuld -->
+                </div>
+                
+                <div class="flex justify-between mt-8">
+                    <button onclick="nextStep(2)" class="btn-secondary">← Terug</button>
+                    <div class="flex gap-4">
+                        <span onclick="nextStep(3)" class="btn-skip self-center">Overslaan</span>
+                        <button onclick="saveProviderConfig()" class="btn-primary">Koppelen & Volgende →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Google Calendar -->
+        <div class="step" id="step3">
+            <div class="bg-white rounded-2xl p-8 shadow-lg">
+                <h1 class="text-2xl font-bold mb-2">Google Agenda Koppeling</h1>
+                <p class="text-gray-500 mb-6">Koppel je Google Agenda om projecten automatisch in te plannen.</p>
+                
+                <div id="googleNotConnected">
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                        <p class="text-sm text-blue-800">
+                            <strong>Eén klik koppeling</strong><br>
+                            Klik op de knop hieronder om je Google Account te koppelen.
+                        </p>
+                    </div>
+                    
+                    <button onclick="connectGoogle()" class="w-full py-4 px-6 bg-white border-2 border-gray-200 rounded-xl font-semibold hover:bg-gray-50 flex items-center justify-center gap-3">
+                        <img src="https://www.google.com/favicon.ico" class="w-5 h-5">
+                        Koppel Google Account
+                    </button>
+                </div>
+                
+                <div id="googleConnected" class="hidden">
+                    <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+                        <p class="text-sm text-green-800">
+                            ✅ <strong>Google Account gekoppeld!</strong>
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between mt-8">
+                    <button onclick="nextStep(2)" class="btn-secondary">← Terug</button>
+                    <div class="flex gap-4">
+                        <span onclick="completeOnboarding()" class="btn-skip self-center">Overslaan</span>
+                        <button onclick="completeOnboarding()" class="btn-primary">Afronden ✓</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Complete -->
+        <div class="step" id="stepComplete">
+            <div class="bg-white rounded-2xl p-8 shadow-lg text-center">
+                <div class="text-6xl mb-4">🎉</div>
+                <h1 class="text-2xl font-bold mb-2">Je bent klaar!</h1>
+                <p class="text-gray-500 mb-6">Je StucAdmin account is volledig ingesteld.</p>
+                <button onclick="window.location.href='/dashboard.html'" class="btn-primary">Naar Dashboard →</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 1;
+        let selectedProvider = null;
+        let companyId = null;
+        
+        // Provider configuraties
+        const providerConfigs = {
+            moneybird: {
+                title: 'Moneybird Koppelen',
+                help: `<strong>Hoe vind ik deze gegevens?</strong><br>
+                    1. Log in op <a href="https://moneybird.com" target="_blank" class="underline">moneybird.com</a><br>
+                    2. Ga naar Instellingen → Ontwikkelaars → Personal Access Token<br>
+                    3. Kopieer je token en administratie ID`,
+                fields: [
+                    { id: 'token', label: 'Personal Access Token', type: 'password', placeholder: 'Jouw token' },
+                    { id: 'adminId', label: 'Administratie ID', type: 'text', placeholder: '123456789' }
+                ]
+            },
+            exact: {
+                title: 'Exact Online Koppelen',
+                help: `<strong>Hoe vind ik deze gegevens?</strong><br>
+                    1. Log in op <a href="https://start.exactonline.nl" target="_blank" class="underline">Exact Online</a><br>
+                    2. Ga naar App Center → Mijn Apps → Registreer nieuwe app<br>
+                    3. Kopieer Client ID en Secret`,
+                fields: [
+                    { id: 'clientId', label: 'Client ID', type: 'text', placeholder: 'Jouw Client ID' },
+                    { id: 'clientSecret', label: 'Client Secret', type: 'password', placeholder: 'Jouw Client Secret' },
+                    { id: 'division', label: 'Division Code', type: 'text', placeholder: '123456' }
+                ]
+            },
+            snelstart: {
+                title: 'Snelstart Koppelen',
+                help: `<strong>Hoe vind ik deze gegevens?</strong><br>
+                    1. Log in op <a href="https://www.snelstart.nl" target="_blank" class="underline">Snelstart</a><br>
+                    2. Ga naar Instellingen → API → API Sleutel genereren<br>
+                    3. Kopieer de API key en klant ID`,
+                fields: [
+                    { id: 'apiKey', label: 'API Sleutel', type: 'password', placeholder: 'Jouw API key' },
+                    { id: 'customerId', label: 'Klant ID', type: 'text', placeholder: 'Jouw klant ID' }
+                ]
+            },
+            eboekhouden: {
+                title: 'e-Boekhouden Koppelen',
+                help: `<strong>Hoe vind ik deze gegevens?</strong><br>
+                    1. Log in op <a href="https://www.e-boekhouden.nl" target="_blank" class="underline">e-Boekhouden</a><br>
+                    2. Ga naar Beheer → Koppelingen → API<br>
+                    3. Genereer gebruikersnaam en beveiligingscodes`,
+                fields: [
+                    { id: 'username', label: 'Gebruikersnaam', type: 'text', placeholder: 'API gebruikersnaam' },
+                    { id: 'code1', label: 'Beveiligingscode 1', type: 'password', placeholder: 'Code 1' },
+                    { id: 'code2', label: 'Beveiligingscode 2', type: 'password', placeholder: 'Code 2' }
+                ]
+            },
+            twinfield: {
+                title: 'Twinfield Koppelen',
+                help: `<strong>Hoe vind ik deze gegevens?</strong><br>
+                    1. Log in op <a href="https://login.twinfield.com" target="_blank" class="underline">Twinfield</a><br>
+                    2. Ga naar Instellingen → Webservices<br>
+                    3. Maak een OAuth applicatie aan`,
+                fields: [
+                    { id: 'clientId', label: 'Client ID', type: 'text', placeholder: 'OAuth Client ID' },
+                    { id: 'clientSecret', label: 'Client Secret', type: 'password', placeholder: 'OAuth Secret' },
+                    { id: 'organizationCode', label: 'Organisatie Code', type: 'text', placeholder: 'Jouw org code' }
+                ]
+            },
+            visma: {
+                title: 'Visma eAccounting Koppelen',
+                help: `<strong>Hoe vind ik deze gegevens?</strong><br>
+                    1. Log in op <a href="https://eaccounting.visma.com" target="_blank" class="underline">Visma eAccounting</a><br>
+                    2. Ga naar Instellingen → Integraties → API<br>
+                    3. Maak API credentials aan`,
+                fields: [
+                    { id: 'clientId', label: 'Client ID', type: 'text', placeholder: 'API Client ID' },
+                    { id: 'clientSecret', label: 'Client Secret', type: 'password', placeholder: 'API Secret' },
+                    { id: 'companyId', label: 'Company ID', type: 'text', placeholder: 'Jouw company ID' }
+                ]
+            }
+        };
+        
+        // Init - check auth en laad company
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch('/api/auth/check');
+                if (!res.ok) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                // Laad company data
+                const companyRes = await fetch('/api/company');
+                if (companyRes.ok) {
+                    const company = await companyRes.json();
+                    companyId = company.id;
+                    
+                    // Pre-fill indien beschikbaar
+                    if (company.kvk) document.getElementById('kvk').value = company.kvk;
+                    if (company.btw) document.getElementById('btw').value = company.btw;
+                    if (company.adres) document.getElementById('adres').value = company.adres;
+                }
+                
+                // Check of we terugkomen van Google OAuth
+                if (localStorage.getItem('onboarding_return')) {
+                    localStorage.removeItem('onboarding_return');
+                    nextStep(3);
+                    checkGoogleStatus();
+                }
+            } catch (e) {
+                console.error('Init error:', e);
+            }
+        });
+        
+        function nextStep(step) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.getElementById('step' + step).classList.add('active');
+            updateIndicators(step);
+            currentStep = step;
+            
+            if (step === 3) checkGoogleStatus();
+        }
+        
+        function updateIndicators(step) {
+            const stepNum = step === '2b' ? 2 : step;
+            for (let i = 1; i <= 3; i++) {
+                const ind = document.getElementById('ind' + i);
+                const circle = ind.querySelector('div');
+                const text = ind.querySelector('span');
+                if (i <= stepNum) {
+                    circle.className = 'w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold';
+                    text.className = 'text-sm font-medium';
+                } else {
+                    circle.className = 'w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-bold';
+                    text.className = 'text-sm text-gray-500';
+                }
+            }
+        }
+        
+        function selectProvider(provider) {
+            selectedProvider = provider;
+            
+            // Update UI
+            document.querySelectorAll('.provider-card').forEach(card => card.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+            document.getElementById('btnProviderNext').disabled = false;
+        }
+        
+        function goToProviderConfig() {
+            if (!selectedProvider) return;
+            
+            const config = providerConfigs[selectedProvider];
+            document.getElementById('providerTitle').textContent = config.title;
+            document.getElementById('providerHelp').innerHTML = `<p class="text-sm text-blue-800">${config.help}</p>`;
+            
+            // Render fields
+            const fieldsHtml = config.fields.map(field => `
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">${field.label}</label>
+                    <input type="${field.type}" id="provider_${field.id}" class="input-field" placeholder="${field.placeholder}">
+                </div>
+            `).join('');
+            document.getElementById('providerFields').innerHTML = fieldsHtml;
+            
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.getElementById('step2b').classList.add('active');
+        }
+        
+        async function saveStep1() {
+            const kvk = document.getElementById('kvk').value;
+            const btw = document.getElementById('btw').value;
+            const adres = document.getElementById('adres').value;
+            
+            try {
+                const res = await fetch('/api/company');
+                if (res.ok) {
+                    const company = await res.json();
+                    await fetch(`/api/companies/${company.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ kvk, btw, adres })
+                    });
+                }
+            } catch (e) {
+                console.error('Save error:', e);
+            }
+            
+            nextStep(2);
+        }
+        
+        async function saveProviderConfig() {
+            const config = providerConfigs[selectedProvider];
+            const data = { provider: selectedProvider };
+            
+            config.fields.forEach(field => {
+                data[field.id] = document.getElementById('provider_' + field.id).value;
+            });
+            
+            try {
+                const res = await fetch(`/api/company/${selectedProvider}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (res.ok) {
+                    nextStep(3);
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Koppeling mislukt');
+                }
+            } catch (e) {
+                alert('Er ging iets mis. Probeer opnieuw.');
+            }
+        }
+        
+        async function checkGoogleStatus() {
+            try {
+                const res = await fetch('/api/google/status');
+                const data = await res.json();
+                
+                if (data.connected) {
+                    document.getElementById('googleNotConnected').classList.add('hidden');
+                    document.getElementById('googleConnected').classList.remove('hidden');
+                }
+            } catch (e) {}
+        }
+        
+        function connectGoogle() {
+            localStorage.setItem('onboarding_return', 'true');
+            window.location.href = '/api/google/auth';
+        }
+        
+        function completeOnboarding() {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.getElementById('stepComplete').classList.add('active');
+        }
+    </script>
+</body>
+</html>

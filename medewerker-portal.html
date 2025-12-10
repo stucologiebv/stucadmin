@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Medewerker Portal | Stucologie</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <link rel="apple-touch-icon" href="/logo-stucologie.jpg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .login-card { background: white; border-radius: 24px; padding: 40px; width: 100%; max-width: 400px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+        .pin-input { display: flex; gap: 12px; justify-content: center; margin: 30px 0; }
+        .pin-digit { width: 60px; height: 70px; border: 2px solid #e5e7eb; border-radius: 16px; font-size: 28px; font-weight: 700; text-align: center; transition: all 0.2s; }
+        .pin-digit:focus { border-color: #6366f1; outline: none; box-shadow: 0 0 0 4px rgba(99,102,241,0.1); }
+        .pin-digit.filled { border-color: #6366f1; background: #f0f0ff; }
+        .dashboard { display: none; min-height: 100vh; background: #f8fafc; }
+        .dashboard.active { display: block; }
+        .dashboard-header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 24px 20px; }
+        .timer-card { background: white; border-radius: 24px; padding: 32px; margin: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); text-align: center; }
+        .timer-display { font-size: 56px; font-weight: 800; font-variant-numeric: tabular-nums; color: #1e293b; margin: 20px 0; letter-spacing: -2px; }
+        .timer-display.running { color: #6366f1; }
+        .timer-display.paused { color: #f59e0b; }
+        .location-badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; background: #f0fdf4; color: #16a34a; border-radius: 20px; font-size: 13px; font-weight: 500; margin-bottom: 16px; }
+        .location-badge.loading { background: #fef3c7; color: #d97706; }
+        .location-badge.error { background: #fef2f2; color: #dc2626; }
+        .btn-start { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 24px 56px; border-radius: 24px; font-size: 20px; font-weight: 700; cursor: pointer; transition: all 0.3s; box-shadow: 0 10px 30px rgba(16,185,129,0.4); width: 100%; max-width: 280px; }
+        .btn-start:hover { transform: translateY(-2px); box-shadow: 0 15px 40px rgba(16,185,129,0.5); }
+        .btn-stop { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; border: none; padding: 16px 32px; border-radius: 16px; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 25px rgba(239,68,68,0.4); }
+        .btn-pause { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; border: none; padding: 16px 32px; border-radius: 16px; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 25px rgba(245,158,11,0.4); }
+        .btn-resume { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 20px; margin-bottom: 20px; }
+        .stat-card { background: white; border-radius: 16px; padding: 16px; text-align: center; }
+        .stat-value { font-size: 24px; font-weight: 800; color: #6366f1; }
+        .stat-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+        .actions-card { background: white; border-radius: 20px; padding: 20px; margin: 0 20px 20px; }
+        .actions-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .action-btn { background: #f8fafc; border: 2px solid #e5e7eb; border-radius: 16px; padding: 16px 8px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
+        .action-btn:hover { border-color: #6366f1; background: white; }
+        .action-btn.has-items { border-color: #10b981; background: #f0fdf4; }
+        .action-btn-icon { font-size: 28px; margin-bottom: 6px; }
+        .action-btn-label { font-size: 11px; font-weight: 600; color: #475569; }
+        .action-btn-count { position: absolute; top: 8px; right: 8px; background: #10b981; color: white; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 10px; }
+        .notitie-card { background: white; border-radius: 20px; padding: 20px; margin: 0 20px 20px; }
+        .notitie-input { width: 100%; padding: 14px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 15px; resize: none; }
+        .notitie-input:focus { border-color: #6366f1; outline: none; }
+        .toegevoegd-card { background: white; border-radius: 20px; padding: 20px; margin: 0 20px 20px; }
+        .toegevoegd-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+        .toegevoegd-item:last-child { border-bottom: none; }
+        .week-card { background: white; border-radius: 20px; padding: 20px; margin: 0 20px 20px; }
+        .week-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 16px; }
+        .week-day { text-align: center; padding: 12px 8px; border-radius: 12px; background: #f8fafc; }
+        .week-day.today { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; }
+        .week-day.has-hours { background: #dcfce7; }
+        .week-day-name { font-size: 11px; font-weight: 600; text-transform: uppercase; opacity: 0.7; }
+        .week-day-hours { font-size: 18px; font-weight: 700; margin-top: 4px; }
+        .recent-card { background: white; border-radius: 20px; padding: 20px; margin: 0 20px 20px; }
+        .recent-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #f1f5f9; }
+        .recent-item:last-child { border-bottom: none; }
+        .recent-date { font-size: 13px; color: #64748b; }
+        .recent-project { font-weight: 600; color: #1e293b; }
+        .recent-hours { font-size: 18px; font-weight: 700; color: #6366f1; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e5e7eb; padding: 12px 20px; display: flex; justify-content: space-around; z-index: 100; }
+        .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 16px; border-radius: 12px; cursor: pointer; background: none; border: none; }
+        .nav-btn.active { background: #f0f0ff; color: #6366f1; }
+        .nav-btn-icon { font-size: 24px; }
+        .nav-btn-label { font-size: 11px; font-weight: 600; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: white; border-radius: 24px 24px 0 0; padding: 24px; width: 100%; max-width: 500px; max-height: 80vh; overflow-y: auto; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-handle { width: 40px; height: 4px; background: #e5e7eb; border-radius: 2px; margin: 0 auto 20px; }
+        .history-page, .profile-page { display: none; min-height: 100vh; background: #f8fafc; padding-bottom: 80px; }
+        .history-page.active, .profile-page.active { display: block; }
+        .history-header { background: white; padding: 20px; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 50; }
+        .history-filters { display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; }
+        .filter-btn { padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; border: 2px solid #e5e7eb; background: white; }
+        .filter-btn.active { background: #6366f1; color: white; border-color: #6366f1; }
+        .history-list { padding: 20px; }
+        .history-group { margin-bottom: 24px; }
+        .history-group-title { font-size: 13px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 12px; }
+        .history-item { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+        .profile-header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 40px 20px; text-align: center; }
+        .profile-avatar { width: 80px; height: 80px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 16px; }
+        .profile-name { font-size: 24px; font-weight: 700; }
+        .profile-type { opacity: 0.8; margin-top: 4px; }
+        .profile-stats { display: flex; justify-content: center; gap: 40px; margin-top: 24px; }
+        .profile-stat-value { font-size: 24px; font-weight: 800; }
+        .profile-stat-label { font-size: 12px; opacity: 0.8; }
+        .profile-section { background: white; margin: 20px; border-radius: 16px; overflow: hidden; }
+        .profile-item { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-bottom: 1px solid #f1f5f9; }
+        .profile-item:last-child { border-bottom: none; }
+        .logout-btn { background: #fef2f2; color: #dc2626; padding: 16px 20px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; cursor: pointer; }
+        .page-content { padding-bottom: 100px; }
+    </style>
+</head>
+<body>
+    <div class="login-container" id="loginScreen">
+        <div class="login-card">
+            <div class="text-center mb-6"><img src="/logo-stucologie.jpg" alt="Stucologie" style="max-width: 150px; margin: 0 auto;"></div>
+            <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">Welkom! 👋</h1>
+            <p class="text-center text-gray-500 mb-6">Voer je pincode in om te starten</p>
+            <div class="pin-input">
+                <input type="tel" maxlength="1" class="pin-digit" id="pin1" oninput="handlePinInput(1)" onkeydown="handlePinKeydown(event, 1)">
+                <input type="tel" maxlength="1" class="pin-digit" id="pin2" oninput="handlePinInput(2)" onkeydown="handlePinKeydown(event, 2)">
+                <input type="tel" maxlength="1" class="pin-digit" id="pin3" oninput="handlePinInput(3)" onkeydown="handlePinKeydown(event, 3)">
+                <input type="tel" maxlength="1" class="pin-digit" id="pin4" oninput="handlePinInput(4)" onkeydown="handlePinKeydown(event, 4)">
+            </div>
+            <div id="loginError" class="text-center text-red-500 text-sm mb-4 hidden">Ongeldige pincode</div>
+            <label class="flex items-center justify-center gap-2 text-sm text-gray-600 cursor-pointer">
+                <input type="checkbox" id="rememberMe" class="rounded"><span>Onthoud mij op dit apparaat</span>
+            </label>
+        </div>
+    </div>
+
+    <div class="dashboard" id="dashboardScreen">
+        <div class="dashboard-header">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-sm opacity-80" id="greeting">Goedemorgen</div>
+                    <div class="text-2xl font-bold" id="userName">Medewerker</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm opacity-80" id="currentDate">Woensdag</div>
+                    <div class="text-lg font-semibold" id="currentDateFull">3 december</div>
+                </div>
+            </div>
+        </div>
+        <div class="page-content">
+            <div class="timer-card">
+                <div id="notWorkingState">
+                    <div class="text-gray-400 mb-4">
+                        <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <p class="text-gray-500 mb-2">Je bent nog niet ingeklokt</p>
+                    <p class="text-sm text-gray-400 mb-6">Klok in om je werkdag te starten</p>
+                    <button class="btn-start" onclick="askLocationAndStart()">🟢 START WERKDAG</button>
+                </div>
+                <div id="workingState" class="hidden">
+                    <div class="location-badge" id="locationBadge"><span>📍</span><span id="locationText">Locatie ophalen...</span></div>
+                    <div class="timer-display" id="timerDisplay">00:00:00</div>
+                    <div class="flex justify-center gap-4">
+                        <button class="btn-pause" onclick="togglePause()" id="pauseBtn">⏸️ PAUZE</button>
+                        <button class="btn-stop" onclick="stopTimer()">🔴 STOP</button>
+                    </div>
+                    <div class="mt-6 pt-6 border-t border-gray-100">
+                        <div class="flex justify-between text-sm"><span class="text-gray-500">Gestart om</span><span class="font-semibold" id="startTime">--:--</span></div>
+                        <div class="flex justify-between text-sm mt-2"><span class="text-gray-500">Pauze</span><span class="font-semibold" id="pauseTime">0 min</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="actions-card" id="actionsCard" style="display: none;">
+                <h3 class="font-bold text-gray-800 mb-4">📎 Vandaag toevoegen</h3>
+                <div class="actions-grid">
+                    <div class="action-btn" id="btnFoto" onclick="showPhotoCapture()"><div class="action-btn-icon">📸</div><div class="action-btn-label">Foto</div><span class="action-btn-count" id="countFoto" style="display:none;">0</span></div>
+                    <div class="action-btn" id="btnBon" onclick="showBonModal()"><div class="action-btn-icon">🧾</div><div class="action-btn-label">Bon</div><span class="action-btn-count" id="countBon" style="display:none;">0</span></div>
+                    <div class="action-btn" id="btnReis" onclick="showTravelModal()"><div class="action-btn-icon">🚗</div><div class="action-btn-label">Reiskosten</div><span class="action-btn-count" id="countReis" style="display:none;">0</span></div>
+                    <div class="action-btn" onclick="askRefreshLocation()"><div class="action-btn-icon">📍</div><div class="action-btn-label">Check-in</div></div>
+                </div>
+            </div>
+            <div class="notitie-card" id="notitieCard" style="display: none;">
+                <h3 class="font-bold text-gray-800 mb-3">📝 Wat heb je gedaan?</h3>
+                <textarea id="werkNotitie" class="notitie-input" rows="2" placeholder="Bijv. Plafond gestuct woonkamer, hoeken afgewerkt..."></textarea>
+            </div>
+            <div class="toegevoegd-card" id="toegevoegdCard" style="display: none;">
+                <h3 class="font-bold text-gray-800 mb-3">✅ Toegevoegd vandaag</h3>
+                <div id="toegevoegdList"></div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-value" id="todayHours">0.0</div><div class="stat-label">Uren vandaag</div></div>
+                <div class="stat-card"><div class="stat-value" id="weekHours">0.0</div><div class="stat-label">Uren deze week</div></div>
+            </div>
+            <div class="week-card">
+                <div class="flex items-center justify-between"><h3 class="font-bold text-gray-800">📅 Deze week</h3><span class="text-sm text-gray-500" id="weekTotal">Totaal: 0 uur</span></div>
+                <div class="week-grid" id="weekGrid"></div>
+            </div>
+            <div class="recent-card">
+                <h3 class="font-bold text-gray-800 mb-4">📋 Recente registraties</h3>
+                <div id="recentList"><p class="text-gray-400 text-center py-4">Geen recente uren</p></div>
+            </div>
+        </div>
+    </div>
+    <div class="history-page" id="historyScreen">
+        <div class="history-header">
+            <h2 class="text-xl font-bold">📊 Mijn Uren</h2>
+            <div class="history-filters">
+                <button class="filter-btn active" onclick="filterHistory('week')">Deze week</button>
+                <button class="filter-btn" onclick="filterHistory('month')">Deze maand</button>
+                <button class="filter-btn" onclick="filterHistory('all')">Alles</button>
+            </div>
+        </div>
+        <div class="history-list page-content" id="historyList"></div>
+    </div>
+    <div class="profile-page" id="profileScreen">
+        <div class="profile-header">
+            <div class="profile-avatar" id="profileAvatar">👷</div>
+            <div class="profile-name" id="profileName">Medewerker</div>
+            <div class="profile-type" id="profileType">Vaste medewerker</div>
+            <div class="profile-stats">
+                <div><div class="profile-stat-value" id="profileWeekHours">0</div><div class="profile-stat-label">Uren deze week</div></div>
+                <div><div class="profile-stat-value" id="profileMonthHours">0</div><div class="profile-stat-label">Uren deze maand</div></div>
+            </div>
+        </div>
+        <div class="profile-section">
+            <div class="profile-item"><span>📱</span><span style="flex:1;font-weight:500;">Telefoon</span><span style="color:#64748b;" id="profilePhone">-</span></div>
+            <div class="profile-item"><span>💼</span><span style="flex:1;font-weight:500;">Type</span><span style="color:#64748b;" id="profileTypeDetail">Vast</span></div>
+        </div>
+        <div class="profile-section"><div class="logout-btn" onclick="logout()">🚪 Uitloggen</div></div>
+    </div>
+    <div class="bottom-nav" id="bottomNav" style="display: none;">
+        <button class="nav-btn active" onclick="showScreen('dashboard')"><span class="nav-btn-icon">🏠</span><span class="nav-btn-label">Home</span></button>
+        <button class="nav-btn" onclick="showScreen('history')"><span class="nav-btn-icon">📊</span><span class="nav-btn-label">Uren</span></button>
+        <button class="nav-btn" onclick="showScreen('profile')"><span class="nav-btn-icon">👤</span><span class="nav-btn-label">Profiel</span></button>
+    </div>
+
+    <div class="modal-overlay" id="bonModal">
+        <div class="modal-content">
+            <div class="modal-handle"></div>
+            <h3 class="text-lg font-bold mb-4">🧾 Bon toevoegen</h3>
+            <div class="space-y-4">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Foto van bon</label>
+                    <button onclick="captureBonPhoto()" class="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl text-center"><span id="bonPhotoPreview">📷 Maak foto van bon</span></button>
+                    <input type="file" id="bonPhotoInput" accept="image/*" capture="environment" style="display:none;" onchange="handleBonPhoto(this)">
+                </div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Bedrag (€)</label><input type="number" step="0.01" id="bonBedrag" class="w-full p-3 border-2 border-gray-200 rounded-xl" placeholder="0.00"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Winkel / Leverancier</label><input type="text" id="bonWinkel" class="w-full p-3 border-2 border-gray-200 rounded-xl" placeholder="Bijv. Gamma, Praxis, BigMat"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Categorie</label>
+                    <select id="bonCategorie" class="w-full p-3 border-2 border-gray-200 rounded-xl">
+                        <option value="materiaal">🧱 Materiaal</option><option value="gereedschap">🔧 Gereedschap</option><option value="overig">📦 Overig</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-4">
+                <button onclick="saveBon()" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-semibold">Opslaan</button>
+                <button onclick="closeBonModal()" class="px-6 py-3 border-2 border-gray-200 rounded-xl font-semibold">Annuleer</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="travelModal">
+        <div class="modal-content">
+            <div class="modal-handle"></div>
+            <h3 class="text-lg font-bold mb-4">🚗 Reiskosten</h3>
+            <div class="space-y-4">
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Kilometers</label><input type="number" id="travelKm" class="w-full p-3 border-2 border-gray-200 rounded-xl" placeholder="0"></div>
+                <div class="bg-gray-50 rounded-xl p-3"><div class="text-sm text-gray-600">Vergoeding: €0,23/km</div><div class="text-lg font-bold text-indigo-600" id="travelTotal">€0,00</div></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Omschrijving (optioneel)</label><input type="text" id="travelDesc" class="w-full p-3 border-2 border-gray-200 rounded-xl" placeholder="Bijv. Woon-werk"></div>
+            </div>
+            <div class="flex gap-3 mt-4">
+                <button onclick="saveTravel()" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-semibold">Opslaan</button>
+                <button onclick="closeTravelModal()" class="px-6 py-3 border-2 border-gray-200 rounded-xl font-semibold">Annuleer</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Location Check-in Modal -->
+    <div class="modal-overlay" id="locationModal">
+        <div class="modal-content">
+            <div class="modal-handle"></div>
+            <h3 class="text-lg font-bold mb-2">📍 Locatie check-in</h3>
+            <p class="text-gray-500 text-sm mb-6">Wil je je locatie registreren bij het starten?</p>
+            
+            <div class="space-y-3">
+                <button onclick="startWithLocation()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-xl font-semibold flex items-center justify-center gap-3">
+                    <span class="text-xl">📍</span>
+                    <span>Ja, check-in met locatie</span>
+                </button>
+                <button onclick="startWithoutLocation()" class="w-full bg-gray-100 text-gray-700 py-4 rounded-xl font-semibold flex items-center justify-center gap-3">
+                    <span class="text-xl">⏱️</span>
+                    <span>Nee, alleen uren starten</span>
+                </button>
+            </div>
+            
+            <p class="text-xs text-gray-400 text-center mt-4">Je locatie wordt alleen gebruikt om te zien op welke werkplek je bent.</p>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="stopModal">
+        <div class="modal-content">
+            <div class="modal-handle"></div>
+            <h3 class="text-lg font-bold mb-4">🛑 Werkdag beëindigen?</h3>
+            <div class="bg-gray-50 rounded-xl p-4 mb-4">
+                <div class="flex justify-between mb-2"><span class="text-gray-600">Gewerkte tijd</span><span class="font-bold text-indigo-600" id="stopTotalTime">0:00</span></div>
+                <div class="flex justify-between mb-2"><span class="text-gray-600">Pauze</span><span class="font-semibold" id="stopPauseTime">0 min</span></div>
+                <div class="flex justify-between pt-2 border-t"><span class="text-gray-600">Netto uren</span><span class="font-bold text-lg" id="stopNettoHours">0.0</span></div>
+            </div>
+            <div id="stopSummary" class="mb-4"></div>
+            <div class="flex gap-3 mt-4">
+                <button onclick="confirmStop()" class="flex-1 bg-red-500 text-white py-3 rounded-xl font-semibold">✅ Beëindigen</button>
+                <button onclick="closeStopModal()" class="px-6 py-3 border-2 border-gray-200 rounded-xl font-semibold">Annuleer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null, timerInterval = null, timerStartTime = null, pauseStartTime = null, totalPauseMs = 0, isPaused = false, isWorking = false, currentLocation = null, myUren = [];
+        let todayData = { fotos: [], bonnen: [], reiskosten: null, notitie: '' };
+        let currentBonPhoto = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check for saved session (only on same device with remember me)
+            const savedSession = localStorage.getItem('medewerkerSession');
+            if (savedSession) {
+                try {
+                    const session = JSON.parse(savedSession);
+                    // Check if session is not older than 7 days
+                    const sessionAge = Date.now() - (session.timestamp || 0);
+                    const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+                    if (sessionAge < maxAge && session.pin) {
+                        validateAndLogin(session.pin);
+                    } else {
+                        // Session expired, clear it
+                        localStorage.removeItem('medewerkerSession');
+                    }
+                } catch (e) {
+                    localStorage.removeItem('medewerkerSession');
+                }
+            }
+            // Clear old unsafe storage
+            localStorage.removeItem('medewerkerPin');
+            
+            document.getElementById('pin1').focus();
+            document.getElementById('travelKm').addEventListener('input', (e) => {
+                const km = parseFloat(e.target.value) || 0;
+                document.getElementById('travelTotal').textContent = '€' + (km * 0.23).toFixed(2);
+            });
+        });
+        
+        async function validateAndLogin(pin) {
+            // Always validate pin with server before auto-login
+            try {
+                const res = await fetch('/api/medewerker/login', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ pincode: pin }) 
+                });
+                if (res.ok) {
+                    currentUser = await res.json();
+                    showDashboard();
+                } else {
+                    // Pin no longer valid, clear session
+                    localStorage.removeItem('medewerkerSession');
+                }
+            } catch (e) {
+                console.error('Session validation error:', e);
+                localStorage.removeItem('medewerkerSession');
+            }
+        }
+
+        function handlePinInput(index) {
+            const input = document.getElementById('pin' + index);
+            input.value = input.value.replace(/\D/g, '');
+            if (input.value.length === 1) {
+                input.classList.add('filled');
+                if (index < 4) document.getElementById('pin' + (index + 1)).focus();
+                else { const pin = getPin(); if (pin.length === 4) loginWithPin(pin); }
+            } else input.classList.remove('filled');
+        }
+
+        function handlePinKeydown(event, index) { if (event.key === 'Backspace' && !event.target.value && index > 1) document.getElementById('pin' + (index - 1)).focus(); }
+        function getPin() { return [1,2,3,4].map(i => document.getElementById('pin' + i).value).join(''); }
+        function clearPin() { [1,2,3,4].forEach(i => { const el = document.getElementById('pin' + i); el.value = ''; el.classList.remove('filled'); }); document.getElementById('pin1').focus(); }
+
+        async function loginWithPin(pin) {
+            try {
+                const res = await fetch('/api/medewerker/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pincode: pin }) });
+                if (!res.ok) { document.getElementById('loginError').classList.remove('hidden'); clearPin(); setTimeout(() => document.getElementById('loginError').classList.add('hidden'), 3000); return; }
+                currentUser = await res.json();
+                // Only save session if "remember me" is checked
+                if (document.getElementById('rememberMe').checked) {
+                    localStorage.setItem('medewerkerSession', JSON.stringify({
+                        pin: pin,
+                        oderId: currentUser.id,
+                        timestamp: Date.now()
+                    }));
+                }
+                showDashboard();
+            } catch (e) { console.error('Login error:', e); document.getElementById('loginError').classList.remove('hidden'); clearPin(); }
+        }
+
+        async function showDashboard() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboardScreen').classList.add('active');
+            document.getElementById('bottomNav').style.display = 'flex';
+            const hour = new Date().getHours();
+            document.getElementById('greeting').textContent = hour < 12 ? 'Goedemorgen' : hour < 18 ? 'Goedemiddag' : 'Goedenavond';
+            document.getElementById('userName').textContent = currentUser.naam;
+            const now = new Date();
+            const days = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'];
+            const months = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+            document.getElementById('currentDate').textContent = days[now.getDay()];
+            document.getElementById('currentDateFull').textContent = now.getDate() + ' ' + months[now.getMonth()];
+            await loadMyUren();
+            renderWeekView();
+            renderRecent();
+            const savedTimer = localStorage.getItem('activeTimer_' + currentUser.id);
+            if (savedTimer) restoreTimer(JSON.parse(savedTimer));
+            const savedTodayData = localStorage.getItem('todayData_' + currentUser.id);
+            if (savedTodayData) { todayData = JSON.parse(savedTodayData); renderToegewoegd(); }
+        }
+
+        async function loadMyUren() {
+            try { const res = await fetch('/api/medewerker/uren/' + currentUser.id); if (res.ok) { myUren = await res.json(); updateStats(); } } catch (e) { console.error('Error loading uren:', e); }
+        }
+
+        function updateStats() {
+            const now = new Date(), weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay() + 1); weekStart.setHours(0,0,0,0);
+            const todayStr = now.toISOString().split('T')[0];
+            const todayHours = myUren.filter(u => u.datum === todayStr).reduce((s, u) => s + u.totaalUren, 0);
+            const weekHours = myUren.filter(u => new Date(u.datum) >= weekStart).reduce((s, u) => s + u.totaalUren, 0);
+            document.getElementById('todayHours').textContent = todayHours.toFixed(1);
+            document.getElementById('weekHours').textContent = weekHours.toFixed(1);
+        }
+
+        function renderWeekView() {
+            const now = new Date(), weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay() + 1);
+            const days = ['Ma', 'Di', 'Wo', 'Do', 'Vr'];
+            let html = '', weekTotal = 0;
+            days.forEach((day, i) => {
+                const date = new Date(weekStart); date.setDate(weekStart.getDate() + i);
+                const dateStr = date.toISOString().split('T')[0];
+                const hours = myUren.filter(u => u.datum === dateStr).reduce((s, u) => s + u.totaalUren, 0);
+                weekTotal += hours;
+                const isToday = dateStr === now.toISOString().split('T')[0];
+                html += `<div class="week-day ${isToday ? 'today' : ''} ${hours > 0 && !isToday ? 'has-hours' : ''}"><div class="week-day-name">${day}</div><div class="week-day-hours">${hours > 0 ? hours.toFixed(0) : '--'}</div></div>`;
+            });
+            document.getElementById('weekGrid').innerHTML = html;
+            document.getElementById('weekTotal').textContent = 'Totaal: ' + weekTotal.toFixed(1) + ' uur';
+        }
+
+        function renderRecent() {
+            const recent = myUren.slice(0, 5);
+            if (!recent.length) { document.getElementById('recentList').innerHTML = '<p class="text-gray-400 text-center py-4">Geen recente uren</p>'; return; }
+            document.getElementById('recentList').innerHTML = recent.map(u => {
+                const d = new Date(u.datum), isToday = d.toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
+                const locatie = u.locatie?.address || u.locatieAdres || 'Locatie onbekend';
+                return `<div class="recent-item"><div><div class="recent-date">${isToday ? 'Vandaag' : d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</div><div class="recent-project">📍 ${locatie}</div></div><div class="recent-hours">${u.totaalUren.toFixed(1)}u</div></div>`;
+            }).join('');
+        }
+
+        function startTimer() {
+            isWorking = true; isPaused = false; timerStartTime = Date.now(); totalPauseMs = 0;
+            todayData = { fotos: [], bonnen: [], reiskosten: null, notitie: '' }; saveTodayData();
+            document.getElementById('notWorkingState').classList.add('hidden');
+            document.getElementById('workingState').classList.remove('hidden');
+            document.getElementById('actionsCard').style.display = 'block';
+            document.getElementById('notitieCard').style.display = 'block';
+            document.getElementById('startTime').textContent = new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('timerDisplay').classList.add('running');
+            timerInterval = setInterval(updateTimer, 1000);
+            saveTimerState();
+        }
+        
+        // Ask for location before starting
+        function askLocationAndStart() {
+            document.getElementById('locationModal').classList.add('active');
+        }
+        
+        function startWithLocation() {
+            document.getElementById('locationModal').classList.remove('active');
+            startTimer();
+            getLocation(); // Get location after starting
+        }
+        
+        function startWithoutLocation() {
+            document.getElementById('locationModal').classList.remove('active');
+            startTimer();
+            // Set location badge to show no location
+            const badge = document.getElementById('locationBadge');
+            const text = document.getElementById('locationText');
+            badge.classList.remove('loading', 'error');
+            badge.style.background = '#f1f5f9';
+            badge.style.color = '#64748b';
+            text.textContent = 'Geen locatie';
+        }
+
+        function updateTimer() {
+            if (!isWorking) return;
+            let elapsed = Date.now() - timerStartTime - totalPauseMs;
+            if (isPaused) elapsed = Date.now() - timerStartTime - totalPauseMs - (Date.now() - pauseStartTime);
+            const hours = Math.floor(elapsed / 3600000), mins = Math.floor((elapsed % 3600000) / 60000), secs = Math.floor((elapsed % 60000) / 1000);
+            document.getElementById('timerDisplay').textContent = String(hours).padStart(2, '0') + ':' + String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+            document.getElementById('pauseTime').textContent = Math.floor(totalPauseMs / 60000) + ' min';
+        }
+
+        function togglePause() {
+            if (isPaused) {
+                totalPauseMs += Date.now() - pauseStartTime; isPaused = false;
+                document.getElementById('pauseBtn').innerHTML = '⏸️ PAUZE';
+                document.getElementById('pauseBtn').classList.remove('btn-resume'); document.getElementById('pauseBtn').classList.add('btn-pause');
+                document.getElementById('timerDisplay').classList.remove('paused'); document.getElementById('timerDisplay').classList.add('running');
+            } else {
+                pauseStartTime = Date.now(); isPaused = true;
+                document.getElementById('pauseBtn').innerHTML = '▶️ HERVAT';
+                document.getElementById('pauseBtn').classList.remove('btn-pause'); document.getElementById('pauseBtn').classList.add('btn-resume');
+                document.getElementById('timerDisplay').classList.remove('running'); document.getElementById('timerDisplay').classList.add('paused');
+            }
+            saveTimerState();
+        }
+
+        function stopTimer() {
+            todayData.notitie = document.getElementById('werkNotitie').value;
+            let elapsed = Date.now() - timerStartTime - totalPauseMs;
+            if (isPaused) { totalPauseMs += Date.now() - pauseStartTime; elapsed = Date.now() - timerStartTime - totalPauseMs; }
+            const totalHours = elapsed / 3600000, pauseMins = Math.floor(totalPauseMs / 60000);
+            document.getElementById('stopTotalTime').textContent = formatDuration(elapsed);
+            document.getElementById('stopPauseTime').textContent = pauseMins + ' min';
+            document.getElementById('stopNettoHours').textContent = totalHours.toFixed(2) + ' uur';
+            let summary = '<div class="text-sm space-y-1">';
+            if (todayData.notitie) summary += `<div>📝 ${todayData.notitie.substring(0,50)}${todayData.notitie.length > 50 ? '...' : ''}</div>`;
+            if (todayData.fotos.length) summary += `<div>📸 ${todayData.fotos.length} foto's</div>`;
+            if (todayData.bonnen.length) { const bonTotal = todayData.bonnen.reduce((s, b) => s + b.bedrag, 0); summary += `<div>🧾 ${todayData.bonnen.length} bon(nen) - €${bonTotal.toFixed(2)}</div>`; }
+            if (todayData.reiskosten) summary += `<div>🚗 ${todayData.reiskosten.km} km - €${todayData.reiskosten.totaal.toFixed(2)}</div>`;
+            summary += '</div>';
+            document.getElementById('stopSummary').innerHTML = summary;
+            document.getElementById('stopModal').classList.add('active');
+        }
+
+        async function confirmStop() {
+            let elapsed = Date.now() - timerStartTime - totalPauseMs;
+            const totalHours = elapsed / 3600000, pauseMins = Math.floor(totalPauseMs / 60000);
+            try {
+                await fetch('/api/medewerker/uren', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        medewerkerId: currentUser.id, medewerkerNaam: currentUser.naam,
+                        datum: new Date().toISOString().split('T')[0],
+                        begintijd: new Date(timerStartTime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }),
+                        eindtijd: new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }),
+                        pauze: pauseMins, totaalUren: Math.round(totalHours * 100) / 100,
+                        notitie: todayData.notitie, locatie: currentLocation, locatieAdres: currentLocation?.address || '',
+                        fotos: todayData.fotos, bonnen: todayData.bonnen, reiskosten: todayData.reiskosten
+                    })
+                });
+            } catch (e) { console.error('Error saving uren:', e); }
+            clearInterval(timerInterval);
+            isWorking = false; isPaused = false; timerStartTime = null; totalPauseMs = 0; currentLocation = null;
+            todayData = { fotos: [], bonnen: [], reiskosten: null, notitie: '' };
+            localStorage.removeItem('activeTimer_' + currentUser.id);
+            localStorage.removeItem('todayData_' + currentUser.id);
+            document.getElementById('workingState').classList.add('hidden');
+            document.getElementById('notWorkingState').classList.remove('hidden');
+            document.getElementById('actionsCard').style.display = 'none';
+            document.getElementById('notitieCard').style.display = 'none';
+            document.getElementById('toegevoegdCard').style.display = 'none';
+            document.getElementById('timerDisplay').textContent = '00:00:00';
+            document.getElementById('timerDisplay').classList.remove('running', 'paused');
+            document.getElementById('werkNotitie').value = '';
+            closeStopModal();
+            await loadMyUren(); renderWeekView(); renderRecent();
+        }
+
+        function formatDuration(ms) { const hours = Math.floor(ms / 3600000), mins = Math.floor((ms % 3600000) / 60000); return hours + ':' + String(mins).padStart(2, '0'); }
+        function saveTimerState() { localStorage.setItem('activeTimer_' + currentUser.id, JSON.stringify({ startTime: timerStartTime, totalPauseMs, isPaused, pauseStartTime, location: currentLocation })); }
+        function saveTodayData() { localStorage.setItem('todayData_' + currentUser.id, JSON.stringify(todayData)); }
+
+        function restoreTimer(timer) {
+            isWorking = true; timerStartTime = timer.startTime; totalPauseMs = timer.totalPauseMs || 0; isPaused = timer.isPaused || false; pauseStartTime = timer.pauseStartTime; currentLocation = timer.location;
+            document.getElementById('notWorkingState').classList.add('hidden');
+            document.getElementById('workingState').classList.remove('hidden');
+            document.getElementById('actionsCard').style.display = 'block';
+            document.getElementById('notitieCard').style.display = 'block';
+            document.getElementById('startTime').textContent = new Date(timerStartTime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+            if (currentLocation) { document.getElementById('locationText').textContent = currentLocation.address || 'Locatie opgeslagen'; document.getElementById('locationBadge').classList.remove('loading', 'error'); }
+            if (isPaused) { document.getElementById('pauseBtn').innerHTML = '▶️ HERVAT'; document.getElementById('pauseBtn').classList.remove('btn-pause'); document.getElementById('pauseBtn').classList.add('btn-resume'); document.getElementById('timerDisplay').classList.add('paused'); }
+            else { document.getElementById('timerDisplay').classList.add('running'); }
+            timerInterval = setInterval(updateTimer, 1000); updateTimer(); renderToegewoegd();
+        }
+
+        function getLocation() {
+            const badge = document.getElementById('locationBadge'), text = document.getElementById('locationText');
+            badge.classList.add('loading'); badge.classList.remove('error'); text.textContent = 'Locatie ophalen...';
+            if (!navigator.geolocation) { badge.classList.remove('loading'); badge.classList.add('error'); text.textContent = 'Locatie niet beschikbaar'; return; }
+            navigator.geolocation.getCurrentPosition(
+                async (pos) => {
+                    currentLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy, timestamp: Date.now() };
+                    try { const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`); const data = await res.json(); currentLocation.address = data.display_name?.split(',').slice(0,3).join(',') || 'Locatie opgeslagen'; text.textContent = currentLocation.address; }
+                    catch (e) { text.textContent = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`; }
+                    badge.classList.remove('loading'); saveTimerState();
+                },
+                (err) => { badge.classList.remove('loading'); badge.classList.add('error'); text.textContent = 'Locatie geweigerd'; },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+        function refreshLocation() { if (isWorking) getLocation(); }
+        
+        function askRefreshLocation() {
+            if (!isWorking) {
+                alert('Start eerst je werkdag');
+                return;
+            }
+            if (confirm('Wil je je huidige locatie registreren?')) {
+                getLocation();
+            }
+        }
+
+        function renderToegewoegd() {
+            const hasItems = todayData.fotos.length || todayData.bonnen.length || todayData.reiskosten;
+            document.getElementById('countFoto').style.display = todayData.fotos.length ? 'block' : 'none';
+            document.getElementById('countFoto').textContent = todayData.fotos.length;
+            document.getElementById('btnFoto').classList.toggle('has-items', todayData.fotos.length > 0);
+            document.getElementById('countBon').style.display = todayData.bonnen.length ? 'block' : 'none';
+            document.getElementById('countBon').textContent = todayData.bonnen.length;
+            document.getElementById('btnBon').classList.toggle('has-items', todayData.bonnen.length > 0);
+            document.getElementById('countReis').style.display = todayData.reiskosten ? 'block' : 'none';
+            document.getElementById('countReis').textContent = todayData.reiskosten ? '1' : '0';
+            document.getElementById('btnReis').classList.toggle('has-items', !!todayData.reiskosten);
+            if (!hasItems) { document.getElementById('toegevoegdCard').style.display = 'none'; return; }
+            document.getElementById('toegevoegdCard').style.display = 'block';
+            let html = '';
+            todayData.fotos.forEach((f, i) => { html += `<div class="toegevoegd-item"><span>📸</span><span style="flex:1;font-size:14px;">Foto ${i+1}</span><span style="color:#ef4444;cursor:pointer;" onclick="deleteFoto(${i})">🗑️</span></div>`; });
+            todayData.bonnen.forEach((b, i) => { html += `<div class="toegevoegd-item"><span>🧾</span><span style="flex:1;font-size:14px;">€${b.bedrag.toFixed(2)} - ${b.winkel}</span><span style="color:#ef4444;cursor:pointer;" onclick="deleteBon(${i})">🗑️</span></div>`; });
+            if (todayData.reiskosten) html += `<div class="toegevoegd-item"><span>🚗</span><span style="flex:1;font-size:14px;">${todayData.reiskosten.km} km - €${todayData.reiskosten.totaal.toFixed(2)}</span><span style="color:#ef4444;cursor:pointer;" onclick="deleteReiskosten()">🗑️</span></div>`;
+            document.getElementById('toegevoegdList').innerHTML = html;
+        }
+        function deleteFoto(i) { todayData.fotos.splice(i, 1); saveTodayData(); renderToegewoegd(); }
+        function deleteBon(i) { todayData.bonnen.splice(i, 1); saveTodayData(); renderToegewoegd(); }
+        function deleteReiskosten() { todayData.reiskosten = null; saveTodayData(); renderToegewoegd(); }
+
+        function showPhotoCapture() {
+            if (!isWorking) { alert('Start eerst je werkdag om een foto toe te voegen'); return; }
+            const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+            input.onchange = (e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { todayData.fotos.push({ name: file.name, data: ev.target.result, timestamp: Date.now() }); saveTodayData(); renderToegewoegd(); }; reader.readAsDataURL(file); } };
+            input.click();
+        }
+
+        function showBonModal() { if (!isWorking) { alert('Start eerst je werkdag om een bon toe te voegen'); return; } currentBonPhoto = null; document.getElementById('bonPhotoPreview').textContent = '📷 Maak foto van bon'; document.getElementById('bonBedrag').value = ''; document.getElementById('bonWinkel').value = ''; document.getElementById('bonCategorie').value = 'materiaal'; document.getElementById('bonModal').classList.add('active'); }
+        function closeBonModal() { document.getElementById('bonModal').classList.remove('active'); }
+        function captureBonPhoto() { document.getElementById('bonPhotoInput').click(); }
+        function handleBonPhoto(input) { const file = input.files[0]; if (file) { const reader = new FileReader(); reader.onload = (e) => { currentBonPhoto = e.target.result; document.getElementById('bonPhotoPreview').textContent = '✅ Foto toegevoegd'; }; reader.readAsDataURL(file); } }
+        function saveBon() {
+            const bedrag = parseFloat(document.getElementById('bonBedrag').value), winkel = document.getElementById('bonWinkel').value, categorie = document.getElementById('bonCategorie').value;
+            if (!bedrag || bedrag <= 0) { alert('Voer een geldig bedrag in'); return; }
+            if (!winkel) { alert('Voer een winkel/leverancier in'); return; }
+            todayData.bonnen.push({ bedrag, winkel, categorie, foto: currentBonPhoto, timestamp: Date.now() }); saveTodayData(); renderToegewoegd(); closeBonModal();
+        }
+
+        function showTravelModal() { if (!isWorking) { alert('Start eerst je werkdag om reiskosten toe te voegen'); return; } document.getElementById('travelKm').value = todayData.reiskosten?.km || ''; document.getElementById('travelDesc').value = todayData.reiskosten?.desc || ''; document.getElementById('travelTotal').textContent = todayData.reiskosten ? '€' + todayData.reiskosten.totaal.toFixed(2) : '€0,00'; document.getElementById('travelModal').classList.add('active'); }
+        function closeTravelModal() { document.getElementById('travelModal').classList.remove('active'); }
+        function saveTravel() { const km = parseFloat(document.getElementById('travelKm').value), desc = document.getElementById('travelDesc').value; if (!km || km <= 0) { alert('Voer een geldig aantal kilometers in'); return; } todayData.reiskosten = { km, desc, vergoeding: 0.23, totaal: km * 0.23 }; saveTodayData(); renderToegewoegd(); closeTravelModal(); }
+        function closeStopModal() { document.getElementById('stopModal').classList.remove('active'); }
+
+        function showScreen(screen) {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            event.target.closest('.nav-btn').classList.add('active');
+            document.getElementById('dashboardScreen').classList.remove('active');
+            document.getElementById('historyScreen').classList.remove('active');
+            document.getElementById('profileScreen').classList.remove('active');
+            if (screen === 'dashboard') document.getElementById('dashboardScreen').classList.add('active');
+            else if (screen === 'history') { document.getElementById('historyScreen').classList.add('active'); renderHistory(); }
+            else if (screen === 'profile') { document.getElementById('profileScreen').classList.add('active'); renderProfile(); }
+        }
+
+        function renderHistory(filter = 'week') {
+            let filtered = [...myUren]; const now = new Date();
+            if (filter === 'week') { const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay() + 1); weekStart.setHours(0,0,0,0); filtered = filtered.filter(u => new Date(u.datum) >= weekStart); }
+            else if (filter === 'month') { const monthStart = new Date(now.getFullYear(), now.getMonth(), 1); filtered = filtered.filter(u => new Date(u.datum) >= monthStart); }
+            filtered.sort((a, b) => b.datum.localeCompare(a.datum));
+            if (!filtered.length) { document.getElementById('historyList').innerHTML = '<p class="text-center text-gray-400 py-8">Geen uren gevonden</p>'; return; }
+            const groups = {}; filtered.forEach(u => { if (!groups[u.datum]) groups[u.datum] = []; groups[u.datum].push(u); });
+            let html = '';
+            Object.entries(groups).forEach(([date, items]) => {
+                const d = new Date(date), dayTotal = items.reduce((s, u) => s + u.totaalUren, 0);
+                html += `<div class="history-group"><div class="history-group-title">${d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })} - ${dayTotal.toFixed(1)} uur</div>`;
+                html += items.map(u => { const loc = u.locatie?.address || u.locatieAdres || 'Onbekend'; return `<div class="history-item"><div class="flex justify-between items-start"><div><div style="font-weight:600;color:#1e293b;">📍 ${loc}</div><div style="font-size:13px;color:#64748b;">${u.begintijd} - ${u.eindtijd}</div>${u.notitie ? `<div class="text-sm text-gray-500 mt-1">${u.notitie}</div>` : ''}</div><div style="font-size:20px;font-weight:800;color:#6366f1;">${u.totaalUren.toFixed(1)}u</div></div></div>`; }).join('');
+                html += '</div>';
+            });
+            document.getElementById('historyList').innerHTML = html;
+        }
+        function filterHistory(filter) { document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active')); event.target.classList.add('active'); renderHistory(filter); }
+
+        function renderProfile() {
+            document.getElementById('profileName').textContent = currentUser.naam;
+            document.getElementById('profileAvatar').textContent = currentUser.naam.charAt(0).toUpperCase();
+            document.getElementById('profileType').textContent = currentUser.type === 'zzp' ? 'ZZP\'er' : 'Vaste medewerker';
+            document.getElementById('profilePhone').textContent = currentUser.telefoon || '-';
+            document.getElementById('profileTypeDetail').textContent = currentUser.type === 'zzp' ? 'ZZP' : 'Vast';
+            const now = new Date(), weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay() + 1);
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            document.getElementById('profileWeekHours').textContent = myUren.filter(u => new Date(u.datum) >= weekStart).reduce((s, u) => s + u.totaalUren, 0).toFixed(0);
+            document.getElementById('profileMonthHours').textContent = myUren.filter(u => new Date(u.datum) >= monthStart).reduce((s, u) => s + u.totaalUren, 0).toFixed(0);
+        }
+
+        function logout() { 
+            localStorage.removeItem('medewerkerSession'); 
+            localStorage.removeItem('medewerkerPin'); // cleanup old key
+            localStorage.removeItem('activeTimer_' + currentUser?.id); 
+            localStorage.removeItem('todayData_' + currentUser?.id); 
+            window.location.reload(); 
+        }
+    </script>
+</body>
+</html>

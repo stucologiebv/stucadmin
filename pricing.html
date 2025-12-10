@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abonnementen - StucAdmin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        .plan-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .plan-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .plan-popular { border: 2px solid #f97316; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-6xl mx-auto p-6 pt-12">
+        <div class="text-center mb-12">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Kies je abonnement</h1>
+            <p class="text-gray-500">Geen verborgen kosten. Maandelijks opzegbaar.</p>
+        </div>
+        
+        <div id="currentPlan" class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8 text-center hidden">
+            <span class="text-blue-800"></span>
+        </div>
+        
+        <div id="plansContainer" class="grid md:grid-cols-3 gap-6">
+            <!-- Plans loaded here -->
+        </div>
+        
+        <div class="text-center mt-8">
+            <a href="/dashboard.html" class="text-gray-500 hover:text-gray-700">← Terug naar dashboard</a>
+        </div>
+    </div>
+
+    <script>
+        async function loadPlans() {
+            try {
+                // Get current subscription
+                const subRes = await fetch('/api/subscription');
+                const subData = await subRes.json();
+                
+                if (subData.success && subData.plan !== 'trial') {
+                    const currentDiv = document.getElementById('currentPlan');
+                    currentDiv.classList.remove('hidden');
+                    currentDiv.querySelector('span').textContent = 
+                        `Je huidige abonnement: ${subData.plan.toUpperCase()}`;
+                }
+                
+                // Get plans
+                const plansRes = await fetch('/api/plans');
+                const plansData = await plansRes.json();
+                
+                if (plansData.success) {
+                    const container = document.getElementById('plansContainer');
+                    container.innerHTML = plansData.data
+                        .filter(p => p.id !== 'trial')
+                        .map((plan, i) => `
+                            <div class="plan-card bg-white rounded-2xl p-8 shadow-lg ${i === 1 ? 'plan-popular' : ''}">
+                                ${i === 1 ? '<div class="text-center text-orange-600 font-semibold text-sm mb-2">MEEST GEKOZEN</div>' : ''}
+                                <h2 class="text-xl font-bold text-gray-900">${plan.naam}</h2>
+                                <div class="mt-4">
+                                    <span class="text-4xl font-bold">€${plan.prijs}</span>
+                                    <span class="text-gray-500">/maand</span>
+                                </div>
+                                <ul class="mt-6 space-y-3">
+                                    ${plan.features.map(f => `
+                                        <li class="flex items-center gap-2">
+                                            <span class="text-green-500">✓</span>
+                                            <span class="text-gray-600">${f}</span>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                                <button onclick="subscribe('${plan.id}')" 
+                                    class="mt-8 w-full py-3 px-6 rounded-xl font-semibold
+                                    ${i === 1 ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}">
+                                    Selecteer
+                                </button>
+                            </div>
+                        `).join('');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        
+        async function subscribe(planId) {
+            try {
+                const res = await fetch('/api/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan_id: planId })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success && data.checkoutUrl) {
+                    window.location.href = data.checkoutUrl;
+                } else {
+                    alert(data.error || 'Er ging iets mis');
+                }
+            } catch (e) {
+                alert('Verbindingsfout');
+            }
+        }
+        
+        loadPlans();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Offerteaanvragen Pro - StucAdmin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/sidebar.js"></script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; margin: 0; }
+        
+        /* Mobile */
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        
+        main { padding: 24px; min-height: 100vh; }
+        
+        /* Buttons */
+        .btn { padding: 10px 20px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-secondary { background: #f1f5f9; color: #475569; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-whatsapp { background: #25D366; color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 13px; }
+        
+        /* Card */
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; }
+        
+        /* KPI Cards */
+        .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
+        .kpi-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent, #6366f1); }
+        .kpi-value { font-size: 28px; font-weight: 800; color: var(--accent, #6366f1); }
+        .kpi-label { font-size: 12px; color: #64748b; }
+        
+        /* Tabs */
+        .tab-group { display: flex; gap: 4px; margin-bottom: 20px; background: #f1f5f9; padding: 4px; border-radius: 12px; width: fit-content; }
+        .tab-btn { padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: #64748b; transition: all 0.2s; }
+        .tab-btn.active { background: white; color: #6366f1; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .tab-btn .count { background: #e5e7eb; color: #64748b; padding: 2px 8px; border-radius: 10px; font-size: 12px; margin-left: 6px; }
+        .tab-btn.active .count { background: #6366f1; color: white; }
+        
+        /* Kanban Board */
+        .kanban-board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; min-height: 500px; }
+        .kanban-column { background: #f8fafc; border-radius: 12px; padding: 12px; min-height: 400px; }
+        .kanban-header { font-weight: 700; font-size: 14px; padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .kanban-header .count { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: rgba(255,255,255,0.5); }
+        .kanban-column.nieuw .kanban-header { background: #dbeafe; color: #1e40af; }
+        .kanban-column.bellen .kanban-header { background: #fef3c7; color: #b45309; }
+        .kanban-column.opname .kanban-header { background: #e0e7ff; color: #4338ca; }
+        .kanban-column.verstuurd .kanban-header { background: #f3e8ff; color: #7c3aed; }
+        .kanban-column.gewonnen .kanban-header { background: #d1fae5; color: #065f46; }
+        .kanban-column.verloren .kanban-header { background: #fee2e2; color: #dc2626; }
+        
+        .kanban-cards { min-height: 300px; }
+        .kanban-cards.drag-over { background: #e0e7ff; border-radius: 8px; }
+        
+        /* Aanvraag Card */
+        .aanvraag-card { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; margin-bottom: 10px; cursor: grab; transition: all 0.2s; }
+        .aanvraag-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .aanvraag-card.dragging { opacity: 0.5; transform: rotate(2deg); }
+        .aanvraag-card .naam { font-weight: 600; font-size: 14px; color: #1f2937; margin-bottom: 4px; }
+        .aanvraag-card .adres { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+        .aanvraag-card .meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+        
+        /* Type Badge */
+        .type-badge { display: inline-flex; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+        .type-stucwerk { background: #dbeafe; color: #1e40af; }
+        .type-spuitwerk { background: #fce7f3; color: #be185d; }
+        .type-sierpleister { background: #f3e8ff; color: #7c3aed; }
+        .type-isolatie { background: #d1fae5; color: #065f46; }
+        .type-overig { background: #f1f5f9; color: #475569; }
+        
+        /* Urgentie Badge */
+        .urgentie-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+        .urgentie-hoog { background: #fee2e2; color: #dc2626; }
+        .urgentie-normaal { background: #fef3c7; color: #b45309; }
+        .urgentie-laag { background: #d1fae5; color: #065f46; }
+        
+        /* Contact Buttons */
+        .contact-btns { display: flex; gap: 4px; }
+        .contact-btn { width: 28px; height: 28px; border-radius: 6px; border: none; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+        .contact-btn.call { background: #dcfce7; color: #16a34a; }
+        .contact-btn.whatsapp { background: #d1fae5; color: #059669; }
+        .contact-btn.mail { background: #dbeafe; color: #2563eb; }
+        
+        /* Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.open { display: flex; }
+        .modal { background: white; border-radius: 16px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { padding: 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { font-size: 18px; font-weight: 700; }
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap; }
+        
+        /* Form */
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px; }
+        .form-input, .form-select, .form-textarea { width: 100%; padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: #6366f1; }
+        .form-textarea { min-height: 100px; resize: vertical; }
+        
+        /* Spam list */
+        .spam-table { width: 100%; }
+        .spam-table th { text-align: left; padding: 12px; font-size: 12px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e5e7eb; }
+        .spam-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        .spam-table tr:hover { background: #f8fafc; }
+        .spam-reason { display: inline-flex; padding: 2px 8px; background: #fee2e2; color: #dc2626; border-radius: 4px; font-size: 11px; font-weight: 500; }
+        
+        /* Toast */
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 14px 24px; border-radius: 12px; color: white; font-weight: 500; z-index: 9999; animation: slideIn 0.3s ease; }
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        .toast.info { background: #6366f1; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        /* Mobile */
+        @media (max-width: 1400px) {
+            .kanban-board { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            main { margin-left: 0; padding: 70px 12px 24px 12px; }
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .kanban-board { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
+    <!-- Sidebar wordt geladen door sidebar.js -->
+
+    <main>
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold">📩 Offerteaanvragen Pro</h1>
+                <p class="text-gray-500 text-sm">Van aanvraag tot opdracht in één overzicht</p>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+                <span id="gmailStatus" class="text-sm"></span>
+                <button onclick="connectGmail()" id="connectGmailBtn" class="btn btn-secondary btn-sm" style="display:none;">📧 Connect Gmail</button>
+                <button onclick="loadAanvragen()" class="btn btn-secondary btn-sm">🔄 Ververs</button>
+                <button onclick="openAddModal()" class="btn btn-primary">➕ Nieuwe aanvraag</button>
+            </div>
+        </header>
+
+        <!-- Tip Banner -->
+        <div class="bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-100 rounded-xl p-3 mb-4 flex items-center gap-3">
+            <span class="text-xl">📬</span>
+            <p class="text-sm text-pink-700"><strong>Slimme workflow</strong> — Sleep aanvragen door de pipeline van Nieuw → Gewonnen. Spam wordt automatisch gefilterd. Koppel Gmail om aanvragen direct te ontvangen.</p>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card" style="--accent: #3b82f6">
+                <div class="kpi-value" id="kpiNieuw">0</div>
+                <div class="kpi-label">Nieuw</div>
+            </div>
+            <div class="kpi-card" style="--accent: #f59e0b">
+                <div class="kpi-value" id="kpiOpen">0</div>
+                <div class="kpi-label">In behandeling</div>
+            </div>
+            <div class="kpi-card" style="--accent: #10b981">
+                <div class="kpi-value" id="kpiGewonnen">0</div>
+                <div class="kpi-label">Gewonnen</div>
+            </div>
+            <div class="kpi-card" style="--accent: #8b5cf6">
+                <div class="kpi-value" id="kpiConversie">0%</div>
+                <div class="kpi-label">Conversie</div>
+            </div>
+            <div class="kpi-card" style="--accent: #64748b">
+                <div class="kpi-value" id="kpiReactie">-</div>
+                <div class="kpi-label">Gem. reactietijd</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tab-group">
+            <button class="tab-btn active" onclick="switchTab('kanban', this)">📋 Kanban<span class="count" id="tabKanbanCount">0</span></button>
+            <button class="tab-btn" onclick="switchTab('lijst', this)">📄 Lijst</button>
+            <button class="tab-btn" onclick="switchTab('spam', this)">🗑️ Spam<span class="count" id="tabSpamCount">0</span></button>
+        </div>
+
+        <!-- Kanban View -->
+        <div id="kanbanView">
+            <div class="kanban-board">
+                <div class="kanban-column nieuw" data-status="nieuw">
+                    <div class="kanban-header">🔵 Nieuw <span class="count" id="colNieuw">0</span></div>
+                    <div class="kanban-cards" ondrop="dropCard(event, 'nieuw')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+                </div>
+                <div class="kanban-column bellen" data-status="te_bellen">
+                    <div class="kanban-header">📞 Te bellen <span class="count" id="colBellen">0</span></div>
+                    <div class="kanban-cards" ondrop="dropCard(event, 'te_bellen')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+                </div>
+                <div class="kanban-column opname" data-status="opname_gepland">
+                    <div class="kanban-header">📋 Opname gepland <span class="count" id="colOpname">0</span></div>
+                    <div class="kanban-cards" ondrop="dropCard(event, 'opname_gepland')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+                </div>
+                <div class="kanban-column verstuurd" data-status="offerte_verstuurd">
+                    <div class="kanban-header">📤 Offerte verstuurd <span class="count" id="colVerstuurd">0</span></div>
+                    <div class="kanban-cards" ondrop="dropCard(event, 'offerte_verstuurd')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+                </div>
+                <div class="kanban-column gewonnen" data-status="gewonnen">
+                    <div class="kanban-header">✅ Gewonnen <span class="count" id="colGewonnen">0</span></div>
+                    <div class="kanban-cards" ondrop="dropCard(event, 'gewonnen')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+                </div>
+                <div class="kanban-column verloren" data-status="verloren">
+                    <div class="kanban-header">❌ Verloren <span class="count" id="colVerloren">0</span></div>
+                    <div class="kanban-cards" ondrop="dropCard(event, 'verloren')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- List View -->
+        <div id="lijstView" style="display: none;">
+            <div class="card p-4">
+                <table class="w-full">
+                    <thead>
+                        <tr class="text-left text-sm text-gray-500 border-b">
+                            <th class="pb-3">Klant</th>
+                            <th class="pb-3">Type</th>
+                            <th class="pb-3">Status</th>
+                            <th class="pb-3">Datum</th>
+                            <th class="pb-3">Acties</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lijstBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Spam View -->
+        <div id="spamView" style="display: none;">
+            <div class="card p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold">🗑️ Spam aanvragen</h3>
+                    <button onclick="clearAllSpam()" class="btn btn-danger btn-sm">Alles verwijderen</button>
+                </div>
+                <table class="spam-table">
+                    <thead>
+                        <tr>
+                            <th>Naam</th>
+                            <th>Email</th>
+                            <th>Reden</th>
+                            <th>Datum</th>
+                            <th>Acties</th>
+                        </tr>
+                    </thead>
+                    <tbody id="spamBody"></tbody>
+                </table>
+                <p id="spamEmpty" class="text-center text-gray-400 py-8" style="display:none;">Geen spam 🎉</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Detail Modal -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="detailTitle">Aanvraag details</h3>
+                <button onclick="closeModal('detailModal')" class="btn btn-secondary btn-sm">✕</button>
+            </div>
+            <div class="modal-body" id="detailBody"></div>
+            <div class="modal-footer" id="detailFooter"></div>
+        </div>
+    </div>
+
+    <!-- Add Modal -->
+    <div class="modal-overlay" id="addModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">➕ Nieuwe aanvraag</h3>
+                <button onclick="closeModal('addModal')" class="btn btn-secondary btn-sm">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label class="form-label">Naam *</label>
+                        <input type="text" class="form-input" id="addNaam" placeholder="Volledige naam">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email *</label>
+                        <input type="email" class="form-input" id="addEmail" placeholder="email@voorbeeld.nl">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label class="form-label">Telefoon</label>
+                        <input type="tel" class="form-input" id="addTelefoon" placeholder="06-12345678">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Type werk</label>
+                        <select class="form-select" id="addType">
+                            <option value="stucwerk">Stucwerk</option>
+                            <option value="spuitwerk">Spuitwerk</option>
+                            <option value="sierpleister">Sierpleister</option>
+                            <option value="isolatie">Isolatie</option>
+                            <option value="overig">Overig</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Adres</label>
+                    <input type="text" class="form-input" id="addAdres" placeholder="Straat, postcode, plaats">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Bericht / Omschrijving *</label>
+                    <textarea class="form-textarea" id="addBericht" placeholder="Wat wil de klant laten doen?"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal('addModal')" class="btn btn-secondary">Annuleren</button>
+                <button onclick="saveAanvraag()" class="btn btn-success">✅ Toevoegen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Modal -->
+    <div class="modal-overlay" id="emailModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">📧 Email versturen</h3>
+                <button onclick="closeModal('emailModal')" class="btn btn-secondary btn-sm">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Aan</label>
+                    <input type="email" class="form-input" id="emailTo" readonly style="background: #f8fafc;">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Onderwerp</label>
+                    <input type="text" class="form-input" id="emailSubject">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Template</label>
+                    <select class="form-select" id="emailTemplate" onchange="loadEmailTemplate()">
+                        <option value="reactie">📝 Eerste reactie</option>
+                        <option value="opname">📋 Opname bevestigen</option>
+                        <option value="offerte">📤 Offerte meesturen</option>
+                        <option value="followup">🔔 Follow-up</option>
+                        <option value="leeg">✏️ Leeg bericht</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Bericht</label>
+                    <textarea class="form-textarea" id="emailBody" rows="10"></textarea>
+                </div>
+                <div class="text-sm text-gray-500" id="emailFromDisplay">
+                    📤 Wordt verzonden vanuit: <strong>je gekoppelde Gmail</strong>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal('emailModal')" class="btn btn-secondary">Annuleren</button>
+                <button onclick="sendEmail()" class="btn btn-primary">📧 Versturen</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // STATE
+        // ============================================
+        let aanvragen = [];
+        let spamAanvragen = [];
+        let currentAanvraag = null;
+        let currentTab = 'kanban';
+        let isGmailConnected = false;
+        let emailAanvraag = null;
+        let bedrijf = {}; // Bedrijfsgegevens voor email signature
+
+        // ============================================
+        // INIT
+        // ============================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Auth check
+            try {
+                const res = await fetch('/api/auth/check');
+                if (!res.ok) window.location.href = '/login.html';
+            } catch (e) {
+                window.location.href = '/login.html';
+            }
+            
+            await loadBedrijfsgegevens();
+            await checkGmailStatus();
+            await loadAanvragen();
+        });
+
+        // Laad bedrijfsgegevens voor email signature
+        async function loadBedrijfsgegevens() {
+            try {
+                const res = await fetch('/api/company');
+                if (res.ok) {
+                    bedrijf = await res.json();
+                }
+            } catch (e) {
+                console.error('Kon bedrijfsgegevens niet laden:', e);
+            }
+        }
+
+        // Genereer email signature op basis van bedrijfsgegevens
+        function generateEmailSignature() {
+            const kleur = bedrijf.kleur || '#6366f1';
+            const naam = bedrijf.naam || 'Uw Bedrijf';
+            const contact = bedrijf.contactNaam || '';
+            const functie = bedrijf.contactFunctie || '';
+            const telefoon = bedrijf.telefoon || '';
+            const mobiel = bedrijf.mobiel || '';
+            const email = bedrijf.email || '';
+            const adres = bedrijf.adres || '';
+            const kvk = bedrijf.kvk || '';
+            const btw = bedrijf.btw || '';
+            const website = bedrijf.website || '';
+            const facebook = bedrijf.facebook || '';
+            const instagram = bedrijf.instagram || '';
+            const linkedin = bedrijf.linkedin || '';
+
+            let signature = `<p>--<br>Met Vriendelijke Groeten,</p>`;
+            signature += `<p style="color: ${kleur}; font-weight: bold; font-size: 16px;">${naam}</p>`;
+            
+            if (contact) {
+                signature += `<p><span style="color: #3498db; font-weight: bold; text-decoration: underline;">${contact}</span>`;
+                if (functie) signature += `<br>${functie}`;
+                signature += `</p>`;
+            }
+            
+            signature += `<hr style="border: 1px solid ${kleur}; width: 200px; margin-left: 0;">`;
+            
+            let contactInfo = [];
+            if (telefoon) contactInfo.push(`P. <a href="tel:${telefoon.replace(/[^+\d]/g, '')}">${telefoon}</a>`);
+            if (mobiel) contactInfo.push(`M. <a href="tel:${mobiel.replace(/[^+\d]/g, '')}">${mobiel}</a>`);
+            if (email) contactInfo.push(`E. <a href="mailto:${email}">${email}</a>`);
+            if (adres) contactInfo.push(`A. ${adres}`);
+            if (contactInfo.length) signature += `<p>${contactInfo.join('<br>')}</p>`;
+            
+            let legalInfo = [];
+            if (kvk) legalInfo.push(`<strong style="color: ${kleur};">KVK:</strong> ${kvk}`);
+            if (btw) legalInfo.push(`<strong style="color: #3498db;">BTW:</strong> ${btw}`);
+            if (legalInfo.length) signature += `<p>${legalInfo.join(' | ')}</p>`;
+            
+            let socialLinks = [];
+            if (facebook) socialLinks.push(`<a href="${facebook}">Facebook</a>`);
+            if (instagram) socialLinks.push(`<a href="${instagram}">Instagram</a>`);
+            if (linkedin) socialLinks.push(`<a href="${linkedin}">LinkedIn</a>`);
+            if (website) socialLinks.push(`<a href="${website}">Website</a>`);
+            if (socialLinks.length) signature += `<p>${socialLinks.join(' | ')}</p>`;
+            
+            signature += `<p style="font-size: 10px; color: #888;">Op al onze offertes, opdrachten en werkzaamheden zijn onze algemene voorwaarden van toepassing. Deze e-mail en eventuele bijlagen zijn uitsluitend bestemd voor de geadresseerde.</p>`;
+            
+            return signature;
+        }
+
+        // ============================================
+        // GMAIL STATUS
+        // ============================================
+        async function checkGmailStatus() {
+            try {
+                const res = await fetch('/api/google/status');
+                const data = await res.json();
+                isGmailConnected = data.connected;
+                
+                document.getElementById('gmailStatus').innerHTML = isGmailConnected 
+                    ? '<span class="text-green-600 text-sm">✅ Gmail verbonden</span>'
+                    : '<span class="text-gray-400 text-sm">⚪ Gmail niet verbonden</span>';
+                document.getElementById('connectGmailBtn').style.display = isGmailConnected ? 'none' : 'inline-flex';
+            } catch (e) {
+                isGmailConnected = false;
+                document.getElementById('connectGmailBtn').style.display = 'inline-flex';
+            }
+        }
+
+        function connectGmail() {
+            window.location.href = '/api/google/auth';
+        }
+
+        // ============================================
+        // EMAIL FUNCTIONS
+        // ============================================
+        function openEmailModal(id) {
+            const aanvraag = aanvragen.find(a => a.id === id);
+            if (!aanvraag) return;
+            
+            if (!isGmailConnected) {
+                if (confirm('Gmail is niet verbonden. Wil je nu verbinden?')) {
+                    connectGmail();
+                }
+                return;
+            }
+            
+            if (!aanvraag.email) {
+                showToast('Geen emailadres beschikbaar', 'error');
+                return;
+            }
+            
+            emailAanvraag = aanvraag;
+            document.getElementById('emailTo').value = aanvraag.email;
+            document.getElementById('emailSubject').value = `Re: Uw aanvraag bij ${bedrijf.naam || 'ons bedrijf'}`;
+            document.getElementById('emailTemplate').value = 'reactie';
+            document.getElementById('emailFromDisplay').innerHTML = `📤 Wordt verzonden vanuit: <strong>${bedrijf.email || 'je gekoppelde Gmail'}</strong>`;
+            loadEmailTemplate();
+            
+            closeModal('detailModal');
+            openModal('emailModal');
+        }
+
+        function loadEmailTemplate() {
+            const template = document.getElementById('emailTemplate').value;
+            const naam = emailAanvraag?.naam || 'klant';
+            const type = emailAanvraag?.type || 'stucwerk';
+            const bedrijfNaam = bedrijf.naam || 'ons bedrijf';
+            const signature = generateEmailSignature();
+            
+            const templates = {
+                reactie: `<p>Beste ${naam},</p>
+
+<p>Bedankt voor uw aanvraag voor ${type} bij ${bedrijfNaam}.</p>
+
+<p>Wij hebben uw bericht in goede orde ontvangen en nemen zo spoedig mogelijk contact met u op om een afspraak te maken voor een vrijblijvende opname.</p>
+
+<p>Mocht u in de tussentijd vragen hebben, kunt u ons bereiken via telefoon of WhatsApp.</p>
+
+${signature}`,
+
+                opname: `<p>Beste ${naam},</p>
+
+<p>Hierbij bevestigen wij de afspraak voor de opname van uw ${type} project.</p>
+
+<p><strong>Datum:</strong> [DATUM INVULLEN]<br>
+<strong>Tijd:</strong> [TIJD INVULLEN]<br>
+<strong>Adres:</strong> ${emailAanvraag?.adres || '[ADRES INVULLEN]'}</p>
+
+<p>Tijdens de opname bekijken wij de situatie ter plaatse en bespreken we uw wensen. Daarna ontvangt u een vrijblijvende offerte.</p>
+
+<p>Tot dan!</p>
+
+${signature}`,
+
+                offerte: `<p>Beste ${naam},</p>
+
+<p>Naar aanleiding van onze opname sturen wij u hierbij onze offerte voor de ${type} werkzaamheden.</p>
+
+<p>In de bijlage vindt u een gedetailleerd overzicht van de werkzaamheden en kosten.</p>
+
+<p>De offerte is 30 dagen geldig. Heeft u vragen of wilt u de opdracht bevestigen? Neem gerust contact met ons op.</p>
+
+${signature}`,
+
+                followup: `<p>Beste ${naam},</p>
+
+<p>Enige tijd geleden hebben wij u een offerte gestuurd voor ${type} werkzaamheden.</p>
+
+<p>Graag horen wij of u nog vragen heeft of dat wij ergens mee kunnen helpen. Mocht u besluiten niet door te gaan, dan horen wij dat ook graag.</p>
+
+<p>U kunt ons bereiken via telefoon, email of WhatsApp.</p>
+
+${signature}`,
+
+                leeg: `<p>Beste ${naam},</p>
+
+<p></p>
+
+${signature}`
+            };
+            
+            document.getElementById('emailBody').value = templates[template] || templates.leeg;
+        }
+
+        async function sendEmail() {
+            const to = document.getElementById('emailTo').value;
+            const subject = document.getElementById('emailSubject').value;
+            const body = document.getElementById('emailBody').value;
+            
+            if (!to || !subject || !body) {
+                showToast('Vul alle velden in', 'error');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/gmail/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to, subject, body })
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.success) {
+                    showToast('✅ Email verzonden!', 'success');
+                    closeModal('emailModal');
+                    
+                    // Log email bij aanvraag
+                    if (emailAanvraag) {
+                        const now = new Date().toISOString();
+                        emailAanvraag.laatsteEmail = now;
+                        emailAanvraag.emailLog = emailAanvraag.emailLog || [];
+                        emailAanvraag.emailLog.push({ date: now, subject, to });
+                        
+                        // Update status als nog nieuw
+                        if (emailAanvraag.status === 'nieuw') {
+                            await updateStatus(emailAanvraag.id, 'te_bellen');
+                        }
+                    }
+                } else if (data.needsAuth) {
+                    if (confirm('Gmail sessie verlopen. Opnieuw verbinden?')) {
+                        connectGmail();
+                    }
+                } else {
+                    showToast('❌ ' + (data.error || 'Fout bij verzenden'), 'error');
+                }
+            } catch (e) {
+                showToast('Verbindingsfout', 'error');
+            }
+        }
+
+        // ============================================
+        // DATA LOADING
+        // ============================================
+        async function loadAanvragen() {
+            try {
+                const res = await fetch('/api/offerteaanvragen');
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // Spam filter toepassen
+                    aanvragen = [];
+                    spamAanvragen = [];
+                    
+                    data.forEach(a => {
+                        const spamCheck = checkSpam(a);
+                        if (spamCheck.isSpam) {
+                            a.spamReason = spamCheck.reason;
+                            spamAanvragen.push(a);
+                        } else {
+                            aanvragen.push(a);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error('Error loading aanvragen:', e);
+                // Fallback: localStorage
+                aanvragen = JSON.parse(localStorage.getItem('stuc_offerteaanvragen') || '[]');
+            }
+            
+            render();
+        }
+
+        // ============================================
+        // SPAM FILTER
+        // ============================================
+        function checkSpam(aanvraag) {
+            // Check geldig email
+            if (!aanvraag.email || !isValidEmail(aanvraag.email)) {
+                return { isSpam: true, reason: 'Geen geldig emailadres' };
+            }
+            
+            // Check rare naam
+            if (!aanvraag.naam || isGibberishName(aanvraag.naam)) {
+                return { isSpam: true, reason: 'Ongeldige naam' };
+            }
+            
+            // Check te korte naam
+            if (aanvraag.naam.trim().length < 2) {
+                return { isSpam: true, reason: 'Naam te kort' };
+            }
+            
+            // Check alleen cijfers
+            if (/^\d+$/.test(aanvraag.naam.trim())) {
+                return { isSpam: true, reason: 'Naam bevat alleen cijfers' };
+            }
+            
+            return { isSpam: false };
+        }
+
+        function isValidEmail(email) {
+            const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return regex.test(email);
+        }
+
+        function isGibberishName(name) {
+            if (!name) return true;
+            const clean = name.trim().toLowerCase();
+            
+            // Te veel opeenvolgende medeklinkers
+            if (/[bcdfghjklmnpqrstvwxyz]{5,}/i.test(clean)) return true;
+            
+            // Alleen dezelfde letter herhaald
+            if (/^(.)\1+$/.test(clean)) return true;
+            
+            // Bekende spam patterns
+            const spamPatterns = ['asdf', 'qwer', 'test', 'xxx', 'aaa', 'bbb', 'abc123', 'fake'];
+            if (spamPatterns.some(p => clean.includes(p))) return true;
+            
+            // Te veel speciale tekens
+            const specialChars = clean.replace(/[a-z\s\-'\.]/gi, '');
+            if (specialChars.length > clean.length / 3) return true;
+            
+            return false;
+        }
+
+        // ============================================
+        // RENDERING
+        // ============================================
+        function render() {
+            renderKPIs();
+            renderKanban();
+            renderLijst();
+            renderSpam();
+            updateCounts();
+        }
+
+        function renderKPIs() {
+            const nieuw = aanvragen.filter(a => a.status === 'nieuw').length;
+            const open = aanvragen.filter(a => ['te_bellen', 'opname_gepland', 'offerte_verstuurd'].includes(a.status)).length;
+            const gewonnen = aanvragen.filter(a => a.status === 'gewonnen').length;
+            const verloren = aanvragen.filter(a => a.status === 'verloren').length;
+            const total = gewonnen + verloren;
+            const conversie = total > 0 ? Math.round((gewonnen / total) * 100) : 0;
+            
+            // Gemiddelde reactietijd berekenen
+            const metReactie = aanvragen.filter(a => a.eersteReactie && a.created);
+            let gemReactie = '-';
+            if (metReactie.length > 0) {
+                const totaalUren = metReactie.reduce((sum, a) => {
+                    const diff = new Date(a.eersteReactie) - new Date(a.created);
+                    return sum + (diff / (1000 * 60 * 60));
+                }, 0);
+                const gem = totaalUren / metReactie.length;
+                gemReactie = gem < 24 ? `${Math.round(gem)}u` : `${Math.round(gem / 24)}d`;
+            }
+            
+            document.getElementById('kpiNieuw').textContent = nieuw;
+            document.getElementById('kpiOpen').textContent = open;
+            document.getElementById('kpiGewonnen').textContent = gewonnen;
+            document.getElementById('kpiConversie').textContent = conversie + '%';
+            document.getElementById('kpiReactie').textContent = gemReactie;
+            
+            // Nav badge wordt door sidebar.js beheerd
+            const navBadge = document.getElementById('navOffertes');
+            if (navBadge) {
+                navBadge.textContent = nieuw;
+                navBadge.style.display = nieuw > 0 ? 'inline' : 'none';
+            }
+        }
+
+        function renderKanban() {
+            const statuses = ['nieuw', 'te_bellen', 'opname_gepland', 'offerte_verstuurd', 'gewonnen', 'verloren'];
+            
+            statuses.forEach(status => {
+                const column = document.querySelector(`.kanban-column[data-status="${status}"] .kanban-cards`);
+                const items = aanvragen.filter(a => a.status === status);
+                
+                column.innerHTML = items.map(a => renderAanvraagCard(a)).join('');
+            });
+            
+            // Update counts
+            document.getElementById('colNieuw').textContent = aanvragen.filter(a => a.status === 'nieuw').length;
+            document.getElementById('colBellen').textContent = aanvragen.filter(a => a.status === 'te_bellen').length;
+            document.getElementById('colOpname').textContent = aanvragen.filter(a => a.status === 'opname_gepland').length;
+            document.getElementById('colVerstuurd').textContent = aanvragen.filter(a => a.status === 'offerte_verstuurd').length;
+            document.getElementById('colGewonnen').textContent = aanvragen.filter(a => a.status === 'gewonnen').length;
+            document.getElementById('colVerloren').textContent = aanvragen.filter(a => a.status === 'verloren').length;
+        }
+
+        function renderAanvraagCard(a) {
+            const dagen = getDagenSinds(a.created);
+            const urgentie = dagen > 3 ? 'hoog' : dagen > 1 ? 'normaal' : 'laag';
+            const type = a.type || detectType(a.bericht || '');
+            const phone = a.telefoon ? a.telefoon.replace(/[\s\-\(\)]/g, '') : '';
+            
+            return `
+                <div class="aanvraag-card" draggable="true" ondragstart="dragStart(event, '${a.id}')" onclick="openDetail('${a.id}')">
+                    <div class="naam">${escapeHtml(a.naam)}</div>
+                    ${a.adres ? `<div class="adres">📍 ${escapeHtml(a.adres.substring(0, 40))}${a.adres.length > 40 ? '...' : ''}</div>` : ''}
+                    <div class="meta">
+                        <span class="type-badge type-${type}">${type}</span>
+                        <span class="urgentie-badge urgentie-${urgentie}">${dagen}d</span>
+                    </div>
+                    <div class="contact-btns" onclick="event.stopPropagation()">
+                        ${phone ? `
+                            <a href="tel:${phone}" class="contact-btn call" title="Bellen">📞</a>
+                            <a href="https://wa.me/31${phone.replace(/^0/, '').replace(/^\+31/, '')}" target="_blank" class="contact-btn whatsapp" title="WhatsApp">💬</a>
+                        ` : ''}
+                        ${a.email ? `<button onclick="openEmailModal('${a.id}')" class="contact-btn mail" title="Email via Gmail">📧</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderLijst() {
+            const body = document.getElementById('lijstBody');
+            
+            const sorted = [...aanvragen].sort((a, b) => new Date(b.created) - new Date(a.created));
+            
+            body.innerHTML = sorted.map(a => {
+                const type = a.type || detectType(a.bericht || '');
+                const statusLabels = {
+                    'nieuw': '🔵 Nieuw',
+                    'te_bellen': '📞 Te bellen',
+                    'opname_gepland': '📋 Opname',
+                    'offerte_verstuurd': '📤 Verstuurd',
+                    'gewonnen': '✅ Gewonnen',
+                    'verloren': '❌ Verloren'
+                };
+                
+                return `
+                    <tr class="hover:bg-gray-50 cursor-pointer" onclick="openDetail('${a.id}')">
+                        <td class="py-3">
+                            <div class="font-semibold">${escapeHtml(a.naam)}</div>
+                            <div class="text-sm text-gray-500">${escapeHtml(a.email || '')}</div>
+                        </td>
+                        <td><span class="type-badge type-${type}">${type}</span></td>
+                        <td>${statusLabels[a.status] || a.status}</td>
+                        <td class="text-sm text-gray-500">${formatDate(a.created)}</td>
+                        <td>
+                            <button onclick="event.stopPropagation(); openDetail('${a.id}')" class="btn btn-secondary btn-sm">Details</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderSpam() {
+            const body = document.getElementById('spamBody');
+            const empty = document.getElementById('spamEmpty');
+            
+            if (spamAanvragen.length === 0) {
+                body.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+            
+            empty.style.display = 'none';
+            body.innerHTML = spamAanvragen.map(a => `
+                <tr>
+                    <td>${escapeHtml(a.naam || '-')}</td>
+                    <td>${escapeHtml(a.email || '-')}</td>
+                    <td><span class="spam-reason">${a.spamReason}</span></td>
+                    <td class="text-sm text-gray-500">${formatDate(a.created)}</td>
+                    <td>
+                        <button onclick="restoreFromSpam('${a.id}')" class="btn btn-secondary btn-sm">♻️ Herstellen</button>
+                        <button onclick="deleteSpam('${a.id}')" class="btn btn-danger btn-sm">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateCounts() {
+            document.getElementById('tabKanbanCount').textContent = aanvragen.length;
+            document.getElementById('tabSpamCount').textContent = spamAanvragen.length;
+        }
+
+        // ============================================
+        // DETAIL VIEW
+        // ============================================
+        function openDetail(id) {
+            const aanvraag = aanvragen.find(a => a.id === id);
+            if (!aanvraag) return;
+            
+            currentAanvraag = aanvraag;
+            const type = aanvraag.type || detectType(aanvraag.bericht || '');
+            const dagen = getDagenSinds(aanvraag.created);
+            const phone = aanvraag.telefoon ? aanvraag.telefoon.replace(/[\s\-\(\)]/g, '') : '';
+            
+            document.getElementById('detailTitle').textContent = aanvraag.naam;
+            document.getElementById('detailBody').innerHTML = `
+                <div class="space-y-4">
+                    <!-- Contact Info -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-sm text-gray-500">Email</div>
+                            <div class="font-medium">${aanvraag.email || '-'}</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-500">Telefoon</div>
+                            <div class="font-medium">${aanvraag.telefoon || '-'}</div>
+                        </div>
+                    </div>
+                    
+                    ${aanvraag.adres ? `
+                        <div>
+                            <div class="text-sm text-gray-500">Adres</div>
+                            <div class="font-medium">${escapeHtml(aanvraag.adres)}</div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <div class="text-sm text-gray-500">Type werk</div>
+                            <div><span class="type-badge type-${type}">${type}</span></div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-500">Aanvraag datum</div>
+                            <div class="font-medium">${formatDate(aanvraag.created)}</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-500">Dagen open</div>
+                            <div class="font-medium">${dagen} dagen</div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="text-sm text-gray-500 mb-1">Bericht</div>
+                        <div class="bg-gray-50 rounded-lg p-3 text-sm">${escapeHtml(aanvraag.bericht || '-')}</div>
+                    </div>
+                    
+                    <div>
+                        <div class="text-sm text-gray-500 mb-1">Status wijzigen</div>
+                        <select class="form-select" onchange="updateStatus('${aanvraag.id}', this.value)">
+                            <option value="nieuw" ${aanvraag.status === 'nieuw' ? 'selected' : ''}>🔵 Nieuw</option>
+                            <option value="te_bellen" ${aanvraag.status === 'te_bellen' ? 'selected' : ''}>📞 Te bellen</option>
+                            <option value="opname_gepland" ${aanvraag.status === 'opname_gepland' ? 'selected' : ''}>📋 Opname gepland</option>
+                            <option value="offerte_verstuurd" ${aanvraag.status === 'offerte_verstuurd' ? 'selected' : ''}>📤 Offerte verstuurd</option>
+                            <option value="gewonnen" ${aanvraag.status === 'gewonnen' ? 'selected' : ''}>✅ Gewonnen</option>
+                            <option value="verloren" ${aanvraag.status === 'verloren' ? 'selected' : ''}>❌ Verloren</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <div class="text-sm text-gray-500 mb-1">Notities</div>
+                        <textarea class="form-textarea" id="detailNotities" placeholder="Interne notities...">${aanvraag.notities || ''}</textarea>
+                        <button onclick="saveNotities()" class="btn btn-secondary btn-sm mt-2">💾 Notities opslaan</button>
+                    </div>
+                    
+                    <!-- Quick Contact -->
+                    <div class="border-t pt-4">
+                        <div class="text-sm text-gray-500 mb-2">Snel contact</div>
+                        <div class="flex gap-2 flex-wrap">
+                            ${phone ? `
+                                <a href="tel:${phone}" class="btn btn-secondary btn-sm">📞 Bellen</a>
+                                <a href="https://wa.me/31${phone.replace(/^0/, '').replace(/^\+31/, '')}" target="_blank" class="btn btn-whatsapp btn-sm">💬 WhatsApp</a>
+                            ` : ''}
+                            ${aanvraag.email ? `<button onclick="openEmailModal('${aanvraag.id}')" class="btn btn-primary btn-sm">📧 Email</button>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('detailFooter').innerHTML = `
+                <button onclick="closeModal('detailModal')" class="btn btn-secondary">Sluiten</button>
+                <button onclick="markAsSpam('${aanvraag.id}')" class="btn btn-danger btn-sm">🗑️ Spam</button>
+                ${!aanvraag.moneybirdId ? `<button onclick="createMoneybird('${aanvraag.id}')" class="btn btn-warning">💰 Maak klant aan</button>` : '<span class="text-green-600 text-sm">✅ In Moneybird</span>'}
+                <button onclick="planOpname('${aanvraag.id}')" class="btn btn-primary">📋 Plan opname</button>
+            `;
+            
+            openModal('detailModal');
+        }
+
+        // ============================================
+        // ACTIONS
+        // ============================================
+        async function updateStatus(id, status) {
+            const aanvraag = aanvragen.find(a => a.id === id);
+            if (!aanvraag) return;
+            
+            const wasNieuw = aanvraag.status === 'nieuw';
+            
+            try {
+                const res = await fetch(`/api/offerteaanvragen/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        status,
+                        eersteReactie: wasNieuw && status !== 'nieuw' ? new Date().toISOString() : aanvraag.eersteReactie
+                    })
+                });
+                
+                if (res.ok) {
+                    aanvraag.status = status;
+                    if (wasNieuw && status !== 'nieuw') {
+                        aanvraag.eersteReactie = new Date().toISOString();
+                    }
+                    render();
+                    showToast('Status bijgewerkt', 'success');
+                }
+            } catch (e) {
+                // Fallback: local update
+                aanvraag.status = status;
+                render();
+                showToast('Status bijgewerkt (offline)', 'info');
+            }
+        }
+
+        async function saveNotities() {
+            if (!currentAanvraag) return;
+            
+            const notities = document.getElementById('detailNotities').value;
+            
+            try {
+                await fetch(`/api/offerteaanvragen/${currentAanvraag.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notities })
+                });
+                
+                currentAanvraag.notities = notities;
+                showToast('Notities opgeslagen', 'success');
+            } catch (e) {
+                showToast('Fout bij opslaan', 'error');
+            }
+        }
+
+        async function createMoneybird(id) {
+            const aanvraag = aanvragen.find(a => a.id === id);
+            if (!aanvraag) return;
+            
+            if (!confirm(`Klant "${aanvraag.naam}" aanmaken in Moneybird?`)) return;
+            
+            try {
+                const res = await fetch(`/api/offerteaanvragen/${id}/create-contact`, {
+                    method: 'POST'
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.success) {
+                    aanvraag.moneybirdId = data.contactId;
+                    showToast('✅ Klant aangemaakt in Moneybird!', 'success');
+                    openDetail(id); // Refresh detail view
+                } else {
+                    showToast('❌ ' + (data.error || 'Fout'), 'error');
+                }
+            } catch (e) {
+                showToast('Verbindingsfout', 'error');
+            }
+        }
+
+        function planOpname(id) {
+            const aanvraag = aanvragen.find(a => a.id === id);
+            if (!aanvraag) return;
+            
+            // Sla klantdata op voor Planning Pro
+            localStorage.setItem('planningKlant', JSON.stringify({
+                naam: aanvraag.naam,
+                email: aanvraag.email,
+                telefoon: aanvraag.telefoon,
+                adres: aanvraag.adres
+            }));
+            
+            window.location.href = '/planning.html';
+        }
+
+        function markAsSpam(id) {
+            if (!confirm('Deze aanvraag als spam markeren?')) return;
+            
+            const idx = aanvragen.findIndex(a => a.id === id);
+            if (idx >= 0) {
+                const aanvraag = aanvragen.splice(idx, 1)[0];
+                aanvraag.spamReason = 'Handmatig gemarkeerd';
+                spamAanvragen.push(aanvraag);
+                
+                closeModal('detailModal');
+                render();
+                showToast('Gemarkeerd als spam', 'info');
+            }
+        }
+
+        function restoreFromSpam(id) {
+            const idx = spamAanvragen.findIndex(a => a.id === id);
+            if (idx >= 0) {
+                const aanvraag = spamAanvragen.splice(idx, 1)[0];
+                delete aanvraag.spamReason;
+                aanvraag.status = 'nieuw';
+                aanvragen.push(aanvraag);
+                
+                render();
+                showToast('Hersteld uit spam', 'success');
+            }
+        }
+
+        function deleteSpam(id) {
+            if (!confirm('Definitief verwijderen?')) return;
+            
+            spamAanvragen = spamAanvragen.filter(a => a.id !== id);
+            render();
+            showToast('Verwijderd', 'info');
+        }
+
+        function clearAllSpam() {
+            if (!confirm(`Alle ${spamAanvragen.length} spam items verwijderen?`)) return;
+            
+            spamAanvragen = [];
+            render();
+            showToast('Alle spam verwijderd', 'info');
+        }
+
+        // ============================================
+        // ADD NEW AANVRAAG
+        // ============================================
+        function openAddModal() {
+            document.getElementById('addNaam').value = '';
+            document.getElementById('addEmail').value = '';
+            document.getElementById('addTelefoon').value = '';
+            document.getElementById('addAdres').value = '';
+            document.getElementById('addType').value = 'stucwerk';
+            document.getElementById('addBericht').value = '';
+            openModal('addModal');
+        }
+
+        async function saveAanvraag() {
+            const naam = document.getElementById('addNaam').value.trim();
+            const email = document.getElementById('addEmail').value.trim();
+            const bericht = document.getElementById('addBericht').value.trim();
+            
+            // Validatie
+            if (!naam) {
+                showToast('Naam is verplicht', 'error');
+                return;
+            }
+            if (!email || !isValidEmail(email)) {
+                showToast('Geldig emailadres is verplicht', 'error');
+                return;
+            }
+            if (!bericht) {
+                showToast('Bericht is verplicht', 'error');
+                return;
+            }
+            
+            const nieuweAanvraag = {
+                id: 'aanvr_' + Date.now(),
+                naam,
+                email,
+                telefoon: document.getElementById('addTelefoon').value.trim(),
+                adres: document.getElementById('addAdres').value.trim(),
+                type: document.getElementById('addType').value,
+                bericht,
+                status: 'nieuw',
+                bron: 'handmatig',
+                created: new Date().toISOString()
+            };
+            
+            try {
+                const res = await fetch('/api/offerteaanvragen', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(nieuweAanvraag)
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    nieuweAanvraag.id = data.id || nieuweAanvraag.id;
+                }
+            } catch (e) {
+                console.error('API error, saving locally');
+            }
+            
+            aanvragen.push(nieuweAanvraag);
+            closeModal('addModal');
+            render();
+            showToast('Aanvraag toegevoegd!', 'success');
+        }
+
+        // ============================================
+        // DRAG & DROP
+        // ============================================
+        function dragStart(event, id) {
+            event.dataTransfer.setData('aanvraagId', id);
+            event.target.classList.add('dragging');
+        }
+
+        function allowDrop(event) {
+            event.preventDefault();
+            event.currentTarget.classList.add('drag-over');
+        }
+
+        function leaveDrop(event) {
+            event.currentTarget.classList.remove('drag-over');
+        }
+
+        async function dropCard(event, newStatus) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('drag-over');
+            
+            const id = event.dataTransfer.getData('aanvraagId');
+            if (!id) return;
+            
+            document.querySelectorAll('.aanvraag-card.dragging').forEach(el => el.classList.remove('dragging'));
+            
+            await updateStatus(id, newStatus);
+        }
+
+        // ============================================
+        // HELPERS
+        // ============================================
+        function detectType(bericht) {
+            const lower = (bericht || '').toLowerCase();
+            if (lower.includes('spuit') || lower.includes('latex')) return 'spuitwerk';
+            if (lower.includes('sier') || lower.includes('pleister')) return 'sierpleister';
+            if (lower.includes('isolat') || lower.includes('isoler')) return 'isolatie';
+            if (lower.includes('stuc') || lower.includes('glad') || lower.includes('wand') || lower.includes('plafond')) return 'stucwerk';
+            return 'overig';
+        }
+
+        function getDagenSinds(dateStr) {
+            if (!dateStr) return 0;
+            const diff = new Date() - new Date(dateStr);
+            return Math.floor(diff / (1000 * 60 * 60 * 24));
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            return new Date(dateStr).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ============================================
+        // UI
+        // ============================================
+        function switchTab(tab, btn) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            document.getElementById('kanbanView').style.display = tab === 'kanban' ? 'block' : 'none';
+            document.getElementById('lijstView').style.display = tab === 'lijst' ? 'block' : 'none';
+            document.getElementById('spamView').style.display = tab === 'spam' ? 'block' : 'none';
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('open');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('open');
+        }
+
+        function toggleMenu() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.querySelector('.sidebar-overlay').classList.toggle('open');
+        }
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+    </script>
+<script src="/sidebar.js"></script>
+</body>
+</html>

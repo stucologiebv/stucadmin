@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Omzet - StucAdmin Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/sidebar.js"></script>
+    <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
+    <style>
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #f5f7fa; }
+        .mobile-menu-btn { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: #6366f1; color: white; border: none; border-radius: 10px; width: 44px; height: 44px; font-size: 20px; cursor: pointer; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 90; }
+        .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; }
+        .kpi-card { position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent, #6366f1); }
+        .kpi-value { font-size: 1.75rem; font-weight: 800; color: var(--accent, #6366f1); }
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 8px 16px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; }
+        .data-table { width: 100%; }
+        .data-table th { text-align: left; padding: 12px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; color: #94a3b8; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+        .data-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.875rem; }
+        main { padding: 24px; min-height: 100vh; }
+        @media (max-width: 1024px) {
+            .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+            main { margin-left: 0 !important; padding: 70px 12px 24px 12px; }
+            .kpi-value { font-size: 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="sidebar-overlay" onclick="toggleMenu()"></div>
+    
+    <div class="flex min-h-screen">
+        <!-- Sidebar wordt geladen door sidebar.js -->
+
+        <main class="flex-1">
+            <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                <div><h1 class="text-lg sm:text-xl font-bold">💹 Omzet & Facturen</h1><p class="text-gray-500 text-sm">Financieel overzicht</p></div>
+                <div class="flex gap-2">
+                    <select id="jaar" class="btn-secondary" onchange="loadData()"></select>
+                    <button onclick="location.reload()" class="btn-secondary">🔄</button>
+                </div>
+            </header>
+
+            <!-- Tip Banner -->
+            <div class="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 rounded-xl p-3 mb-4 flex items-center gap-3">
+                <span class="text-xl">💰</span>
+                <p class="text-sm text-emerald-700"><strong>Automatische sync</strong> — Alle facturen worden realtime gesynchroniseerd met je boekhouding. Openstaande bedragen en betalingen zijn altijd actueel.</p>
+            </div>
+
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+                <div class="card kpi-card p-4" style="--accent: #10b981"><p class="text-gray-500 text-xs">Jaar omzet</p><p class="kpi-value" id="kpiJaar">€0</p></div>
+                <div class="card kpi-card p-4" style="--accent: #3b82f6"><p class="text-gray-500 text-xs">Deze maand</p><p class="kpi-value" id="kpiMaand">€0</p></div>
+                <div class="card kpi-card p-4" style="--accent: #f59e0b"><p class="text-gray-500 text-xs">Openstaand</p><p class="kpi-value" id="kpiOpen">€0</p></div>
+                <div class="card kpi-card p-4" style="--accent: #8b5cf6"><p class="text-gray-500 text-xs">Betaald</p><p class="kpi-value" id="kpiBetaald">€0</p></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="card p-4"><h2 class="font-bold mb-4 text-sm">📈 Omzet per maand</h2><div class="h-48"><canvas id="omzetChart"></canvas></div></div>
+                <div class="card p-4"><h2 class="font-bold mb-4 text-sm">📊 Status verdeling</h2><div class="h-48"><canvas id="statusChart"></canvas></div></div>
+            </div>
+
+            <div class="card p-4">
+                <h2 class="font-bold mb-4 text-sm">📄 Alle facturen</h2>
+                <div class="overflow-x-auto">
+                    <table class="data-table">
+                        <thead><tr><th>Nr</th><th>Klant</th><th>Datum</th><th>Bedrag</th><th>Status</th></tr></thead>
+                        <tbody id="facturenTabel"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let invoices = [], contacts = [];
+        let omzetChartInstance = null, statusChartInstance = null;
+        function toggleMenu() { document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open'); }
+        async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login.html'; }
+
+        async function init() {
+            const jaarSelect = document.getElementById('jaar');
+            const huidigJaar = new Date().getFullYear();
+            for (let j = huidigJaar; j >= huidigJaar - 3; j--) {
+                jaarSelect.innerHTML += `<option value="${j}">${j}</option>`;
+            }
+            await loadData();
+        }
+
+        async function loadData() {
+            // Loading states
+            document.getElementById('kpiJaar').textContent = '...';
+            document.getElementById('kpiMaand').textContent = '...';
+            document.getElementById('kpiOpen').textContent = '...';
+            document.getElementById('kpiBetaald').textContent = '...';
+            document.getElementById('facturenTabel').innerHTML = '<tr><td colspan="5" class="text-center text-gray-400 py-8">Laden...</td></tr>';
+            
+            try {
+                [invoices, contacts] = await Promise.all([fetch('/api/invoices').then(r => r.json()), fetch('/api/contacts').then(r => r.json())]);
+                renderAll();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderAll() {
+            const jaar = parseInt(document.getElementById('jaar').value);
+            // Use invoice_date from Moneybird API, fallback to created_at for drafts
+            const jaarInv = invoices.filter(i => {
+                const dateStr = i.invoice_date || i.created_at;
+                if (!dateStr) return false;
+                return new Date(dateStr).getFullYear() === jaar;
+            });
+            const now = new Date();
+            const maandInv = jaarInv.filter(i => {
+                const dateStr = i.invoice_date || i.created_at;
+                return new Date(dateStr).getMonth() === now.getMonth();
+            });
+            
+            // Only count non-draft invoices for revenue
+            const realInvoices = jaarInv.filter(i => i.state !== 'draft');
+            const jaarOmzet = realInvoices.reduce((s, i) => s + parseFloat(i.total_price_incl_tax || 0), 0);
+            const maandRealInv = maandInv.filter(i => i.state !== 'draft');
+            const maandOmzet = maandRealInv.reduce((s, i) => s + parseFloat(i.total_price_incl_tax || 0), 0);
+            const open = jaarInv.filter(i => i.state === 'open' || i.state === 'late' || i.state === 'reminded');
+            const betaald = jaarInv.filter(i => i.state === 'paid');
+            
+            document.getElementById('kpiJaar').textContent = '€' + jaarOmzet.toLocaleString('nl-NL', {maximumFractionDigits: 0});
+            document.getElementById('kpiMaand').textContent = '€' + maandOmzet.toLocaleString('nl-NL', {maximumFractionDigits: 0});
+            document.getElementById('kpiOpen').textContent = '€' + open.reduce((s, i) => s + parseFloat(i.total_price_incl_tax || 0), 0).toLocaleString('nl-NL', {maximumFractionDigits: 0});
+            document.getElementById('kpiBetaald').textContent = '€' + betaald.reduce((s, i) => s + parseFloat(i.total_price_incl_tax || 0), 0).toLocaleString('nl-NL', {maximumFractionDigits: 0});
+
+            renderCharts(jaarInv);
+            renderTabel(jaarInv);
+        }
+
+        function renderCharts(jaarInv) {
+            const months = ['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+            const maandData = months.map((m, i) => {
+                return jaarInv.filter(inv => {
+                    if (inv.state === 'draft') return false;
+                    const dateStr = inv.invoice_date || inv.created_at;
+                    return new Date(dateStr).getMonth() === i;
+                }).reduce((s, inv) => s + parseFloat(inv.total_price_incl_tax || 0), 0);
+            });
+
+            // Destroy existing charts to prevent memory leak
+            if (omzetChartInstance) omzetChartInstance.destroy();
+            if (statusChartInstance) statusChartInstance.destroy();
+
+            omzetChartInstance = new Chart(document.getElementById('omzetChart'), {
+                type: 'bar',
+                data: { labels: months, datasets: [{ data: maandData, backgroundColor: '#6366f1', borderRadius: 6 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString() } } } }
+            });
+
+            const statusData = [
+                jaarInv.filter(i => i.state === 'paid').length,
+                jaarInv.filter(i => i.state === 'open' || i.state === 'late' || i.state === 'reminded').length,
+                jaarInv.filter(i => i.state === 'draft').length
+            ];
+            statusChartInstance = new Chart(document.getElementById('statusChart'), {
+                type: 'doughnut',
+                data: { labels: ['Betaald', 'Open', 'Concept'], datasets: [{ data: statusData, backgroundColor: ['#10b981', '#f59e0b', '#94a3b8'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        function renderTabel(jaarInv) {
+            document.getElementById('facturenTabel').innerHTML = jaarInv.sort((a, b) => {
+                const dateA = a.invoice_date || a.created_at;
+                const dateB = b.invoice_date || b.created_at;
+                return new Date(dateB) - new Date(dateA);
+            }).map(inv => {
+                const c = contacts.find(x => x.id === inv.contact_id);
+                const dateStr = inv.invoice_date || inv.created_at;
+                const dateDisplay = dateStr ? new Date(dateStr).toLocaleDateString('nl-NL') : '-';
+                const status = inv.state === 'paid' ? '<span class="text-green-600">Betaald</span>' : 
+                               inv.state === 'late' ? '<span class="text-red-500">Te laat</span>' :
+                               inv.state === 'reminded' ? '<span class="text-orange-600">Herinnerd</span>' :
+                               inv.state === 'open' ? '<span class="text-orange-500">Open</span>' : 
+                               '<span class="text-gray-400">Concept</span>';
+                return `<tr>
+                    <td class="font-medium">${inv.invoice_id || '-'}</td>
+                    <td>${c?.company_name || c?.firstname || inv.contact?.company_name || '-'}</td>
+                    <td>${dateDisplay}</td>
+                    <td class="font-semibold">€${parseFloat(inv.total_price_incl_tax || 0).toFixed(0)}</td>
+                    <td>${status}</td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="5" class="text-center text-gray-400 py-8">Geen facturen</td></tr>';
+        }
+
+        init();
+    </script>
+<script src="/data-sync.js"></script>
+<script src="/sidebar.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "stucadmin",
+  "version": "1.0.0",
+  "description": "StucAdmin Pro - Bedrijfsmanagement",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "docx": "^9.5.1",
+    "dotenv": "^17.2.3",
+    "express": "^4.18.2",
+    "multer": "^2.0.2",
+    "node-fetch": "^2.7.0"
+  }
+}
