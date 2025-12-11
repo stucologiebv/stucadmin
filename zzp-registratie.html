@@ -667,10 +667,13 @@
                 console.log('uploadedFiles before send:', Object.keys(uploadedFiles), uploadedFiles.ID ? 'ID:' + uploadedFiles.ID.name : 'no ID');
                 console.log('Sending data, size:', JSON.stringify(formData).length);
                 
-                const res = await fetch('/api/zzp-register', {
+                // Use absolute URL for mobile compatibility
+                const baseUrl = window.location.origin;
+                const res = await fetch(baseUrl + '/api/zzp-register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(formData),
+                    credentials: 'include'
                 });
                 
                 console.log('Response status:', res.status);
