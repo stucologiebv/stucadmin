@@ -437,6 +437,14 @@
                 const file = input.files[0];
                 console.log('File selected:', file.name, 'size:', file.size, 'type:', file.type);
                 
+                // Check file size - max 2MB per file
+                const maxSize = 2 * 1024 * 1024; // 2MB
+                if (file.size > maxSize) {
+                    alert('⚠️ Bestand te groot!\n\n' + file.name + ' is ' + (file.size / 1024 / 1024).toFixed(1) + 'MB.\n\nMaximum is 2MB per bestand.\n\nTip: Maak een foto met lagere resolutie of comprimeer het bestand.');
+                    input.value = ''; // Reset input
+                    return;
+                }
+                
                 // Convert to base64
                 const reader = new FileReader();
                 reader.onload = function(e) {
@@ -449,11 +457,12 @@
                     };
                     
                     document.getElementById('box' + type).classList.add('has-file');
-                    document.getElementById('label' + type).textContent = '✅ ' + file.name;
+                    document.getElementById('label' + type).textContent = '✅ ' + file.name + ' (' + (file.size / 1024).toFixed(0) + 'KB)';
                     console.log('uploadedFiles now:', Object.keys(uploadedFiles));
                 };
                 reader.onerror = function(e) {
                     console.error('FileReader error for:', type, e);
+                    alert('Fout bij laden van bestand. Probeer opnieuw.');
                 };
                 reader.readAsDataURL(file);
             } else {
