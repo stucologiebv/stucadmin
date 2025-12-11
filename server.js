@@ -4273,8 +4273,17 @@ app.get('/api/medewerker/status', (req, res) => {
         return res.json({ loggedIn: false });
     }
     
-    const medewerker = medewerkers.find(m => m.id === session.medewerkerId);
-    res.json({ loggedIn: true, id: session.medewerkerId, naam: session.medewerker, type: medewerker?.type, telefoon: medewerker?.telefoon });
+    // Multi-tenant: check if requested company matches session company
+    const requestedCompanyId = req.query.companyId || req.query.c;
+    if (requestedCompanyId && session.companyId !== requestedCompanyId) {
+        // Session is for different company - don't auto-login
+        return res.json({ loggedIn: false });
+    }
+    
+    // Load medewerker from correct company (multi-tenant)
+    const companyMedewerkers = loadCompanyData(session.companyId, 'medewerkers');
+    const medewerker = companyMedewerkers.find(m => m.id === session.medewerkerId);
+    res.json({ loggedIn: true, id: session.medewerkerId, naam: session.medewerker, type: medewerker?.type, telefoon: medewerker?.telefoon, companyId: session.companyId });
 });
 
 // Get active medewerkers (for login dropdown - rate limited)

@@ -113,9 +113,9 @@
         // Check if already logged in
         async function checkStatus() {
             try {
-                const res = await fetch('/api/medewerker/status');
+                const res = await fetch('/api/medewerker/status?companyId=' + companyId);
                 const data = await res.json();
-                if (data.loggedIn) {
+                if (data.loggedIn && data.companyId === companyId) {
                     window.location.href = '/medewerker-portal.html?c=' + companyId;
                 }
             } catch (e) {}
