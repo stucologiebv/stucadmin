@@ -970,11 +970,23 @@ app.use((req, res, next) => {
         '/data-sync.js'
     ];
     
+    // Allow specific directories
+    const allowedPaths = [
+        '/public/js/'  // Allow our ES modules
+    ];
+    
     const requestPath = req.path.toLowerCase();
     
-    // Check if explicitly allowed
+    // Check if explicitly allowed file
     if (allowedFiles.includes(requestPath)) {
         return next();
+    }
+    
+    // Check if in allowed path
+    for (const allowedPath of allowedPaths) {
+        if (requestPath.startsWith(allowedPath)) {
+            return next();
+        }
     }
     
     // Check if blocked
