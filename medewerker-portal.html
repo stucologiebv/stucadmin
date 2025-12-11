@@ -310,9 +310,9 @@
             // Check eerst of we al een geldige sessie hebben
             if (sessionId) {
                 try {
-                    const res = await fetch('/api/medewerker/status', { headers: { 'X-Medewerker-Session': sessionId } });
+                    const res = await fetch('/api/medewerker/status?companyId=' + companyId, { headers: { 'X-Medewerker-Session': sessionId } });
                     const status = await res.json();
-                    if (status.loggedIn) {
+                    if (status.loggedIn && status.companyId === companyId) {
                         currentUser = { id: status.id, naam: status.naam, type: status.type, telefoon: status.telefoon };
                         showDashboard();
                         return;
