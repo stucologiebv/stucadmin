@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stucadmin-v1';
+const CACHE_NAME = 'stucadmin-v2';
 const OFFLINE_URL = '/offline.html';
 
 // Files to cache for offline use
@@ -47,6 +47,10 @@ self.addEventListener('fetch', (event) => {
   
   // Skip API requests (always fetch fresh)
   if (event.request.url.includes('/api/')) return;
+  
+  // Skip external CDN requests - let browser handle them directly
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
   
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
