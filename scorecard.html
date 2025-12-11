@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏆 Leverancier Scorecard</title>
+    <title>🏆 Leverancier Scorecard - StucAdmin</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 </head>
 <body class="bg-gray-50 min-h-screen p-6">
     <div class="max-w-6xl mx-auto">
@@ -20,29 +21,51 @@
                 </div>
             </div>
         </div>
-
         <div id="scorecardsContainer" class="space-y-4">
-            <div class="bg-white rounded-xl shadow-lg p-6 text-center text-gray-500">
-                Laden...
-            </div>
+            <div class="bg-white rounded-xl shadow-lg p-6 text-center text-gray-500">Laden...</div>
         </div>
     </div>
 
-    <script>
-        async function loadScorecards() {
+    <script type="module">
+        import { showToast, showLoading } from '/public/js/modules/ui.js';
+
+        function escapeHTML(str) {
+            if (typeof str !== 'string') return str;
+            return DOMPurify.sanitize(str);
+        }
+
+        async function checkAuth() {
             try {
-                const response = await fetch('http://localhost:3001/api/supplier-scorecard');
+                const res = await fetch('/api/auth/check', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.authenticated) {
+                    window.location.href = '/login.html';
+                    return false;
+                }
+                return true;
+            } catch {
+                window.location.href = '/login.html';
+                return false;
+            }
+        }
+
+        async function loadScorecards() {
+            showLoading(true);
+            try {
+                const response = await fetch('/api/supplier-scorecard', { credentials: 'include' });
                 const data = await response.json();
                 
                 const container = document.getElementById('scorecardsContainer');
                 
                 if (!data.suppliers || data.suppliers.length === 0) {
-                    container.innerHTML = '<div class="bg-white rounded-xl shadow-lg p-6 text-center text-gray-500">Geen data. Voer eerst een analyse uit in het dashboard.</div>';
+                    container.innerHTML = '<div class="bg-white rounded-xl shadow-lg p-6 text-center text-gray-500">Geen data beschikbaar.</div>';
+                    showLoading(false);
                     return;
                 }
                 
                 container.innerHTML = data.suppliers.map(s => {
-                    const stars = '⭐'.repeat(s.rating) + '☆'.repeat(5 - s.rating);
+                    const supplierName = escapeHTML(s.supplier);
+                    const stars = '⭐'.repeat(Math.min(s.rating, 5)) + '☆'.repeat(5 - Math.min(s.rating, 5));
                     const recColors = {
                         'Preferred': 'bg-green-100 text-green-700',
                         'Approved': 'bg-blue-100 text-blue-700',
@@ -53,7 +76,7 @@
                         <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition">
                             <div class="flex justify-between items-start mb-4">
                                 <div>
-                                    <h3 class="text-2xl font-bold">${s.supplier}</h3>
+                                    <h3 class="text-2xl font-bold">${supplierName}</h3>
                                     <div class="flex items-center gap-2 mt-2">
                                         <span class="text-xl">${stars}</span>
                                         <span class="text-sm text-gray-600">(${s.rating}/5)</span>
@@ -62,51 +85,56 @@
                                 <div class="text-right">
                                     <p class="text-3xl font-bold text-blue-600">${s.overallScore}</p>
                                     <p class="text-sm text-gray-600">Score</p>
-                                    <span class="inline-block mt-2 px-3 py-1 rounded-full text-sm font-bold ${recColors[s.recommendation] || 'bg-gray-100'}">${s.recommendation}</span>
+                                    <span class="inline-block mt-2 px-3 py-1 rounded-full text-sm font-bold ${recColors[s.recommendation] || 'bg-gray-100'}">${escapeHTML(s.recommendation)}</span>
                                 </div>
                             </div>
-                            
                             <div class="grid grid-cols-3 gap-4 mb-4">
                                 <div>
                                     <p class="text-sm text-gray-600">💰 Prijs</p>
                                     <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                                        <div class="bg-blue-600 h-2 rounded-full" style="width: ${s.priceScore}%"></div>
+                                        <div class="bg-blue-600 h-2 rounded-full" style="width: ${Math.min(s.priceScore, 100)}%"></div>
                                     </div>
                                     <p class="text-xs mt-1">${Math.round(s.priceScore)}/100</p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600">⏰ Betrouwbaar</p>
                                     <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                                        <div class="bg-green-600 h-2 rounded-full" style="width: ${s.reliabilityScore}%"></div>
+                                        <div class="bg-green-600 h-2 rounded-full" style="width: ${Math.min(s.reliabilityScore, 100)}%"></div>
                                     </div>
                                     <p class="text-xs mt-1">${Math.round(s.reliabilityScore)}/100</p>
                                 </div>
                                 <div>
                                     <p class="text-sm text-gray-600">✨ Kwaliteit</p>
                                     <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                                        <div class="bg-purple-600 h-2 rounded-full" style="width: ${s.qualityScore}%"></div>
+                                        <div class="bg-purple-600 h-2 rounded-full" style="width: ${Math.min(s.qualityScore, 100)}%"></div>
                                     </div>
                                     <p class="text-xs mt-1">${Math.round(s.qualityScore)}/100</p>
                                 </div>
                             </div>
-                            
                             <div class="grid grid-cols-3 gap-4 text-sm pt-4 border-t">
-                                <div><span class="text-gray-600">Totaal:</span> <strong>€${s.totalSpent.toLocaleString()}</strong></div>
+                                <div><span class="text-gray-600">Totaal:</span> <strong>€${Number(s.totalSpent).toLocaleString('nl-NL')}</strong></div>
                                 <div><span class="text-gray-600">Facturen:</span> <strong>${s.invoiceCount}</strong></div>
-                                <div><span class="text-gray-600">Gem.:</span> <strong>€${s.avgInvoiceAmount.toLocaleString()}</strong></div>
+                                <div><span class="text-gray-600">Gem.:</span> <strong>€${Number(s.avgInvoiceAmount).toLocaleString('nl-NL')}</strong></div>
                             </div>
                         </div>
                     `;
                 }).join('');
             } catch (error) {
                 console.error('Failed to load scorecards:', error);
+                showToast('Fout bij laden scorecards', 'error');
                 document.getElementById('scorecardsContainer').innerHTML = 
-                    '<div class="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">Fout bij laden. Draait de server?</div>';
+                    '<div class="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">Fout bij laden.</div>';
             }
+            showLoading(false);
         }
 
-        window.onload = loadScorecards;
+        window.loadScorecards = loadScorecards;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (await checkAuth()) {
+                loadScorecards();
+            }
+        });
     </script>
-<script src="/data-sync.js"></script>
 </body>
 </html>
