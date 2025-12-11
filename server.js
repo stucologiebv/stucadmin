@@ -1730,7 +1730,15 @@ async function moneybirdRequest(endpoint, options = {}, credentials = null) {
 function getCredentialsFromRequest(req) {
     const companyId = req.session?.bedrijf_id;
     const sessionId = req.sessionID;
-    return getMoneyBirdCredentials(companyId, sessionId);
+    const credentials = getMoneyBirdCredentials(companyId, sessionId);
+    
+    // Debug logging
+    if (!credentials) {
+        console.log(`🔍 Moneybird credentials NULL for company: ${companyId}, sessionId: ${sessionId ? 'present' : 'missing'}`);
+        console.log(`🔍 ENV fallback: TOKEN=${MONEYBIRD_API_TOKEN ? 'SET' : 'NOT SET'}, ADMIN=${ADMINISTRATION_ID ? 'SET' : 'NOT SET'}`);
+    }
+    
+    return credentials;
 }
 
 // Contacts
