@@ -558,7 +558,7 @@ app.use((req, res, next) => {
         "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://cdnjs.cloudflare.com; " +
         "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; " +
         "img-src 'self' data: blob: https:; " +
-        "connect-src 'self' https://api.moneybird.com https://gmail.googleapis.com https://www.googleapis.com https://nominatim.openstreetmap.org; " +
+        "connect-src 'self' https://api.moneybird.com https://gmail.googleapis.com https://www.googleapis.com https://nominatim.openstreetmap.org https://cdn.tailwindcss.com https://fonts.googleapis.com https://fonts.gstatic.com; " +
         "frame-ancestors 'none';"
     );
     
