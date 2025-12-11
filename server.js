@@ -4682,6 +4682,50 @@ app.get('/api/zzp-opdrachten', requireAuth, (req, res) => {
 console.log('ZZP Opdrachten module geladen');
 
 // ============================================
+// ZZP'ERS CRUD API
+// ============================================
+
+// GET all ZZP'ers for company
+app.get('/api/zzpers', requireAuth, (req, res) => {
+    try {
+        const companyId = req.session.bedrijf_id;
+        const zzpers = loadCompanyData(companyId, 'zzpers') || [];
+        res.json(zzpers);
+    } catch (error) {
+        console.error('Error loading zzpers:', error);
+        res.status(500).json({ error: 'Fout bij laden ZZP\'ers' });
+    }
+});
+
+// DELETE ZZP'er
+app.delete('/api/zzpers/:id', requireAuth, (req, res) => {
+    try {
+        const companyId = req.session.bedrijf_id;
+        const zzpId = req.params.id;
+        
+        // Remove ZZP'er
+        let zzpers = loadCompanyData(companyId, 'zzpers') || [];
+        const zzpIndex = zzpers.findIndex(z => z.id === zzpId);
+        if (zzpIndex === -1) {
+            return res.status(404).json({ error: 'ZZP\'er niet gevonden' });
+        }
+        zzpers.splice(zzpIndex, 1);
+        saveCompanyData(companyId, 'zzpers', zzpers);
+        
+        // Also remove related opdrachten
+        let opdrachten = loadCompanyData(companyId, 'zzpOpdrachten') || [];
+        opdrachten = opdrachten.filter(o => o.zzpId !== zzpId);
+        saveCompanyData(companyId, 'zzpOpdrachten', opdrachten);
+        
+        console.log(`🗑️ ZZP'er ${zzpId} verwijderd voor company ${companyId}`);
+        res.json({ success: true, message: 'ZZP\'er verwijderd' });
+    } catch (error) {
+        console.error('Error deleting zzper:', error);
+        res.status(500).json({ error: 'Fout bij verwijderen ZZP\'er' });
+    }
+});
+
+// ============================================
 // ZZP UITNODIGING MODULE
 // ============================================
 

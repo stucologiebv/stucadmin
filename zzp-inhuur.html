@@ -1365,18 +1365,35 @@
             openModal('modalZZP');
         }
         
-        function deleteZZP() {
+        async function deleteZZP() {
             if (!confirm('Weet je zeker dat je deze ZZP\'er wilt verwijderen? Dit verwijdert ook alle documenten en opdrachten.')) return;
             
-            zzpers = zzpers.filter(z => z.id !== currentZZPId);
-            opdrachten = opdrachten.filter(o => o.zzpId !== currentZZPId);
-            documenten = documenten.filter(d => d.zzpId !== currentZZPId);
-            
-            saveData();
-            closeModal('modalZZPDetail');
-            renderAll();
-            
-            showNotification('ZZP\'er verwijderd', 'success');
+            try {
+                // Delete from server
+                const res = await fetch(`/api/zzpers/${currentZZPId}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                
+                if (!res.ok) {
+                    const data = await res.json();
+                    throw new Error(data.error || 'Verwijderen mislukt');
+                }
+                
+                // Remove from local arrays
+                zzpers = zzpers.filter(z => z.id !== currentZZPId);
+                opdrachten = opdrachten.filter(o => o.zzpId !== currentZZPId);
+                documenten = documenten.filter(d => d.zzpId !== currentZZPId);
+                
+                saveData();
+                closeModal('modalZZPDetail');
+                renderAll();
+                
+                showNotification('ZZP\'er verwijderd', 'success');
+            } catch (error) {
+                console.error('Delete error:', error);
+                showNotification('Fout bij verwijderen: ' + error.message, 'error');
+            }
         }
 
         // ==========================================
