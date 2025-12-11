@@ -584,6 +584,7 @@ app.use((req, res, next) => {
         '/api/auth/login',
         '/api/auth/register', 
         '/api/auth/logout',
+        '/api/auth/csrf',
         '/api/auth/forgot-password',
         '/api/auth/reset-password',
         '/api/medewerker/login',
@@ -1368,6 +1369,21 @@ app.get('/api/auth/check', (req, res) => {
         sessions.delete(sessionId);
     }
     res.json({ authenticated: false });
+});
+
+// Get CSRF token endpoint
+app.get('/api/auth/csrf', (req, res) => {
+    const cookies = parseCookies(req);
+    const sessionId = cookies.stucadmin_session || cookies.medewerker_session;
+    
+    if (sessionId) {
+        const csrfToken = generateCsrfToken(sessionId);
+        return res.json({ csrfToken });
+    }
+    
+    // Generate anonymous token for public forms
+    const anonToken = generateCsrfToken('anon_' + Date.now());
+    res.json({ csrfToken: anonToken });
 });
 
 app.post('/api/auth/logout', (req, res) => {
