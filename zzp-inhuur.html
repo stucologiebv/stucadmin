@@ -971,18 +971,18 @@
             opdrachten = DataSync.get('zzpOpdrachten') || [];
             documenten = DataSync.get('zzpDocumenten') || [];
             
-            // If empty, try localStorage fallback
+            // If empty, try localStorage fallback (with safe JSON parse)
             if (zzpers.length === 0) {
                 const stored = StucStorage.getItem('zzpers');
-                if (stored) zzpers = JSON.parse(stored);
+                if (stored && stored.trim()) try { zzpers = JSON.parse(stored); } catch(e) { zzpers = []; }
             }
             if (opdrachten.length === 0) {
                 const stored = StucStorage.getItem('zzp_opdrachten');
-                if (stored) opdrachten = JSON.parse(stored);
+                if (stored && stored.trim()) try { opdrachten = JSON.parse(stored); } catch(e) { opdrachten = []; }
             }
             if (documenten.length === 0) {
                 const stored = StucStorage.getItem('zzp_documenten');
-                if (stored) documenten = JSON.parse(stored);
+                if (stored && stored.trim()) try { documenten = JSON.parse(stored); } catch(e) { documenten = []; }
             }
             
             renderAll();
