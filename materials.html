@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
     <script src="/sidebar.js"></script>
     <style>
         * { font-family: 'Inter', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -36,25 +37,6 @@
     <div class="sidebar-overlay" onclick="toggleMenu()"></div>
     
     <div class="flex min-h-screen">
-        <aside class="sidebar">
-            <div class="p-4 border-b border-gray-100"><img id="companyLogo" src="/logo.png" alt="Logo" style="max-width: 180px; height: auto;"></div>
-            <nav class="flex-1 p-4 overflow-y-auto">
-                <a href="dashboard.html" class="nav-item">🏠 Dashboard</a>
-                <a href="omzet.html" class="nav-item">💹 Omzet</a>
-                <a href="crm.html" class="nav-item">👥 Klanten</a>
-                <a href="planning.html" class="nav-item">📅 Planning</a>
-                <a href="opname.html" class="nav-item">📋 Opname</a>
-                <a href="offerteaanvragen.html" class="nav-item">📩 Offertes</a>
-                <a href="zzp-inhuur.html" class="nav-item">🤝 ZZP Inhuur</a>
-                <a href="uren.html" class="nav-item">⏱️ Uren</a>
-                <a href="calculator.html" class="nav-item">🧮 Calculator</a>
-                <a href="materials.html" class="nav-item active">📊 Inkoop Analyse</a>
-                <a href="materialen-beheer.html" class="nav-item">📦 Materialen</a>
-                <a href="stucie.html" class="nav-item">🤖 Stucie</a>
-            </nav>
-            <div class="p-4 border-t border-gray-100"><button onclick="logout()" class="nav-item w-full logout-btn">🚪 Uitloggen</button></div>
-        </aside>
-
         <main class="flex-1">
             <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div><h1 class="text-lg sm:text-xl font-bold">📊 Inkoop Analyse</h1><p class="text-gray-500 text-sm">Materiaalkosten overzicht</p></div>
@@ -85,16 +67,48 @@
         </main>
     </div>
 
-    <script>
-        let purchases = [];
-        function toggleMenu() { document.querySelector('.sidebar').classList.toggle('open'); document.querySelector('.sidebar-overlay').classList.toggle('open'); }
-        async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login.html'; }
+    <script type="module">
+        import { showToast, showLoading } from '/public/js/modules/ui.js';
 
-        async function init() {
+        // XSS protection
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return DOMPurify.sanitize(String(str));
+        }
+
+        async function checkAuth() {
             try {
-                purchases = await fetch('/api/purchase_invoices').then(r => r.json());
+                const res = await fetch('/api/auth/check', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.authenticated) {
+                    window.location.href = '/login.html';
+                    return false;
+                }
+                return true;
+            } catch {
+                window.location.href = '/login.html';
+                return false;
+            }
+        }
+
+        let purchases = [];
+        let inkoopChartInstance = null;
+        let leverancierChartInstance = null;
+
+        function toggleMenu() {
+            document.querySelector('.sidebar')?.classList.toggle('open');
+            document.querySelector('.sidebar-overlay')?.classList.toggle('open');
+        }
+        window.toggleMenu = toggleMenu;
+
+        async function loadData() {
+            try {
+                purchases = await fetch('/api/purchase_invoices', { credentials: 'include' }).then(r => r.json());
                 renderAll();
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error(e);
+                showToast('Fout bij laden inkoopfacturen', 'error');
+            }
         }
 
         function renderAll() {
@@ -124,7 +138,11 @@
                 }).reduce((s, p) => s + parseFloat(p.total_price_incl_tax || 0), 0);
             });
 
-            new Chart(document.getElementById('inkoopChart'), {
+            // Destroy existing charts
+            if (inkoopChartInstance) inkoopChartInstance.destroy();
+            if (leverancierChartInstance) leverancierChartInstance.destroy();
+
+            inkoopChartInstance = new Chart(document.getElementById('inkoopChart'), {
                 type: 'line',
                 data: { labels: months, datasets: [{ data: maandData, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.3 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString() } } } }
@@ -138,26 +156,39 @@
             });
             const topLev = Object.entries(leveranciers).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-            new Chart(document.getElementById('leverancierChart'), {
+            leverancierChartInstance = new Chart(document.getElementById('leverancierChart'), {
                 type: 'doughnut',
-                data: { labels: topLev.map(l => l[0]), datasets: [{ data: topLev.map(l => l[1]), backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
+                data: { labels: topLev.map(l => escapeHTML(l[0])), datasets: [{ data: topLev.map(l => l[1]), backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } } }
             });
         }
 
         function renderTabel() {
-            document.getElementById('inkoopTabel').innerHTML = purchases.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 15).map(p => `
-                <tr>
-                    <td class="font-medium">${p.contact?.company_name || 'Onbekend'}</td>
-                    <td class="text-gray-500">${new Date(p.date).toLocaleDateString('nl-NL')}</td>
-                    <td class="font-semibold">€${parseFloat(p.total_price_incl_tax || 0).toFixed(0)}</td>
-                </tr>
-            `).join('') || '<tr><td colspan="3" class="text-center text-gray-400 py-8">Geen inkoopfacturen</td></tr>';
+            const rows = purchases.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 15).map(p => {
+                const leverancier = escapeHTML(p.contact?.company_name || 'Onbekend');
+                const datum = new Date(p.date).toLocaleDateString('nl-NL');
+                const bedrag = parseFloat(p.total_price_incl_tax || 0).toFixed(0);
+                return `
+                    <tr>
+                        <td class="font-medium">${leverancier}</td>
+                        <td class="text-gray-500">${datum}</td>
+                        <td class="font-semibold">€${bedrag}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            document.getElementById('inkoopTabel').innerHTML = rows || '<tr><td colspan="3" class="text-center text-gray-400 py-8">Geen inkoopfacturen</td></tr>';
+        }
+
+        async function init() {
+            showLoading(true);
+            if (!await checkAuth()) return;
+            await loadData();
+            showLoading(false);
         }
 
         init();
     </script>
-<script src="/data-sync.js"></script>
-<script src="/sidebar.js"></script>
+    <script src="/data-sync.js"></script>
 </body>
 </html>
