@@ -1732,11 +1732,9 @@ function getCredentialsFromRequest(req) {
     const sessionId = req.sessionID;
     const credentials = getMoneyBirdCredentials(companyId, sessionId);
     
-    // Debug logging
-    if (!credentials) {
-        console.log(`🔍 Moneybird credentials NULL for company: ${companyId}, sessionId: ${sessionId ? 'present' : 'missing'}`);
-        console.log(`🔍 ENV fallback: TOKEN=${MONEYBIRD_API_TOKEN ? 'SET' : 'NOT SET'}, ADMIN=${ADMINISTRATION_ID ? 'SET' : 'NOT SET'}`);
-    }
+    // Debug logging - ALTIJD
+    console.log(`🔍 Moneybird lookup: company=${companyId}, session=${sessionId ? 'present' : 'missing'}`);
+    console.log(`🔍 Credentials result: ${credentials ? `source=${credentials.source}, token=${credentials.token ? 'SET' : 'NOT SET'}, adminId=${credentials.adminId || 'NOT SET'}` : 'NULL'}`);
     
     return credentials;
 }
