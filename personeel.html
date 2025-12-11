@@ -11,9 +11,24 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
     <script src="/sidebar.js"></script>
     <script src="/storage-helper.js"></script>
-    <script>fetch('/api/auth/check').then(r=>r.json()).then(d=>{if(!d.authenticated)window.location.href='/login.html'}).catch(()=>window.location.href='/login.html');</script>
+    <script>
+        // Auth check with loading state
+        (async () => {
+            try {
+                const res = await fetch('/api/auth/check', { credentials: 'include' });
+                const data = await res.json();
+                if (!data.authenticated) window.location.href = '/login.html';
+            } catch { window.location.href = '/login.html'; }
+        })();
+        // XSS protection helper
+        window.esc = (str) => {
+            if (str === null || str === undefined) return '';
+            return DOMPurify.sanitize(String(str));
+        };
+    </script>
     <style>
         * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
         body { background: #f5f7fa; }
@@ -1508,7 +1523,7 @@
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
         document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); }));
         function fmtDate(d) { return new Date(d).toLocaleDateString('nl-NL', {day:'numeric',month:'short',year:'numeric'}); }
-        function esc(t) { if (!t) return ''; const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+        // esc() is now defined globally with DOMPurify in head
         function copyPortalLink() { 
             const companyId = window.companyId || localStorage.getItem('bedrijf_id');
             const url = location.origin + '/medewerker-portal.html?c=' + companyId;
