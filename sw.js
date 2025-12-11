@@ -1,4 +1,4 @@
-const CACHE_NAME = 'stucadmin-v2';
+const CACHE_NAME = 'stucadmin-v3';
 const OFFLINE_URL = '/offline.html';
 
 // Files to cache for offline use
@@ -42,15 +42,21 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
+  const url = new URL(event.request.url);
+  
+  // Skip non-GET requests completely - don't intercept POST/PUT/DELETE
   if (event.request.method !== 'GET') return;
   
   // Skip API requests (always fetch fresh)
   if (event.request.url.includes('/api/')) return;
   
   // Skip external CDN requests - let browser handle them directly
-  const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+  
+  // Skip registration pages to avoid any issues
+  if (url.pathname.includes('zzp-registratie') || 
+      url.pathname.includes('medewerker-login') ||
+      url.pathname.includes('register')) return;
   
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {

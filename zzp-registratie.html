@@ -665,35 +665,69 @@
                 };
                 
                 console.log('uploadedFiles before send:', Object.keys(uploadedFiles), uploadedFiles.ID ? 'ID:' + uploadedFiles.ID.name : 'no ID');
-                console.log('Sending data, size:', JSON.stringify(formData).length);
+                
+                // Check total size - limit to 5MB to avoid issues
+                const jsonStr = JSON.stringify(formData);
+                console.log('Sending data, size:', jsonStr.length, 'bytes');
+                
+                if (jsonStr.length > 5 * 1024 * 1024) {
+                    alert('De bestanden zijn te groot. Gebruik kleinere afbeeldingen (max 5MB totaal).');
+                    btn.disabled = false;
+                    btn.textContent = '✅ Registratie Voltooien';
+                    return;
+                }
                 
                 // Use absolute URL for mobile compatibility
                 const baseUrl = window.location.origin;
+                console.log('Sending to:', baseUrl + '/api/zzp-register');
+                
                 const res = await fetch(baseUrl + '/api/zzp-register', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData),
-                    credentials: 'include'
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: jsonStr,
+                    credentials: 'include',
+                    mode: 'cors'
                 });
                 
                 console.log('Response status:', res.status);
+                
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error('Error response:', errorText);
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        alert(errorData.error || 'Er is een fout opgetreden.');
+                    } catch {
+                        alert('Server fout: ' + res.status);
+                    }
+                    btn.disabled = false;
+                    btn.textContent = '✅ Registratie Voltooien';
+                    return;
+                }
+                
                 const data = await res.json();
                 console.log('Response data:', data);
                 
-                if (res.ok) {
-                    // Show success
-                    document.getElementById('formState').classList.add('hidden');
-                    document.getElementById('successState').classList.remove('hidden');
-                    document.getElementById('portalPin').textContent = data.portalPin;
-                    document.getElementById('loginLink').href = '/medewerker-login.html?c=' + params.get('company');
-                } else {
-                    alert(data.error || 'Er is een fout opgetreden.');
-                    btn.disabled = false;
-                    btn.textContent = '✅ Registratie Voltooien';
-                }
+                // Show success
+                document.getElementById('formState').classList.add('hidden');
+                document.getElementById('successState').classList.remove('hidden');
+                document.getElementById('portalPin').textContent = data.portalPin;
+                document.getElementById('loginLink').href = '/medewerker-login.html?c=' + params.get('company');
+                
             } catch (err) {
-                console.error('Full error:', err);
-                alert('Netwerkfout: ' + err.message);
+                console.error('Full error:', err.name, err.message, err.stack);
+                
+                // More specific error messages
+                if (err.name === 'TypeError' && err.message.includes('pattern')) {
+                    alert('Verbindingsfout. Probeer de pagina te verversen en opnieuw te versturen.');
+                } else if (err.name === 'TypeError' && err.message.includes('Failed to fetch')) {
+                    alert('Geen internetverbinding. Controleer je verbinding en probeer opnieuw.');
+                } else {
+                    alert('Er ging iets mis: ' + err.message);
+                }
                 btn.disabled = false;
                 btn.textContent = '✅ Registratie Voltooien';
             }
