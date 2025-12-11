@@ -974,15 +974,33 @@
             // If empty, try localStorage fallback (with safe JSON parse)
             if (zzpers.length === 0) {
                 const stored = StucStorage.getItem('zzpers');
-                if (stored && stored.trim()) try { zzpers = JSON.parse(stored); } catch(e) { zzpers = []; }
+                if (stored) {
+                    if (typeof stored === 'string') {
+                        try { zzpers = JSON.parse(stored); } catch(e) { zzpers = []; }
+                    } else if (Array.isArray(stored)) {
+                        zzpers = stored;
+                    }
+                }
             }
             if (opdrachten.length === 0) {
                 const stored = StucStorage.getItem('zzp_opdrachten');
-                if (stored && stored.trim()) try { opdrachten = JSON.parse(stored); } catch(e) { opdrachten = []; }
+                if (stored) {
+                    if (typeof stored === 'string') {
+                        try { opdrachten = JSON.parse(stored); } catch(e) { opdrachten = []; }
+                    } else if (Array.isArray(stored)) {
+                        opdrachten = stored;
+                    }
+                }
             }
             if (documenten.length === 0) {
                 const stored = StucStorage.getItem('zzp_documenten');
-                if (stored && stored.trim()) try { documenten = JSON.parse(stored); } catch(e) { documenten = []; }
+                if (stored) {
+                    if (typeof stored === 'string') {
+                        try { documenten = JSON.parse(stored); } catch(e) { documenten = []; }
+                    } else if (Array.isArray(stored)) {
+                        documenten = stored;
+                    }
+                }
             }
             
             renderAll();
