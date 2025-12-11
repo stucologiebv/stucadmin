@@ -6,9 +6,61 @@
     <title>ZZP Registratie - StucAdmin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
-        .card { background: white; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        * { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-sizing: border-box; }
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 16px; margin: 0; }
+        
+        /* Fallback styles when Tailwind doesn't load */
+        .max-w-lg { max-width: 512px; }
+        .mx-auto { margin-left: auto; margin-right: auto; }
+        .pt-8 { padding-top: 32px; }
+        .pb-16 { padding-bottom: 64px; }
+        .p-4 { padding: 16px; }
+        .p-6 { padding: 24px; }
+        .p-8 { padding: 32px; }
+        .mb-2 { margin-bottom: 8px; }
+        .mb-4 { margin-bottom: 16px; }
+        .mb-6 { margin-bottom: 24px; }
+        .mt-2 { margin-top: 8px; }
+        .mt-4 { margin-top: 16px; }
+        .text-center { text-align: center; }
+        .text-white { color: white; }
+        .text-2xl { font-size: 24px; }
+        .text-xl { font-size: 20px; }
+        .text-sm { font-size: 14px; }
+        .text-xs { font-size: 12px; }
+        .text-3xl { font-size: 30px; }
+        .text-5xl { font-size: 48px; }
+        .font-bold { font-weight: 700; }
+        .font-semibold { font-weight: 600; }
+        .font-medium { font-weight: 500; }
+        .hidden { display: none !important; }
+        .block { display: block; }
+        .flex { display: flex; }
+        .grid { display: grid; }
+        .gap-2 { gap: 8px; }
+        .gap-3 { gap: 12px; }
+        .gap-4 { gap: 16px; }
+        .space-y-4 > * + * { margin-top: 16px; }
+        .space-y-3 > * + * { margin-top: 12px; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .justify-center { justify-content: center; }
+        .w-full { width: 100%; }
+        .rounded-lg { border-radius: 8px; }
+        .border { border-width: 1px; border-style: solid; }
+        .text-gray-600 { color: #4b5563; }
+        .text-gray-500 { color: #6b7280; }
+        .text-gray-400 { color: #9ca3af; }
+        .text-purple-600 { color: #9333ea; }
+        .text-purple-700 { color: #7e22ce; }
+        .text-green-600 { color: #16a34a; }
+        .text-red-600 { color: #dc2626; }
+        .bg-purple-50 { background: #faf5ff; }
+        .bg-green-50 { background: #f0fdf4; }
+        .border-purple-200 { border-color: #e9d5ff; }
+        .border-green-200 { border-color: #bbf7d0; }
+        
+        .card { background: white; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); padding: 24px; }
         .form-input { width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 16px; }
         .form-input:focus { border-color: #8b5cf6; outline: none; }
         .btn-primary { background: #8b5cf6; color: white; padding: 14px 28px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; width: 100%; font-size: 16px; }
