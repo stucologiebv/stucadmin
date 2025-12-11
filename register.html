@@ -96,24 +96,31 @@
                 const data = await res.json();
                 
                 if (data.success) {
-                    successMsg.textContent = '✅ Registratie geslaagd! Je wordt doorgestuurd...';
-                    successMsg.style.display = 'block';
-                    document.getElementById('registerForm').style.display = 'none';
-                    
-                    // Auto-login en naar onboarding
-                    const loginRes = await fetch('/api/auth/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            username: document.getElementById('username').value,
-                            password: document.getElementById('password').value
-                        })
-                    });
-                    
-                    if (loginRes.ok) {
-                        window.location.href = '/onboarding.html';
+                    if (data.requiresVerification) {
+                        // Email verificatie vereist
+                        successMsg.innerHTML = '📧 <strong>Check je email!</strong><br><br>We hebben een verificatie link gestuurd naar <strong>' + document.getElementById('email').value + '</strong>.<br><br>Klik op de link in de email om je registratie te voltooien en je 14-daagse proefperiode te starten.';
+                        successMsg.style.display = 'block';
+                        document.getElementById('registerForm').style.display = 'none';
                     } else {
-                        window.location.href = '/login.html';
+                        successMsg.textContent = '✅ Registratie geslaagd! Je wordt doorgestuurd...';
+                        successMsg.style.display = 'block';
+                        document.getElementById('registerForm').style.display = 'none';
+                        
+                        // Auto-login en naar onboarding
+                        const loginRes = await fetch('/api/auth/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                username: document.getElementById('username').value,
+                                password: document.getElementById('password').value
+                            })
+                        });
+                        
+                        if (loginRes.ok) {
+                            window.location.href = '/onboarding.html';
+                        } else {
+                            window.location.href = '/login.html';
+                        }
                     }
                 } else {
                     throw new Error(data.error || 'Registratie mislukt');

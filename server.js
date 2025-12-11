@@ -1133,6 +1133,9 @@ app.post('/api/auth/change-password', requireAuth, async (req, res) => {
     res.json({ success: true, message: 'Wachtwoord succesvol gewijzigd' });
 });
 
+// ============ EMAIL VERIFICATIE TOKENS ============
+const emailVerificationTokens = new Map(); // token -> { email, username, bedrijfsnaam, telefoon, passwordHash, companyId, expiresAt }
+
 // ============ REGISTRATIE ENDPOINT ============
 app.post('/api/auth/register', async (req, res) => {
     const { bedrijfsnaam, email, telefoon, username, password } = req.body;
@@ -1165,19 +1168,73 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(400).json({ error: 'Dit email adres is al geregistreerd' });
         }
         
-        // Genereer unieke company ID
+        // Genereer verificatie token
+        const verificationToken = crypto.randomBytes(32).toString('hex');
         const companyId = `comp_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
         
-        // Bereken trial einddatum (14 dagen)
+        // Sla verificatie data tijdelijk op (verloopt na 24 uur)
+        emailVerificationTokens.set(verificationToken, {
+            email: email,
+            username: username.toLowerCase(),
+            bedrijfsnaam: bedrijfsnaam,
+            telefoon: telefoon || '',
+            passwordHash: hashPassword(password),
+            companyId: companyId,
+            expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 uur
+            ip: security.hashIP(ip)
+        });
+        
+        // Stuur verificatie email
+        const verifyUrl = `https://stucadmin.nl/api/auth/verify-email?token=${verificationToken}`;
+        await sendVerificationEmail(email, bedrijfsnaam, verifyUrl);
+        
+        console.log(`📧 Verificatie email verzonden naar ${email} voor ${bedrijfsnaam}`);
+        
+        res.json({ 
+            success: true, 
+            message: 'Verificatie email verzonden! Check je inbox en klik op de link om je registratie te voltooien.',
+            requiresVerification: true
+        });
+        
+    } catch (error) {
+        console.error('Registratie fout:', error);
+        res.status(500).json({ error: 'Er ging iets mis bij de registratie. Probeer het opnieuw.' });
+    }
+});
+
+// ============ EMAIL VERIFICATIE ENDPOINT ============
+app.get('/api/auth/verify-email', async (req, res) => {
+    const { token } = req.query;
+    
+    if (!token) {
+        return res.redirect('/login.html?error=invalid_token');
+    }
+    
+    const verificationData = emailVerificationTokens.get(token);
+    
+    if (!verificationData) {
+        return res.redirect('/login.html?error=invalid_token');
+    }
+    
+    if (Date.now() > verificationData.expiresAt) {
+        emailVerificationTokens.delete(token);
+        return res.redirect('/login.html?error=token_expired');
+    }
+    
+    try {
+        const { email, username, bedrijfsnaam, telefoon, passwordHash, companyId, ip } = verificationData;
+        
+        // Bereken trial einddatum (14 dagen vanaf NU, niet vanaf registratie)
         const trialEnds = new Date();
         trialEnds.setDate(trialEnds.getDate() + 14);
         
         // Maak nieuw bedrijf aan
+        const companies = loadData('companies') || [];
         const newCompany = {
             id: companyId,
             naam: bedrijfsnaam,
             email: email,
-            telefoon: telefoon || '',
+            telefoon: telefoon,
             website: '',
             adres: '',
             kvk: '',
@@ -1192,6 +1249,8 @@ app.post('/api/auth/register', async (req, res) => {
             linkedin: '',
             plan: 'trial',
             trialEnds: trialEnds.toISOString(),
+            emailVerified: true,
+            emailVerifiedAt: new Date().toISOString(),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
@@ -1200,11 +1259,12 @@ app.post('/api/auth/register', async (req, res) => {
         saveData('companies', companies);
         
         // Maak admin gebruiker aan voor dit bedrijf
-        users[username.toLowerCase()] = {
-            passwordHash: hashPassword(password),
+        users[username] = {
+            passwordHash: passwordHash,
             role: 'admin',
             bedrijf_id: companyId,
             email: email,
+            emailVerified: true,
             createdAt: new Date().toISOString()
         };
         saveUsers(users);
@@ -1216,25 +1276,87 @@ app.post('/api/auth/register', async (req, res) => {
         security.logSecurityEvent(companyId, 'COMPANY_REGISTERED', {
             email: email,
             username: username,
-            ip: security.hashIP(ip)
+            ip: ip,
+            emailVerified: true
         });
         
-        console.log(`✅ Nieuw bedrijf geregistreerd: ${bedrijfsnaam} (${companyId})`);
+        // Verwijder token
+        emailVerificationTokens.delete(token);
         
-        // Send welcome email (async, don't wait)
+        console.log(`✅ Email geverifieerd en bedrijf aangemaakt: ${bedrijfsnaam} (${companyId})`);
+        
+        // Stuur welkom email
         sendWelcomeEmail(email, bedrijfsnaam, username).catch(e => console.log('Welcome email error:', e));
         
-        res.json({ 
-            success: true, 
-            message: 'Registratie geslaagd!',
-            companyId: companyId
-        });
+        // Redirect naar login met success message
+        res.redirect('/login.html?verified=true');
         
     } catch (error) {
-        console.error('Registratie fout:', error);
-        res.status(500).json({ error: 'Er ging iets mis bij de registratie. Probeer het opnieuw.' });
+        console.error('Verificatie fout:', error);
+        res.redirect('/login.html?error=verification_failed');
     }
 });
+
+// ============ VERIFICATIE EMAIL FUNCTIE ============
+async function sendVerificationEmail(email, bedrijfsnaam, verifyUrl) {
+    const nodemailer = require('nodemailer');
+    
+    const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT) || 587,
+        secure: false,
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS
+        }
+    });
+    
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+        .button { display: inline-block; background: #6366f1; color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+        .button:hover { background: #5558e3; }
+        .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📧 Bevestig je email</h1>
+        </div>
+        <div class="content">
+            <p>Hallo!</p>
+            <p>Bedankt voor je registratie bij <strong>StucAdmin</strong> voor <strong>${bedrijfsnaam}</strong>.</p>
+            <p>Klik op de onderstaande knop om je email adres te bevestigen en je 14-daagse gratis proefperiode te starten:</p>
+            <p style="text-align: center;">
+                <a href="${verifyUrl}" class="button">✅ Email Bevestigen</a>
+            </p>
+            <p>Of kopieer deze link naar je browser:</p>
+            <p style="word-break: break-all; background: #e5e7eb; padding: 10px; border-radius: 5px; font-size: 12px;">${verifyUrl}</p>
+            <p><strong>Let op:</strong> Deze link is 24 uur geldig.</p>
+            <p>Als je deze registratie niet hebt aangevraagd, kun je deze email negeren.</p>
+        </div>
+        <div class="footer">
+            <p>© ${new Date().getFullYear()} StucAdmin - Slimme software voor stucadoors</p>
+        </div>
+    </div>
+</body>
+</html>`;
+    
+    await transporter.sendMail({
+        from: process.env.SMTP_FROM || 'StucAdmin <info@stucadmin.nl>',
+        to: email,
+        subject: '📧 Bevestig je email - StucAdmin',
+        html: htmlContent
+    });
+}
 
 // Login history endpoint (admin only)
 app.get('/api/auth/login-history', requireAuth, (req, res) => {
