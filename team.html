@@ -111,6 +111,20 @@
             .card { border-radius: 12px; }
             .tab-btn { padding: 10px 16px; font-size: 0.875rem; }
         }
+        
+        /* Detail tabs */
+        .detail-tab { padding: 8px 16px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; background: #f1f5f9; color: #64748b; cursor: pointer; white-space: nowrap; }
+        .detail-tab:hover { background: #e2e8f0; }
+        .detail-tab.active { background: #8b5cf6; color: white; }
+        .detail-tab-content { display: block; }
+        .detail-tab-content.hidden { display: none; }
+        
+        .uren-item { background: #f8fafc; border-radius: 10px; padding: 12px; }
+        .bon-item { background: #f8fafc; border-radius: 10px; padding: 12px; display: flex; gap: 12px; }
+        .bon-item img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; cursor: pointer; }
+        .km-item { background: #f8fafc; border-radius: 10px; padding: 12px; }
+        .foto-item { aspect-ratio: 1; border-radius: 10px; overflow: hidden; cursor: pointer; }
+        .foto-item img { width: 100%; height: 100%; object-fit: cover; }
     </style>
 </head>
 <body>
@@ -395,11 +409,12 @@
 
     <!-- Modal: ZZP Detail -->
     <div id="modalZZPDetail" class="modal">
-        <div class="modal-content" style="max-width: 900px; max-height: 85vh; overflow-y: auto;">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
             <div class="p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <h2 class="text-lg font-bold" id="detailZZPNaam">ZZP'er</h2>
+                        <h2 class="text-lg font-bold" id="detailZZPNaam">Medewerker</h2>
+                        <span id="detailZZPType" class="status-badge bg-purple-100 text-purple-600">ZZP</span>
                         <span id="detailZZPStatus" class="status-badge status-actief">Actief</span>
                     </div>
                     <div class="flex items-center gap-2">
@@ -408,39 +423,85 @@
                         <button onclick="closeModal('modalZZPDetail')" class="text-gray-400 hover:text-gray-600 text-2xl ml-2">&times;</button>
                     </div>
                 </div>
+                <!-- Detail Tabs -->
+                <div class="flex gap-1 mt-3 overflow-x-auto">
+                    <button class="detail-tab active" onclick="switchDetailTab('gegevens')">📋 Gegevens</button>
+                    <button class="detail-tab" onclick="switchDetailTab('uren')">⏱️ Uren</button>
+                    <button class="detail-tab" onclick="switchDetailTab('bonnen')">🧾 Bonnen</button>
+                    <button class="detail-tab" onclick="switchDetailTab('kilometers')">🚗 Kilometers</button>
+                    <button class="detail-tab" onclick="switchDetailTab('fotos')">📸 Foto's</button>
+                </div>
             </div>
             <div class="p-4">
-                <!-- 3 kolommen layout -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <!-- Kolom 1: Gegevens -->
-                    <div class="bg-gray-50 rounded-lg p-3">
-                        <h3 class="font-semibold text-sm mb-2 text-gray-700">📋 Gegevens</h3>
-                        <div id="detailZZPInfo" class="space-y-1 text-xs"></div>
-                    </div>
-                    
-                    <!-- Kolom 2: DBA Status -->
-                    <div class="bg-gray-50 rounded-lg p-3">
-                        <h3 class="font-semibold text-sm mb-2 text-gray-700">✅ DBA Checklist</h3>
-                        <div id="detailDBAChecklist" class="space-y-1"></div>
-                    </div>
-                    
-                    <!-- Kolom 3: Documenten -->
-                    <div class="bg-gray-50 rounded-lg p-3">
-                        <div class="flex items-center justify-between mb-2">
-                            <h3 class="font-semibold text-sm text-gray-700">📁 Documenten</h3>
-                            <button onclick="openDocumentUpload()" class="text-xs text-purple-600 hover:text-purple-700 font-medium">+ Toevoegen</button>
+                <!-- Tab: Gegevens -->
+                <div id="detailTab-gegevens" class="detail-tab-content">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <h3 class="font-semibold text-sm mb-2 text-gray-700">📋 Gegevens</h3>
+                            <div id="detailZZPInfo" class="space-y-1 text-xs"></div>
                         </div>
-                        <div id="detailDocumenten" class="space-y-1"></div>
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <h3 class="font-semibold text-sm mb-2 text-gray-700">✅ DBA Checklist</h3>
+                            <div id="detailDBAChecklist" class="space-y-1"></div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <h3 class="font-semibold text-sm text-gray-700">📁 Documenten</h3>
+                                <button onclick="openDocumentUpload()" class="text-xs text-purple-600 hover:text-purple-700 font-medium">+ Toevoegen</button>
+                            </div>
+                            <div id="detailDocumenten" class="space-y-1"></div>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-gray-100">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-semibold text-sm text-gray-700">📋 Opdrachten</h3>
+                            <button onclick="openNieuweOpdrachtVoorZZP()" class="text-xs text-purple-600 hover:text-purple-700 font-medium">+ Nieuwe opdracht</button>
+                        </div>
+                        <div id="detailOpdrachten" class="text-sm"></div>
                     </div>
                 </div>
                 
-                <!-- Opdrachten (collapsible) -->
-                <div class="mt-4 pt-3 border-t border-gray-100">
-                    <div class="flex items-center justify-between mb-2">
-                        <h3 class="font-semibold text-sm text-gray-700">📋 Opdrachten</h3>
-                        <button onclick="openNieuweOpdrachtVoorZZP()" class="text-xs text-purple-600 hover:text-purple-700 font-medium">+ Nieuwe opdracht</button>
+                <!-- Tab: Uren -->
+                <div id="detailTab-uren" class="detail-tab-content hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold text-gray-700">⏱️ Gewerkte Uren</h3>
+                        <div class="flex items-center gap-2">
+                            <span id="detailUrenTotaal" class="text-lg font-bold text-purple-600">0.0 uur</span>
+                        </div>
                     </div>
-                    <div id="detailOpdrachten" class="text-sm"></div>
+                    <div id="detailUrenList" class="space-y-2"></div>
+                </div>
+                
+                <!-- Tab: Bonnen -->
+                <div id="detailTab-bonnen" class="detail-tab-content hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold text-gray-700">🧾 Bonnen & Declaraties</h3>
+                        <div class="flex items-center gap-2">
+                            <span id="detailBonnenTotaal" class="text-lg font-bold text-green-600">€0.00</span>
+                        </div>
+                    </div>
+                    <div id="detailBonnenList" class="space-y-2"></div>
+                </div>
+                
+                <!-- Tab: Kilometers -->
+                <div id="detailTab-kilometers" class="detail-tab-content hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold text-gray-700">🚗 Reiskosten</h3>
+                        <div class="text-right">
+                            <div id="detailKmTotaal" class="text-lg font-bold text-blue-600">0 km</div>
+                            <div id="detailKmVergoeding" class="text-sm text-gray-500">€0.00 vergoeding</div>
+                        </div>
+                    </div>
+                    <div id="detailKmList" class="space-y-2"></div>
+                </div>
+                
+                <!-- Tab: Foto's -->
+                <div id="detailTab-fotos" class="detail-tab-content hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold text-gray-700">📸 Werkfoto's</h3>
+                        <span id="detailFotosTotaal" class="text-sm text-gray-500">0 foto's</span>
+                    </div>
+                    <div id="detailFotosList" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
                 </div>
             </div>
         </div>
@@ -1263,10 +1324,17 @@
             showNotification('ZZP\'er opgeslagen!', 'success');
         }
         
+        let currentMedewerkerUren = [];
+        
         function openZZPDetail(id) {
             currentZZPId = id;
             const zzp = zzpers.find(z => z.id === id);
             if (!zzp) return;
+            
+            // Type badge
+            const isZZP = zzp.type === 'zzp';
+            document.getElementById('detailZZPType').textContent = isZZP ? '🔧 ZZP' : '👔 Vast';
+            document.getElementById('detailZZPType').className = `status-badge ${isZZP ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`;
             
             document.getElementById('detailZZPNaam').textContent = zzp.naam;
             document.getElementById('detailZZPStatus').textContent = zzp.status === 'actief' ? 'Actief' : 'Inactief';
@@ -1274,12 +1342,12 @@
             
             // Info - compact
             document.getElementById('detailZZPInfo').innerHTML = `
-                <p><span class="text-gray-400">Bedrijf:</span> <strong>${zzp.bedrijf || '-'}</strong></p>
-                <p><span class="text-gray-400">Email:</span> <a href="mailto:${zzp.email}" class="text-purple-600">${zzp.email}</a></p>
-                <p><span class="text-gray-400">Tel:</span> <a href="tel:${zzp.telefoon}" class="text-purple-600">${zzp.telefoon}</a></p>
-                <p><span class="text-gray-400">KvK:</span> ${zzp.kvk}</p>
-                <p><span class="text-gray-400">BTW:</span> ${zzp.btw}</p>
-                <p><span class="text-gray-400">Specialisatie:</span> ${zzp.specialisatie || '-'}</p>
+                ${isZZP ? `<p><span class="text-gray-400">Bedrijf:</span> <strong>${zzp.bedrijf || '-'}</strong></p>` : ''}
+                <p><span class="text-gray-400">Email:</span> <a href="mailto:${zzp.email}" class="text-purple-600">${zzp.email || '-'}</a></p>
+                <p><span class="text-gray-400">Tel:</span> <a href="tel:${zzp.telefoon}" class="text-purple-600">${zzp.telefoon || '-'}</a></p>
+                ${isZZP ? `<p><span class="text-gray-400">KvK:</span> ${zzp.kvk || '-'}</p>` : ''}
+                ${isZZP ? `<p><span class="text-gray-400">BTW:</span> ${zzp.btw || '-'}</p>` : ''}
+                <p><span class="text-gray-400">${isZZP ? 'Specialisatie' : 'Functie'}:</span> ${zzp.specialisatie || zzp.functie || '-'}</p>
             `;
             
             // DBA Checklist - compact inline
@@ -1323,6 +1391,144 @@
             }
             
             openModal('modalZZPDetail');
+        }
+        
+        // Detail tab switcher
+        function switchDetailTab(tab) {
+            document.querySelectorAll('.detail-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.detail-tab[onclick="switchDetailTab('${tab}')"]`).classList.add('active');
+            document.querySelectorAll('.detail-tab-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById(`detailTab-${tab}`).classList.remove('hidden');
+            
+            // Load data for specific tabs
+            if (tab === 'uren') loadMedewerkerUren();
+            if (tab === 'bonnen') renderMedewerkerBonnen();
+            if (tab === 'kilometers') renderMedewerkerKilometers();
+            if (tab === 'fotos') renderMedewerkerFotos();
+        }
+        
+        // Load uren for current medewerker
+        async function loadMedewerkerUren() {
+            try {
+                const res = await fetch(`/api/admin/medewerker-uren/${currentZZPId}`);
+                if (res.ok) {
+                    currentMedewerkerUren = await res.json();
+                    renderMedewerkerUren();
+                }
+            } catch (e) {
+                console.error('Error loading medewerker uren:', e);
+                document.getElementById('detailUrenList').innerHTML = '<p class="text-red-500 text-center py-4">Fout bij laden uren</p>';
+            }
+        }
+        
+        function renderMedewerkerUren() {
+            const list = document.getElementById('detailUrenList');
+            const totaal = currentMedewerkerUren.reduce((sum, u) => sum + (u.totaalUren || 0), 0);
+            document.getElementById('detailUrenTotaal').textContent = totaal.toFixed(1) + ' uur';
+            
+            if (currentMedewerkerUren.length === 0) {
+                list.innerHTML = '<p class="text-gray-400 text-center py-8">Geen uren geregistreerd</p>';
+                return;
+            }
+            
+            list.innerHTML = currentMedewerkerUren.map(u => `
+                <div class="uren-item">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <div class="font-semibold">${new Date(u.datum).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</div>
+                            <div class="text-sm text-gray-500">${u.begintijd} - ${u.eindtijd}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold text-purple-600">${(u.totaalUren || 0).toFixed(1)}u</div>
+                            ${u.pauze ? `<div class="text-xs text-gray-400">${u.pauze} min pauze</div>` : ''}
+                        </div>
+                    </div>
+                    ${u.locatieAdres ? `<div class="text-xs text-gray-500">📍 ${u.locatieAdres}</div>` : ''}
+                    ${u.notitie ? `<div class="text-xs text-gray-600 mt-1">📝 ${u.notitie}</div>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        function renderMedewerkerBonnen() {
+            const list = document.getElementById('detailBonnenList');
+            const allBonnen = currentMedewerkerUren.flatMap(u => (u.bonnen || []).map(b => ({...b, datum: u.datum})));
+            const totaal = allBonnen.reduce((sum, b) => sum + (b.bedrag || 0), 0);
+            document.getElementById('detailBonnenTotaal').textContent = '€' + totaal.toFixed(2);
+            
+            if (allBonnen.length === 0) {
+                list.innerHTML = '<p class="text-gray-400 text-center py-8">Geen bonnen gedeclareerd</p>';
+                return;
+            }
+            
+            list.innerHTML = allBonnen.map(b => `
+                <div class="bon-item">
+                    ${b.fotoFilename ? `<img src="/uploads/bonnen/${b.fotoFilename}" onclick="openBonImage('/uploads/bonnen/${b.fotoFilename}')" alt="Bon">` : '<div class="w-[60px] h-[60px] bg-gray-200 rounded-lg flex items-center justify-center">🧾</div>'}
+                    <div class="flex-1">
+                        <div class="flex justify-between">
+                            <span class="font-semibold">${b.winkel || 'Onbekend'}</span>
+                            <span class="font-bold text-green-600">€${(b.bedrag || 0).toFixed(2)}</span>
+                        </div>
+                        <div class="text-sm text-gray-500">${b.categorie || 'Overig'}</div>
+                        <div class="text-xs text-gray-400">${new Date(b.datum).toLocaleDateString('nl-NL')}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function renderMedewerkerKilometers() {
+            const list = document.getElementById('detailKmList');
+            const allKm = currentMedewerkerUren.filter(u => u.reiskosten).map(u => ({...u.reiskosten, datum: u.datum}));
+            const totaalKm = allKm.reduce((sum, k) => sum + (k.km || 0), 0);
+            const totaalVergoeding = allKm.reduce((sum, k) => sum + (k.totaal || 0), 0);
+            
+            document.getElementById('detailKmTotaal').textContent = totaalKm + ' km';
+            document.getElementById('detailKmVergoeding').textContent = '€' + totaalVergoeding.toFixed(2) + ' vergoeding';
+            
+            if (allKm.length === 0) {
+                list.innerHTML = '<p class="text-gray-400 text-center py-8">Geen reiskosten gedeclareerd</p>';
+                return;
+            }
+            
+            list.innerHTML = allKm.map(k => `
+                <div class="km-item">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-semibold">${k.km} km</div>
+                            <div class="text-sm text-gray-500">${k.desc || ''}</div>
+                            <div class="text-xs text-gray-400">${new Date(k.datum).toLocaleDateString('nl-NL')}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold text-blue-600">€${(k.totaal || 0).toFixed(2)}</div>
+                            <div class="text-xs text-gray-400">€${k.vergoeding || 0.23}/km</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function renderMedewerkerFotos() {
+            const list = document.getElementById('detailFotosList');
+            const allFotos = currentMedewerkerUren.flatMap(u => (u.fotos || []).map(f => ({...f, datum: u.datum, locatie: u.locatieAdres})));
+            document.getElementById('detailFotosTotaal').textContent = allFotos.length + ' foto\'s';
+            
+            if (allFotos.length === 0) {
+                list.innerHTML = '<p class="text-gray-400 text-center py-8 col-span-full">Geen werkfoto\'s</p>';
+                return;
+            }
+            
+            list.innerHTML = allFotos.map(f => `
+                <div class="foto-item" onclick="openFotoImage('/uploads/werkdag-fotos/${f.filename}')">
+                    <img src="/uploads/werkdag-fotos/${f.filename}" alt="${f.name || 'Foto'}">
+                </div>
+            `).join('');
+        }
+        
+        function openBonImage(url) {
+            window.open(url, '_blank');
+        }
+        
+        function openFotoImage(url) {
+            window.open(url, '_blank');
         }
         
         function renderDetailDocumenten(zzpId) {

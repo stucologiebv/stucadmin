@@ -4142,6 +4142,15 @@ app.get('/api/uren', requireAuth, (req, res) => {
     res.json(uren);
 });
 
+// Get uren for specific medewerker (admin)
+app.get('/api/admin/medewerker-uren/:medewerkerId', requireAuth, (req, res) => {
+    const companyId = req.session?.bedrijf_id;
+    if (!companyId) return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
+    const uren = loadCompanyData(companyId, 'uren') || [];
+    const medewerkerUren = uren.filter(u => u.medewerkerId === req.params.medewerkerId);
+    res.json(medewerkerUren);
+});
+
 // Add uren (admin)
 app.post('/api/uren', requireAuth, (req, res) => {
     const companyId = req.session?.bedrijf_id;
