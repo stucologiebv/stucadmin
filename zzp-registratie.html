@@ -386,6 +386,9 @@
         }
         
         function nextStep() {
+            // Debug: log current values before step change
+            console.log('BEFORE nextStep - naam:', document.getElementById('naam').value, 'email:', document.getElementById('email').value);
+            
             // Validate current step
             if (!validateStep(currentStep)) return;
             
@@ -393,6 +396,9 @@
                 currentStep++;
                 updateStepUI();
             }
+            
+            // Debug: log values after step change
+            console.log('AFTER nextStep - naam:', document.getElementById('naam').value, 'email:', document.getElementById('email').value);
         }
         
         function prevStep() {
