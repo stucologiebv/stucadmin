@@ -437,17 +437,82 @@
             return true;
         }
         
-        function handleFileUpload(type, input) {
+        // Compress image if too large
+        async function compressImage(file, maxSizeMB = 1.5) {
+            return new Promise((resolve) => {
+                // Only compress images
+                if (!file.type.startsWith('image/')) {
+                    resolve(file);
+                    return;
+                }
+                
+                const img = new Image();
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                img.onload = function() {
+                    // Calculate new dimensions (max 1600px width/height)
+                    let width = img.width;
+                    let height = img.height;
+                    const maxDim = 1600;
+                    
+                    if (width > maxDim || height > maxDim) {
+                        if (width > height) {
+                            height = (height / width) * maxDim;
+                            width = maxDim;
+                        } else {
+                            width = (width / height) * maxDim;
+                            height = maxDim;
+                        }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Convert to blob with compression
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            // Create new file from blob
+                            const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            });
+                            console.log('📸 Image compressed:', (file.size/1024).toFixed(0) + 'KB → ' + (compressedFile.size/1024).toFixed(0) + 'KB');
+                            resolve(compressedFile);
+                        } else {
+                            resolve(file);
+                        }
+                    }, 'image/jpeg', 0.7); // 70% quality
+                };
+                
+                img.onerror = function() {
+                    resolve(file); // On error, use original
+                };
+                
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        async function handleFileUpload(type, input) {
             console.log('handleFileUpload called for:', type);
             if (input.files && input.files[0]) {
-                const file = input.files[0];
+                let file = input.files[0];
                 console.log('File selected:', file.name, 'size:', file.size, 'type:', file.type);
                 
-                // Check file size - max 2MB per file
-                const maxSize = 2 * 1024 * 1024; // 2MB
+                // Auto-compress images if larger than 1MB
+                const maxSize = 2 * 1024 * 1024; // 2MB limit
+                if (file.type.startsWith('image/') && file.size > 1 * 1024 * 1024) {
+                    console.log('📸 Compressing large image...');
+                    document.getElementById('label' + type).textContent = '⏳ Comprimeren...';
+                    file = await compressImage(file);
+                }
+                
+                // Check file size after compression
                 if (file.size > maxSize) {
-                    alert('⚠️ Bestand te groot!\n\n' + file.name + ' is ' + (file.size / 1024 / 1024).toFixed(1) + 'MB.\n\nMaximum is 2MB per bestand.\n\nTip: Maak een foto met lagere resolutie of comprimeer het bestand.');
+                    alert('⚠️ Bestand te groot!\n\n' + file.name + ' is ' + (file.size / 1024 / 1024).toFixed(1) + 'MB.\n\nMaximum is 2MB per bestand.\n\nTip: Gebruik een PDF of kleinere afbeelding.');
                     input.value = ''; // Reset input
+                    document.getElementById('label' + type).textContent = type === 'ID' ? 'ID-bewijs' : type === 'KVK' ? 'KVK-uittreksel' : 'Verzekeringsbewijs';
                     return;
                 }
                 
