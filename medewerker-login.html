@@ -110,8 +110,15 @@
             } catch (e) {}
         }
 
-        // Check if already logged in
+        // Check if already logged in (skip if coming from new registration)
         async function checkStatus() {
+            // Skip auto-login if coming from ZZP registration
+            const isNewRegistration = urlParams.get('newreg') === '1';
+            if (isNewRegistration) {
+                console.log('New registration - skipping auto-login');
+                return;
+            }
+            
             try {
                 const res = await fetch('/api/medewerker/status?companyId=' + companyId);
                 const data = await res.json();

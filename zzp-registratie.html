@@ -730,7 +730,7 @@
                 document.getElementById('formState').classList.add('hidden');
                 document.getElementById('successState').classList.remove('hidden');
                 document.getElementById('portalPin').textContent = data.portalPin;
-                document.getElementById('loginLink').href = '/medewerker-login.html?c=' + params.get('company');
+                document.getElementById('loginLink').href = '/medewerker-login.html?c=' + params.get('company') + '&newreg=1';
                 
             } catch (err) {
                 console.error('Full error:', err.name, err.message, err.stack);
