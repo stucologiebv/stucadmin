@@ -256,7 +256,7 @@
             <div class="modal-handle"></div>
             <h3 class="text-lg font-bold mb-4">🚗 Reiskosten</h3>
             <div class="space-y-4">
-                <div><label class="block text-sm font-medium text-gray-700 mb-1">Kilometers</label><input type="number" id="travelKm" class="w-full p-3 border-2 border-gray-200 rounded-xl" placeholder="0"></div>
+                <div><label class="block text-sm font-medium text-gray-700 mb-1">Kilometers</label><input type="number" id="travelKm" class="w-full p-3 border-2 border-gray-200 rounded-xl" placeholder="0" oninput="updateTravelTotal()" onchange="updateTravelTotal()"></div>
                 <div class="bg-gray-50 rounded-xl p-3"><div class="text-sm text-gray-600">Vergoeding: €0,23/km</div><div class="text-lg font-bold text-indigo-600" id="travelTotal">€0,00</div></div>
                 <div><label class="block text-sm font-medium text-gray-700 mb-1">Omschrijving (optioneel)</label><input type="text" id="travelDesc" class="w-full p-3 border-2 border-gray-200 rounded-xl" placeholder="Bijv. Woon-werk"></div>
             </div>
@@ -324,10 +324,6 @@
             const savedPin = localStorage.getItem('medewerkerPin');
             if (savedPin && companyId) loginWithPin(savedPin);
             document.getElementById('pin1').focus();
-            document.getElementById('travelKm').addEventListener('input', (e) => {
-                const km = parseFloat(e.target.value) || 0;
-                document.getElementById('travelTotal').textContent = '€' + (km * 0.23).toFixed(2);
-            });
         });
 
         function handlePinInput(index) {
@@ -623,14 +619,65 @@
         function showPhotoCapture() {
             if (!isWorking) { alert('Start eerst je werkdag om een foto toe te voegen'); return; }
             const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
-            input.onchange = (e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { todayData.fotos.push({ name: file.name, data: ev.target.result, timestamp: Date.now() }); saveTodayData(); renderToegewoegd(); }; reader.readAsDataURL(file); } };
+            input.onchange = (e) => { 
+                const file = e.target.files[0]; 
+                if (file) { 
+                    compressImage(file).then(compressedFile => {
+                        const reader = new FileReader(); 
+                        reader.onload = (ev) => { 
+                            todayData.fotos.push({ name: file.name, data: ev.target.result, timestamp: Date.now() }); 
+                            saveTodayData(); 
+                            renderToegewoegd(); 
+                        }; 
+                        reader.readAsDataURL(compressedFile); 
+                    });
+                } 
+            };
             input.click();
         }
 
         function showBonModal() { if (!isWorking) { alert('Start eerst je werkdag om een bon toe te voegen'); return; } currentBonPhoto = null; document.getElementById('bonPhotoPreview').textContent = '📷 Maak foto van bon'; document.getElementById('bonBedrag').value = ''; document.getElementById('bonWinkel').value = ''; document.getElementById('bonCategorie').value = 'materiaal'; document.getElementById('bonModal').classList.add('active'); }
         function closeBonModal() { document.getElementById('bonModal').classList.remove('active'); }
         function captureBonPhoto() { document.getElementById('bonPhotoInput').click(); }
-        function handleBonPhoto(input) { const file = input.files[0]; if (file) { const reader = new FileReader(); reader.onload = (e) => { currentBonPhoto = e.target.result; document.getElementById('bonPhotoPreview').textContent = '✅ Foto toegevoegd'; }; reader.readAsDataURL(file); } }
+        function handleBonPhoto(input) { 
+            const file = input.files[0]; 
+            if (file) { 
+                document.getElementById('bonPhotoPreview').textContent = '⏳ Verwerken...';
+                compressImage(file).then(compressedFile => {
+                    const reader = new FileReader(); 
+                    reader.onload = (e) => { 
+                        currentBonPhoto = e.target.result; 
+                        document.getElementById('bonPhotoPreview').textContent = '✅ Foto toegevoegd'; 
+                    }; 
+                    reader.readAsDataURL(compressedFile); 
+                });
+            } 
+        }
+        
+        // Compress image for mobile photos
+        function compressImage(file) {
+            return new Promise((resolve) => {
+                if (!file.type.startsWith('image/') || file.size < 500000) { resolve(file); return; }
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    let w = img.width, h = img.height;
+                    const maxDim = 1200;
+                    if (w > maxDim || h > maxDim) {
+                        if (w > h) { h = (h / w) * maxDim; w = maxDim; } 
+                        else { w = (w / h) * maxDim; h = maxDim; }
+                    }
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    canvas.toBlob((blob) => {
+                        resolve(blob ? new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }) : file);
+                    }, 'image/jpeg', 0.7);
+                };
+                img.onerror = () => resolve(file);
+                img.src = URL.createObjectURL(file);
+            });
+        }
+        
         function saveBon() {
             const bedrag = parseFloat(document.getElementById('bonBedrag').value), winkel = document.getElementById('bonWinkel').value, categorie = document.getElementById('bonCategorie').value;
             if (!bedrag || bedrag <= 0) { alert('Voer een geldig bedrag in'); return; }
@@ -638,8 +685,9 @@
             todayData.bonnen.push({ bedrag, winkel, categorie, foto: currentBonPhoto, timestamp: Date.now() }); saveTodayData(); renderToegewoegd(); closeBonModal();
         }
 
-        function showTravelModal() { if (!isWorking) { alert('Start eerst je werkdag om reiskosten toe te voegen'); return; } document.getElementById('travelKm').value = todayData.reiskosten?.km || ''; document.getElementById('travelDesc').value = todayData.reiskosten?.desc || ''; document.getElementById('travelTotal').textContent = todayData.reiskosten ? '€' + todayData.reiskosten.totaal.toFixed(2) : '€0,00'; document.getElementById('travelModal').classList.add('active'); }
+        function showTravelModal() { if (!isWorking) { alert('Start eerst je werkdag om reiskosten toe te voegen'); return; } document.getElementById('travelKm').value = todayData.reiskosten?.km || ''; document.getElementById('travelDesc').value = todayData.reiskosten?.desc || ''; updateTravelTotal(); document.getElementById('travelModal').classList.add('active'); }
         function closeTravelModal() { document.getElementById('travelModal').classList.remove('active'); }
+        function updateTravelTotal() { const km = parseFloat(document.getElementById('travelKm').value) || 0; document.getElementById('travelTotal').textContent = '€' + (km * 0.23).toFixed(2).replace('.', ','); }
         function saveTravel() { const km = parseFloat(document.getElementById('travelKm').value), desc = document.getElementById('travelDesc').value; if (!km || km <= 0) { alert('Voer een geldig aantal kilometers in'); return; } todayData.reiskosten = { km, desc, vergoeding: 0.23, totaal: km * 0.23 }; saveTodayData(); renderToegewoegd(); closeTravelModal(); }
         function closeStopModal() { document.getElementById('stopModal').classList.remove('active'); }
 
