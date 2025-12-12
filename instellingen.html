@@ -829,14 +829,21 @@
             }
         }
 
-        // Users
+        // Users & Medewerkers
+        let medewerkers = [];
+        
         async function loadUsers() {
             try {
                 const res = await fetch('/api/company/users');
                 if (res.ok) {
                     users = await res.json();
-                    renderUsers();
                 }
+                // Ook medewerkers laden
+                const medewerkerRes = await fetch('/api/medewerkers');
+                if (medewerkerRes.ok) {
+                    medewerkers = await medewerkerRes.json();
+                }
+                renderUsers();
             } catch (e) {
                 console.error('Error loading users:', e);
             }
@@ -845,10 +852,13 @@
         function renderUsers() {
             const planLimits = { trial: 1, starter: 3, professional: 10, enterprise: -1 };
             const limit = planLimits[currentPlan] || 1;
-            document.getElementById('userLimit').textContent = `${users.length} van ${limit === -1 ? '∞' : limit} gebruikers`;
+            const totalUsers = users.length + medewerkers.length;
+            document.getElementById('userLimit').textContent = `${totalUsers} gebruikers (${users.length} admin, ${medewerkers.length} medewerkers)`;
 
             const list = document.getElementById('usersList');
-            list.innerHTML = users.map(user => `
+            
+            // Admin users
+            let html = users.map(user => `
                 <div class="user-row">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-semibold">
@@ -860,11 +870,31 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="status-badge ${user.role === 'admin' ? 'status-connected' : 'bg-gray-100 text-gray-600'}">${user.role}</span>
+                        <span class="status-badge status-connected">Admin</span>
                         ${user.role !== 'admin' ? `<button class="text-red-500 hover:text-red-700" onclick="deleteUser('${user.username}')">🗑️</button>` : ''}
                     </div>
                 </div>
             `).join('');
+            
+            // Medewerkers
+            html += medewerkers.map(m => `
+                <div class="user-row">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 ${m.type === 'zzp' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'} rounded-full flex items-center justify-center font-semibold">
+                            ${m.naam ? m.naam.charAt(0).toUpperCase() : 'M'}
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-900">${m.naam}</div>
+                            <div class="text-sm text-gray-500">${m.email || 'Geen email'} • PIN: ${m.pinPlain || '****'}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="status-badge ${m.type === 'zzp' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}">${m.type === 'zzp' ? 'ZZP' : 'Medewerker'}</span>
+                    </div>
+                </div>
+            `).join('');
+            
+            list.innerHTML = html;
         }
 
         function showAddUserModal() {
