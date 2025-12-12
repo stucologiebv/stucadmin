@@ -508,14 +508,23 @@
             // Meer precisie: 4 decimalen voor korte tijden
             const totaalUren = Math.round(totalHours * 10000) / 10000;
             console.log(`📊 Timer: elapsed=${elapsed}ms, totalHours=${totalHours}, totaalUren=${totaalUren}`);
+            
+            // Format times manually for consistency across devices
+            const startDate = new Date(timerStartTime);
+            const endDate = new Date();
+            const formatTime = (d) => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+            const begintijd = formatTime(startDate);
+            const eindtijd = formatTime(endDate);
+            console.log(`⏰ Times: begin=${begintijd}, eind=${eindtijd}`);
+            
             try {
                 console.log('📤 Saving uren...', { sessionId: sessionId ? sessionId.substring(0,10) + '...' : 'NONE' });
                 const response = await fetch('/api/medewerker/uren', { method: 'POST', headers: apiHeaders(),
                     body: JSON.stringify({
                         medewerkerId: currentUser.id, medewerkerNaam: currentUser.naam,
                         datum: new Date().toISOString().split('T')[0],
-                        begintijd: new Date(timerStartTime).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }),
-                        eindtijd: new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }),
+                        begintijd: begintijd,
+                        eindtijd: eindtijd,
                         pauze: pauseMins, totaalUren: totaalUren,
                         notitie: todayData.notitie, locatie: currentLocation, locatieAdres: currentLocation?.address || '',
                         fotos: todayData.fotos, bonnen: todayData.bonnen, reiskosten: todayData.reiskosten
@@ -525,8 +534,9 @@
                 console.log('📥 Save response:', response.status, result);
                 if (!response.ok) {
                     alert('Fout bij opslaan: ' + (result.error || 'Onbekende fout'));
+                    return;
                 }
-            } catch (e) { console.error('💥 Error saving uren:', e); alert('Fout bij opslaan: ' + e.message); }
+            } catch (e) { console.error('💥 Error saving uren:', e); alert('Fout bij opslaan: ' + e.message); return; }
             clearInterval(timerInterval);
             isWorking = false; isPaused = false; timerStartTime = null; totalPauseMs = 0; currentLocation = null;
             todayData = { fotos: [], bonnen: [], reiskosten: null, notitie: '' };
