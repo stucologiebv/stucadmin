@@ -5165,6 +5165,7 @@ app.post('/api/zzp-register', async (req, res) => {
     try {
         const { token, companyId, zzpData, signature } = req.body;
         console.log('Token:', token, 'CompanyId:', companyId, 'Has zzpData:', !!zzpData, 'Has signature:', !!signature);
+        console.log('📋 ZZP Data naam:', zzpData?.naam, '| email:', zzpData?.email);
         
         if (!token || !companyId) {
             return res.status(400).json({ error: 'Token en company ID zijn verplicht' });
