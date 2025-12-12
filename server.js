@@ -4507,11 +4507,13 @@ app.get('/api/medewerker/projecten', requireMedewerkerAuth, (req, res) => {
 // Get mijn uren (medewerker)
 app.get('/api/medewerker/uren', requireMedewerkerAuth, (req, res) => {
     const companyId = req.companyId;
+    console.log(`📋 GET /api/medewerker/uren voor ${req.medewerker} (${req.medewerkerId})`);
     if (!companyId) {
         return res.status(400).json({ error: 'Geen bedrijf context' });
     }
     const uren = loadCompanyData(companyId, 'uren') || [];
     const mijnUren = uren.filter(u => u.medewerkerId === req.medewerkerId);
+    console.log(`📊 Gevonden: ${mijnUren.length} uren van ${uren.length} totaal`);
     res.json(mijnUren);
 });
 app.post('/api/medewerker/uren', requireMedewerkerAuth, (req, res) => {
