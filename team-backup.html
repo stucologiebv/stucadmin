@@ -19,14 +19,6 @@
     <script src="/sidebar.js"></script>
     <script src="/storage-helper.js"></script>
     <script>
-
-        // XSS Protection - escape HTML special characters
-        function escapeHtml(text) {
-            if (text === null || text === undefined) return '';
-            const str = String(text);
-            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-            return str.replace(/[&<>"']/g, m => map[m]);
-        }
         tailwind.config = {
             theme: {
                 extend: {
@@ -170,31 +162,26 @@
             <div id="alertsSection" class="mb-6 space-y-3"></div>
 
             <!-- KPIs -->
-            <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
                 <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #8b5cf6" onclick="switchTab('team')">
                     <p class="text-gray-500 text-xs mb-1">Actief teamleden</p>
                     <p class="kpi-value" id="kpiActief">0</p>
-                    <p class="text-xs text-gray-400 mt-1" id="kpiActiefSplit">0 vast / 0 ZZP</p>
+                    <p class="text-xs text-gray-400 mt-1" id="kpiActiefNu"></p>
                 </div>
-                <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #3b82f6" onclick="switchTab('uren')">
-                    <p class="text-gray-500 text-xs mb-1">Uren deze week</p>
-                    <p class="kpi-value" id="kpiUrenWeek">0</p>
-                    <p class="text-xs text-gray-400 mt-1" id="kpiKostenWeek">€0 kosten</p>
-                </div>
-                <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #10b981" onclick="switchTab('uren')">
-                    <p class="text-gray-500 text-xs mb-1">💰 Marge deze week</p>
-                    <p class="kpi-value" id="kpiMargeWeek">€0</p>
-                    <p class="text-xs text-gray-400 mt-1" id="kpiMargePerc">0%</p>
-                </div>
-                <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #f59e0b" onclick="switchTab('vergoedingen')">
-                    <p class="text-gray-500 text-xs mb-1">Open vergoedingen</p>
+                <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #10b981" onclick="switchTab('vergoedingen')">
+                    <p class="text-gray-500 text-xs mb-1">Open bonnen</p>
                     <p class="kpi-value text-lg" id="kpiOpenBonnen">€0</p>
-                    <p class="text-xs text-gray-400 mt-1" id="kpiOpenKmBedrag">+ €0 km</p>
+                    <p class="text-xs text-gray-400 mt-1">Te vergoeden</p>
                 </div>
-                <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #ef4444" onclick="switchTab('aandacht')">
+                <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #3b82f6" onclick="switchTab('vergoedingen')">
+                    <p class="text-gray-500 text-xs mb-1">Open kilometers</p>
+                    <p class="kpi-value" id="kpiOpenKm">0 km</p>
+                    <p class="text-xs text-gray-400 mt-1" id="kpiOpenKmBedrag">€0 vergoeding</p>
+                </div>
+                <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #f59e0b" onclick="switchTab('aandacht')">
                     <p class="text-gray-500 text-xs mb-1">⚠️ Aandacht nodig</p>
                     <p class="kpi-value" id="kpiWaarschuwingen">0</p>
-                    <p class="text-xs text-gray-400 mt-1">documenten</p>
+                    <p class="text-xs text-gray-400 mt-1">Documenten</p>
                 </div>
             </div>
 
@@ -210,7 +197,7 @@
             <div id="tab-team" class="tab-content">
                 <div class="card p-4 mb-4">
                     <div class="flex flex-col sm:flex-row gap-3">
-                        <input type="text" id="searchZZP" placeholder="🔍 Zoek teamlid..." class="form-input flex-1" oninput="renderTeam()">
+                        <input type="text" id="searchZZP" placeholder="🔍 Zoek ZZP'er..." class="form-input flex-1" oninput="renderTeam()">
                         <select id="filterType" class="form-input sm:w-40" onchange="renderTeam()">
                             <option value="alle">Alle types</option>
                             <option value="vast">Vast</option>
@@ -224,7 +211,7 @@
                     </div>
                 </div>
                 
-                <div id="zzpersList" class="space-y-3"></div>
+                <div id="zzpersList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
             </div>
 
                         <!-- Tab: Te vergoeden -->
@@ -1166,7 +1153,6 @@
         // DATA STORE
         // ==========================================
         let zzpers = [];
-        let weeklyUren = [];
         let opdrachten = [];
         let documenten = [];
         let currentZZPId = null;
@@ -1216,24 +1202,6 @@
                     }
                 }
             }
-            
-            // Laad uren voor deze week (voor stats)
-            try {
-                const now = new Date();
-                const dayOfWeek = now.getDay();
-                const monday = new Date(now);
-                monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-                const sunday = new Date(monday);
-                sunday.setDate(monday.getDate() + 6);
-                
-                const urenRes = await fetch('/api/uren');
-                if (urenRes.ok) {
-                    const alleUren = await urenRes.json();
-                    const mondayStr = monday.toISOString().split('T')[0];
-                    const sundayStr = sunday.toISOString().split('T')[0];
-                    weeklyUren = alleUren.filter(u => u.datum >= mondayStr && u.datum <= sundayStr);
-                }
-            } catch(e) { console.error('Error loading uren:', e); }
             
             // Ook medewerkers (vast personeel) laden via API
             try {
@@ -1291,39 +1259,10 @@
                 const res = await fetch('/api/team/stats');
                 if (res.ok) {
                     const stats = await res.json();
-                    
-                    // Actief teamleden
-                    const actief = zzpers.filter(z => z.status === 'actief');
-                    const vast = actief.filter(z => z.type !== 'zzp').length;
-                    const zzp = actief.filter(z => z.type === 'zzp').length;
-                    document.getElementById('kpiActief').textContent = actief.length;
-                    document.getElementById('kpiActiefSplit').textContent = vast + ' vast / ' + zzp + ' ZZP';
-                    
-                    // Uren en marge deze week
-                    const verkooptarief = 60;
-                    let totaalUren = 0, totaalKosten = 0;
-                    
-                    weeklyUren.forEach(u => {
-                        totaalUren += u.totaalUren || 0;
-                        const medewerker = zzpers.find(z => z.id === u.medewerkerId);
-                        const kostprijs = parseFloat(medewerker?.uurtarief) || 0;
-                        totaalKosten += (u.totaalUren || 0) * kostprijs;
-                    });
-                    
-                    const totaalOmzet = totaalUren * verkooptarief;
-                    const marge = totaalOmzet - totaalKosten;
-                    const margePerc = totaalOmzet > 0 ? (marge / totaalOmzet * 100) : 0;
-                    
-                    document.getElementById('kpiUrenWeek').textContent = totaalUren.toFixed(1);
-                    document.getElementById('kpiKostenWeek').textContent = '€' + totaalKosten.toFixed(0) + ' kosten';
-                    document.getElementById('kpiMargeWeek').textContent = '€' + marge.toFixed(0);
-                    document.getElementById('kpiMargePerc').textContent = margePerc.toFixed(0) + '%';
-                    
-                    // Open vergoedingen
-                    document.getElementById('kpiOpenBonnen').textContent = '€' + stats.openBonnen.toFixed(0);
-                    document.getElementById('kpiOpenKmBedrag').textContent = '+ €' + stats.openKmVergoeding.toFixed(0) + ' km';
-                    
-                    // Waarschuwingen
+                    document.getElementById('kpiActief').textContent = stats.actief;
+                    document.getElementById('kpiOpenBonnen').textContent = '€' + stats.openBonnen.toFixed(2);
+                    document.getElementById('kpiOpenKm').textContent = stats.openKm + ' km';
+                    document.getElementById('kpiOpenKmBedrag').textContent = '€' + stats.openKmVergoeding.toFixed(2) + ' vergoeding';
                     document.getElementById('kpiWaarschuwingen').textContent = stats.warnings;
                     
                     // Check wie er nu werkt
@@ -1384,7 +1323,7 @@
                     <div class="flex-1">
                         <div class="flex justify-between items-start">
                             <div>
-                                <span class="font-semibold">${escapeHtml(b.medewerkerNaam)}</span>
+                                <span class="font-semibold">${b.medewerkerNaam}</span>
                                 <span class="text-gray-400 text-sm ml-2">${b.winkel || 'Geen winkel'}</span>
                             </div>
                             <span class="font-bold text-green-600">€${b.bedrag.toFixed(2)}</span>
@@ -1504,7 +1443,7 @@
             
             tbody.innerHTML = medewerkers.map(m => `
                 <tr class="hover:bg-gray-50">
-                    <td class="font-medium">${escapeHtml(m.naam)}</td>
+                    <td class="font-medium">${m.naam}</td>
                     <td><span class="text-xs px-2 py-1 rounded ${m.type === 'zzp' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}">${m.type === 'zzp' ? 'ZZP' : 'Vast'}</span></td>
                     <td class="text-center ${m.dagen.ma > 0 ? 'font-medium' : 'text-gray-300'}">${m.dagen.ma > 0 ? m.dagen.ma.toFixed(1) : '-'}</td>
                     <td class="text-center ${m.dagen.di > 0 ? 'font-medium' : 'text-gray-300'}">${m.dagen.di > 0 ? m.dagen.di.toFixed(1) : '-'}</td>
@@ -1612,7 +1551,7 @@
                 html += data.bonnen.map(b => `
                     <div class="flex items-center justify-between p-2 bg-green-50 rounded mb-1 text-sm">
                         <div>
-                            <span class="font-medium">${escapeHtml(b.medewerkerNaam)}</span>
+                            <span class="font-medium">${b.medewerkerNaam}</span>
                             <span class="text-gray-500 ml-2">${b.winkel || ''}</span>
                             <span class="text-xs text-gray-400 ml-2">${new Date(b.datum).toLocaleDateString('nl-NL')}</span>
                         </div>
@@ -1689,7 +1628,7 @@
                     // Maak CSV
                     let csv = 'Type,Medewerker,Datum,Bedrag,Details\n';
                     data.bonnen.forEach(b => {
-                        csv += `Bon,${escapeHtml(b.medewerkerNaam)},${b.datum},${b.bedrag.toFixed(2)},${b.winkel || ''}\n`;
+                        csv += `Bon,${b.medewerkerNaam},${b.datum},${b.bedrag.toFixed(2)},${b.winkel || ''}\n`;
                     });
                     data.kilometers.forEach(k => {
                         csv += `Kilometers,${k.medewerkerNaam},${k.datum},${k.totaal.toFixed(2)},${k.km} km\n`;
@@ -1784,104 +1723,46 @@
                 container.innerHTML = `
                     <div class="col-span-full text-center py-12">
                         <p class="text-gray-400 text-4xl mb-4">👷</p>
-                        <p class="text-gray-500">Geen teamleden gevonden</p>
-                        <button onclick="openNieuwTeamlid()" class="btn-primary mt-4">+ Eerste teamlid toevoegen</button>
+                        <p class="text-gray-500">Geen ZZP'ers gevonden</p>
+                        <button onclick="openNieuweZZP()" class="btn-primary mt-4">+ Eerste ZZP'er toevoegen</button>
                     </div>
                 `;
                 return;
             }
             
             container.innerHTML = filtered.map(z => {
+                const zOpdrachten = opdrachten.filter(o => o.zzpId === z.id);
+                const lopend = zOpdrachten.filter(o => o.status === 'lopend').length;
                 const warnings = getZZPWarnings(z);
-                const isZZP = z.type === 'zzp';
-                const kostprijs = parseFloat(z.uurtarief) || 0;
-                const weekUren = getWeekUrenVoorMedewerker(z.id);
-                const verkooptarief = 60; // standaard
-                const weekOmzet = weekUren * verkooptarief;
-                const weekKosten = weekUren * kostprijs;
-                const weekMarge = weekOmzet - weekKosten;
+                const docs = documenten.filter(d => d.zzpId === z.id);
                 
                 return `
-                    <div class="card p-4 mb-3 hover:shadow-lg transition-all">
-                        <!-- Header -->
+                    <div class="card zzp-card p-4" onclick="openZZPDetail('${z.id}')">
                         <div class="flex items-start justify-between mb-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-12 h-12 rounded-full bg-gradient-to-br ${isZZP ? 'from-purple-400 to-purple-600' : 'from-blue-400 to-blue-600'} flex items-center justify-center text-white font-bold text-lg">
-                                    ${z.naam.charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                    <h3 class="font-bold text-gray-800">${escapeHtml(z.naam)}</h3>
-                                    <p class="text-gray-500 text-sm">${z.bedrijf || z.specialisatie || z.functie || '-'}</p>
-                                </div>
+                            <div>
+                                <h3 class="font-bold">${z.naam}</h3>
+                                <p class="text-gray-500 text-sm">${z.bedrijf || z.specialisatie || 'ZZP\'er'}</p>
                             </div>
-                            <div class="flex flex-col items-end gap-1">
-                                <span class="status-badge ${isZZP ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}">${isZZP ? '🔧 ZZP' : '👔 Vast'}</span>
-                                <span class="status-badge status-${z.status}">${z.status === 'actief' ? '✅ Actief' : '⏸️ Inactief'}</span>
-                            </div>
+                            <span class="status-badge status-${z.status}">${z.status === 'actief' ? '✓ Actief' : 'Inactief'}</span>
                         </div>
-                        
-                        <!-- Contact info -->
-                        <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600 mb-3 pb-3 border-b border-gray-100">
-                            ${z.email ? `<a href="mailto:${escapeHtml(z.email)}" class="hover:text-purple-600">📧 ${escapeHtml(z.email)}</a>` : ''}
-                            ${z.telefoon ? `<a href="tel:${escapeHtml(z.telefoon)}" class="hover:text-purple-600">📱 ${escapeHtml(z.telefoon)}</a>` : ''}
+                        <div class="flex items-center gap-4 text-sm text-gray-500 mb-3">
+                            <span>📋 ${lopend} lopend</span>
+                            <span>📁 ${docs.length} docs</span>
                         </div>
-                        
-                        <!-- Stats row -->
-                        <div class="grid grid-cols-4 gap-2 mb-3 text-center">
-                            <div class="bg-gray-50 rounded-lg p-2">
-                                <p class="text-lg font-bold text-purple-600">${kostprijs > 0 ? '€' + kostprijs : '⚠️'}</p>
-                                <p class="text-xs text-gray-500">Kostprijs/u</p>
-                            </div>
-                            <div class="bg-gray-50 rounded-lg p-2">
-                                <p class="text-lg font-bold text-gray-700">${weekUren.toFixed(1)}</p>
-                                <p class="text-xs text-gray-500">Uren week</p>
-                            </div>
-                            <div class="bg-gray-50 rounded-lg p-2">
-                                <p class="text-lg font-bold text-green-600">€${weekOmzet.toFixed(0)}</p>
-                                <p class="text-xs text-gray-500">Omzet</p>
-                            </div>
-                            <div class="bg-gray-50 rounded-lg p-2">
-                                <p class="text-lg font-bold ${weekMarge >= 0 ? 'text-emerald-600' : 'text-red-600'}">€${weekMarge.toFixed(0)}</p>
-                                <p class="text-xs text-gray-500">Marge</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Warnings -->
                         ${warnings.length > 0 ? `
-                            <div class="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg p-2 mb-3">
+                            <div class="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
                                 <span>⚠️</span>
-                                <span>${warnings.map(w => w.msg).slice(0, 2).join(' • ')}${warnings.length > 2 ? ' +' + (warnings.length - 2) + ' meer' : ''}</span>
+                                <span>${warnings.length} waarschuwing${warnings.length > 1 ? 'en' : ''}</span>
                             </div>
-                        ` : ''}
-                        
-                        <!-- Actions -->
-                        <div class="flex gap-2">
-                            <button onclick="event.stopPropagation(); editZZP('${z.id}')" class="flex-1 btn-secondary text-sm py-2">✏️ Bewerken</button>
-                            <button onclick="event.stopPropagation(); openZZPDetail('${z.id}')" class="flex-1 btn-secondary text-sm py-2">📋 Details</button>
-                            <button onclick="event.stopPropagation(); showMedewerkerUren('${z.id}', '${escapeHtml(z.naam)}')" class="flex-1 btn-secondary text-sm py-2">⏱️ Uren</button>
-                        </div>
+                        ` : `
+                            <div class="flex items-center gap-2 text-xs text-green-600 bg-green-50 rounded-lg p-2">
+                                <span>✓</span>
+                                <span>DBA compliant</span>
+                            </div>
+                        `}
                     </div>
                 `;
             }).join('');
-        }
-        
-        // Helper: Haal uren op voor medewerker deze week
-        function getWeekUrenVoorMedewerker(medewerkerId) {
-            const now = new Date();
-            const dayOfWeek = now.getDay();
-            const monday = new Date(now);
-            monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-            monday.setHours(0, 0, 0, 0);
-            
-            let totaal = 0;
-            if (typeof weeklyUren !== 'undefined' && weeklyUren.length > 0) {
-                weeklyUren.forEach(u => {
-                    if (u.medewerkerId === medewerkerId) {
-                        totaal += u.totaalUren || 0;
-                    }
-                });
-            }
-            return totaal;
         }
         
         function getZZPWarnings(zzp) {
@@ -2082,8 +1963,8 @@
             // Info - compact
             document.getElementById('detailZZPInfo').innerHTML = `
                 ${isZZP ? `<p><span class="text-gray-400">Bedrijf:</span> <strong>${zzp.bedrijf || '-'}</strong></p>` : ''}
-                <p><span class="text-gray-400">Email:</span> <a href="mailto:${escapeHtml(zzp.email)}" class="text-purple-600">${zzp.email || '-'}</a></p>
-                <p><span class="text-gray-400">Tel:</span> <a href="tel:${escapeHtml(zzp.telefoon)}" class="text-purple-600">${zzp.telefoon || '-'}</a></p>
+                <p><span class="text-gray-400">Email:</span> <a href="mailto:${zzp.email}" class="text-purple-600">${zzp.email || '-'}</a></p>
+                <p><span class="text-gray-400">Tel:</span> <a href="tel:${zzp.telefoon}" class="text-purple-600">${zzp.telefoon || '-'}</a></p>
                 ${isZZP ? `<p><span class="text-gray-400">KvK:</span> ${zzp.kvk || '-'}</p>` : ''}
                 ${isZZP ? `<p><span class="text-gray-400">BTW:</span> ${zzp.btw || '-'}</p>` : ''}
                 <p><span class="text-gray-400">${isZZP ? 'Specialisatie' : 'Functie'}:</span> ${zzp.specialisatie || zzp.functie || '-'}</p>
@@ -2183,8 +2064,8 @@
                             ${u.pauze ? `<div class="text-xs text-gray-400">${u.pauze} min pauze</div>` : ''}
                         </div>
                     </div>
-                    ${u.locatieAdres ? `<div class="text-xs text-gray-500">📍 ${escapeHtml(u.locatieAdres)}</div>` : ''}
-                    ${u.notitie ? `<div class="text-xs text-gray-600 mt-1">📝 ${escapeHtml(u.notitie)}</div>` : ''}
+                    ${u.locatieAdres ? `<div class="text-xs text-gray-500">📍 ${u.locatieAdres}</div>` : ''}
+                    ${u.notitie ? `<div class="text-xs text-gray-600 mt-1">📝 ${u.notitie}</div>` : ''}
                 </div>
             `).join('');
         }
@@ -2549,7 +2430,7 @@
             const select = document.getElementById('opdrachtZZP');
             select.innerHTML = '<option value="">Selecteer ZZP\'er...</option>' +
                 zzpers.filter(z => z.status === 'actief').map(z => 
-                    `<option value="${z.id}" ${z.id === selectedId ? 'selected' : ''}>${escapeHtml(z.naam)}</option>`
+                    `<option value="${z.id}" ${z.id === selectedId ? 'selected' : ''}>${z.naam}</option>`
                 ).join('');
         }
         
@@ -2818,7 +2699,7 @@ StucAdmin Team
                             <span>${w.type === 'danger' ? '🚨' : '⚠️'}</span>
                             <div>
                                 <p class="font-medium text-sm">${w.zzp}</p>
-                                <p class="text-xs">${escapeHtml(w.msg)}</p>
+                                <p class="text-xs">${w.msg}</p>
                             </div>
                         </div>
                     </div>

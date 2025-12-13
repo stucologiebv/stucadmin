@@ -15,6 +15,14 @@
     <script src="/sidebar.js"></script>
     <script src="/storage-helper.js"></script>
     <script>
+
+        // XSS Protection - escape HTML special characters
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const str = String(text);
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return str.replace(/[&<>"']/g, m => map[m]);
+        }
         // Auth check with loading state
         (async () => {
             try {
@@ -1531,7 +1539,7 @@
                 alert('Portal link gekopieerd!\n\n' + url + '\n\nMedewerkers moeten inloggen met hun pincode.');
             }); 
         }
-        function exportUren() { const csv = 'Datum,Medewerker,Project,Begin,Eind,Uren\\n' + uren.map(u => `${u.datum},"${u.medewerkerNaam}","${u.projectNaam}",${u.begintijd},${u.eindtijd},${u.totaalUren}`).join('\\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\\ufeff'+csv],{type:'text/csv'})); a.download = 'uren.csv'; a.click(); }
+        function exportUren() { const csv = 'Datum,Medewerker,Project,Begin,Eind,Uren\\n' + uren.map(u => `${u.datum},"${escapeHtml(u.medewerkerNaam)}","${u.projectNaam}",${u.begintijd},${u.eindtijd},${u.totaalUren}`).join('\\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\\ufeff'+csv],{type:'text/csv'})); a.download = 'uren.csv'; a.click(); }
     </script>
     <script src="/sidebar.js"></script>
     <script src="/storage-helper.js"></script>

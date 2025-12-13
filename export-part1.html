@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export & Rapportages - StucAdmin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; }
+        .sidebar { width: 250px; background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%); min-height: 100vh; position: fixed; left: 0; top: 0; z-index: 50; transition: transform 0.3s; }
+        .sidebar.closed { transform: translateX(-250px); }
+        .main-content { margin-left: 250px; padding: 24px; min-height: 100vh; transition: margin-left 0.3s; }
+        .main-content.expanded { margin-left: 0; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .btn-primary { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(139,92,246,0.4); }
+        .btn-secondary { background: #f1f5f9; color: #475569; padding: 10px 20px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .form-select, .form-input { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }
+        .form-select:focus, .form-input:focus { outline: none; border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,0.1); }
+        .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 8px; border-radius: 6px; transition: background 0.2s; }
+        .checkbox-label:hover { background: #f8fafc; }
+        .checkbox-label input { width: 18px; height: 18px; accent-color: #8b5cf6; }
+        .preview-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .preview-table th { background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: #64748b; border-bottom: 2px solid #e2e8f0; }
+        .preview-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+        .preview-table tr:hover { background: #fafafa; }
+        .totaal-row { background: #f0fdf4 !important; font-weight: 600; }
+        .totaal-row td { border-top: 2px solid #22c55e; }
+        .badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .badge-zzp { background: #f3e8ff; color: #7c3aed; }
+        .badge-vast { background: #dbeafe; color: #2563eb; }
+        .loading { display: none; align-items: center; justify-content: center; padding: 40px; }
+        .loading.active { display: flex; }
+        .spinner { width: 24px; height: 24px; border: 3px solid #e2e8f0; border-top-color: #8b5cf6; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-250px); }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebarContainer"></div>
+    
+    <main class="main-content" id="mainContent">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">📥 Export & Rapportages</h1>
+                <p class="text-gray-500 text-sm">Genereer urenstaten voor facturatie</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Filter panel -->
+            <div class="lg:col-span-1">
+                <div class="card p-5">
+                    <h2 class="font-bold text-gray-800 mb-4">🔍 Filter</h2>
+                    
+                    <!-- Opdrachtgever -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Opdrachtgever</label>
+                        <select id="filterKlant" class="form-select" onchange="onKlantChange()">
+                            <option value="">Alle opdrachtgevers</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Project/Locatie -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Project / Locatie</label>
+                        <select id="filterProject" class="form-select" onchange="loadPreview()">
+                            <option value="">Alle projecten</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Periode -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Periode</label>
+                        <select id="filterPeriode" class="form-select" onchange="onPeriodeChange()">
+                            <option value="week">Deze week</option>
+                            <option value="vorige_week">Vorige week</option>
+                            <option value="maand">Deze maand</option>
+                            <option value="vorige_maand">Vorige maand</option>
+                            <option value="custom">Aangepast...</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Custom datum range -->
+                    <div id="customDates" class="mb-4 hidden">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Van</label>
+                                <input type="date" id="filterVan" class="form-input" onchange="loadPreview()">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Tot</label>
+                                <input type="date" id="filterTot" class="form-input" onchange="loadPreview()">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4 border-gray-200">
+                    
+                    <!-- Inhoud opties -->
+                    <h3 class="font-medium text-gray-700 mb-3">Inhoud</h3>
+                    <div class="space-y-2 mb-4">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="inclUren" checked onchange="loadPreview()">
+                            <span>⏱️ Uren per medewerker</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="inclBonnen" checked onchange="loadPreview()">
+                            <span>🧾 Materialen / bonnen</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="inclReiskosten" checked onchange="loadPreview()">
+                            <span>🚗 Reiskosten</span>
+                        </label>
+                    </div>
+                    
+                    <hr class="my-4 border-gray-200">
+                    
+                    <!-- Export knoppen -->
+                    <div class="space-y-3">
+                        <button onclick="exportPDF()" class="btn-primary w-full flex items-center justify-center gap-2">
+                            <span>📄</span> Download PDF
+                        </button>
+                        <button onclick="exportExcel()" class="btn-secondary w-full flex items-center justify-center gap-2">
+                            <span>📊</span> Download Excel
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Preview panel -->
+            <div class="lg:col-span-2">
+                <div class="card p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="font-bold text-gray-800">📋 Preview</h2>
+                        <span id="previewPeriode" class="text-sm text-gray-500"></span>
+                    </div>
+                    
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <span class="ml-3 text-gray-500">Laden...</span>
+                    </div>
+                    
+                    <div id="previewEmpty" class="text-center py-12 text-gray-400">
+                        <span class="text-4xl block mb-2">📋</span>
+                        <p>Selecteer filters om preview te zien</p>
+                    </div>
+                    
+                    <div id="previewContent" class="hidden">
+                        <!-- Uren tabel -->
+                        <div id="urenSection" class="mb-6">
+                            <h3 class="font-semibold text-gray-700 mb-3">⏱️ Uren</h3>
+                            <div class="overflow-x-auto">
+                                <table class="preview-table" id="urenTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Datum</th>
+                                            <th>Medewerker</th>
+                                            <th>Locatie</th>
+                                            <th class="text-right">Begin</th>
+                                            <th class="text-right">Eind</th>
+                                            <th class="text-right">Pauze</th>
+                                            <th class="text-right">Uren</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="urenTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Bonnen tabel -->
+                        <div id="bonnenSection" class="mb-6 hidden">
+                            <h3 class="font-semibold text-gray-700 mb-3">🧾 Materialen / Bonnen</h3>
+                            <div class="overflow-x-auto">
+                                <table class="preview-table" id="bonnenTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Datum</th>
+                                            <th>Medewerker</th>
+                                            <th>Winkel</th>
+                                            <th>Categorie</th>
+                                            <th class="text-right">Bedrag</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bonnenTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Reiskosten tabel -->
+                        <div id="reiskostenSection" class="mb-6 hidden">
+                            <h3 class="font-semibold text-gray-700 mb-3">🚗 Reiskosten</h3>
+                            <div class="overflow-x-auto">
+                                <table class="preview-table" id="reiskostenTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Datum</th>
+                                            <th>Medewerker</th>
+                                            <th>Omschrijving</th>
+                                            <th class="text-right">KM</th>
+                                            <th class="text-right">Bedrag</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reiskostenTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Totalen -->
+                        <div id="totalenSection" class="bg-gray-50 rounded-lg p-4">
+                            <h3 class="font-semibold text-gray-700 mb-3">📊 Totalen</h3>
+                            <div class="grid grid-cols-3 gap-4 text-center">
+                                <div>
+                                    <p class="text-2xl font-bold text-purple-600" id="totaalUren">0</p>
+                                    <p class="text-sm text-gray-500">Uren</p>
+                                </div>
+                                <div>
+                                    <p class="text-2xl font-bold text-green-600" id="totaalBonnen">€0</p>
+                                    <p class="text-sm text-gray-500">Materialen</p>
+                                </div>
+                                <div>
+                                    <p class="text-2xl font-bold text-blue-600" id="totaalReiskosten">€0</p>
+                                    <p class="text-sm text-gray-500">Reiskosten</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/sidebar.js"></script>
+    <script>

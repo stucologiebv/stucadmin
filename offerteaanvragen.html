@@ -427,7 +427,7 @@
             const linkedin = bedrijf.linkedin || '';
 
             let signature = `<p>--<br>Met Vriendelijke Groeten,</p>`;
-            signature += `<p style="color: ${kleur}; font-weight: bold; font-size: 16px;">${naam}</p>`;
+            signature += `<p style="color: ${kleur}; font-weight: bold; font-size: 16px;">${escapeHtml(naam)}</p>`;
             
             if (contact) {
                 signature += `<p><span style="color: #3498db; font-weight: bold; text-decoration: underline;">${contact}</span>`;
@@ -440,8 +440,8 @@
             let contactInfo = [];
             if (telefoon) contactInfo.push(`P. <a href="tel:${telefoon.replace(/[^+\d]/g, '')}">${telefoon}</a>`);
             if (mobiel) contactInfo.push(`M. <a href="tel:${mobiel.replace(/[^+\d]/g, '')}">${mobiel}</a>`);
-            if (email) contactInfo.push(`E. <a href="mailto:${email}">${email}</a>`);
-            if (adres) contactInfo.push(`A. ${adres}`);
+            if (email) contactInfo.push(`E. <a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a>`);
+            if (adres) contactInfo.push(`A. ${escapeHtml(adres)}`);
             if (contactInfo.length) signature += `<p>${contactInfo.join('<br>')}</p>`;
             
             let legalInfo = [];
@@ -522,7 +522,7 @@
             const signature = generateEmailSignature();
             
             const templates = {
-                reactie: `<p>Beste ${naam},</p>
+                reactie: `<p>Beste ${escapeHtml(naam)},</p>
 
 <p>Bedankt voor uw aanvraag voor ${type} bij ${bedrijfNaam}.</p>
 
@@ -532,7 +532,7 @@
 
 ${signature}`,
 
-                opname: `<p>Beste ${naam},</p>
+                opname: `<p>Beste ${escapeHtml(naam)},</p>
 
 <p>Hierbij bevestigen wij de afspraak voor de opname van uw ${type} project.</p>
 
@@ -546,7 +546,7 @@ ${signature}`,
 
 ${signature}`,
 
-                offerte: `<p>Beste ${naam},</p>
+                offerte: `<p>Beste ${escapeHtml(naam)},</p>
 
 <p>Naar aanleiding van onze opname sturen wij u hierbij onze offerte voor de ${type} werkzaamheden.</p>
 
@@ -556,7 +556,7 @@ ${signature}`,
 
 ${signature}`,
 
-                followup: `<p>Beste ${naam},</p>
+                followup: `<p>Beste ${escapeHtml(naam)},</p>
 
 <p>Enige tijd geleden hebben wij u een offerte gestuurd voor ${type} werkzaamheden.</p>
 
@@ -566,7 +566,7 @@ ${signature}`,
 
 ${signature}`,
 
-                leeg: `<p>Beste ${naam},</p>
+                leeg: `<p>Beste ${escapeHtml(naam)},</p>
 
 <p></p>
 

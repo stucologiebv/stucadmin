@@ -284,6 +284,14 @@
     </div>
 
     <script>
+
+        // XSS Protection - escape HTML special characters
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const str = String(text);
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return str.replace(/[&<>"']/g, m => map[m]);
+        }
         let currentUser = null, timerInterval = null, timerStartTime = null, pauseStartTime = null, totalPauseMs = 0, isPaused = false, isWorking = false, currentLocation = null, myUren = [];
         let todayData = { fotos: [], bonnen: [], reiskosten: null, notitie: '' };
         let currentBonPhoto = null;
@@ -442,7 +450,7 @@
             document.getElementById('recentList').innerHTML = recent.map(u => {
                 const d = new Date(u.datum), isToday = d.toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
                 const locatie = u.locatie?.address || u.locatieAdres || 'Locatie onbekend';
-                return `<div class="recent-item"><div><div class="recent-date">${isToday ? 'Vandaag' : d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</div><div class="recent-project">📍 ${locatie}</div></div><div class="recent-hours">${u.totaalUren.toFixed(1)}u</div></div>`;
+                return `<div class="recent-item"><div><div class="recent-date">${isToday ? 'Vandaag' : d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</div><div class="recent-project">📍 ${escapeHtml(locatie)}</div></div><div class="recent-hours">${u.totaalUren.toFixed(1)}u</div></div>`;
             }).join('');
         }
 
@@ -618,7 +626,7 @@
             document.getElementById('toegevoegdCard').style.display = 'block';
             let html = '';
             todayData.fotos.forEach((f, i) => { html += `<div class="toegevoegd-item"><span>📸</span><span style="flex:1;font-size:14px;">Foto ${i+1}</span><span style="color:#ef4444;cursor:pointer;" onclick="deleteFoto(${i})">🗑️</span></div>`; });
-            todayData.bonnen.forEach((b, i) => { html += `<div class="toegevoegd-item"><span>🧾</span><span style="flex:1;font-size:14px;">€${b.bedrag.toFixed(2)} - ${b.winkel}</span><span style="color:#ef4444;cursor:pointer;" onclick="deleteBon(${i})">🗑️</span></div>`; });
+            todayData.bonnen.forEach((b, i) => { html += `<div class="toegevoegd-item"><span>🧾</span><span style="flex:1;font-size:14px;">€${b.bedrag.toFixed(2)} - ${escapeHtml(b.winkel)}</span><span style="color:#ef4444;cursor:pointer;" onclick="deleteBon(${i})">🗑️</span></div>`; });
             if (todayData.reiskosten) html += `<div class="toegevoegd-item"><span>🚗</span><span style="flex:1;font-size:14px;">${todayData.reiskosten.km} km - €${todayData.reiskosten.totaal.toFixed(2)}</span><span style="color:#ef4444;cursor:pointer;" onclick="deleteReiskosten()">🗑️</span></div>`;
             document.getElementById('toegevoegdList').innerHTML = html;
         }
@@ -738,7 +746,7 @@
             Object.entries(groups).forEach(([date, items]) => {
                 const d = new Date(date), dayTotal = items.reduce((s, u) => s + u.totaalUren, 0);
                 html += `<div class="history-group"><div class="history-group-title">${d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })} - ${dayTotal.toFixed(1)} uur</div>`;
-                html += items.map(u => { const loc = u.locatie?.address || u.locatieAdres || 'Onbekend'; return `<div class="history-item"><div class="flex justify-between items-start"><div><div style="font-weight:600;color:#1e293b;">📍 ${loc}</div><div style="font-size:13px;color:#64748b;">${u.begintijd} - ${u.eindtijd}</div>${u.notitie ? `<div class="text-sm text-gray-500 mt-1">${u.notitie}</div>` : ''}</div><div style="font-size:20px;font-weight:800;color:#6366f1;">${u.totaalUren.toFixed(1)}u</div></div></div>`; }).join('');
+                html += items.map(u => { const loc = u.locatie?.address || u.locatieAdres || 'Onbekend'; return `<div class="history-item"><div class="flex justify-between items-start"><div><div style="font-weight:600;color:#1e293b;">📍 ${loc}</div><div style="font-size:13px;color:#64748b;">${u.begintijd} - ${u.eindtijd}</div>${u.notitie ? `<div class="text-sm text-gray-500 mt-1">${escapeHtml(u.notitie)}</div>` : ''}</div><div style="font-size:20px;font-weight:800;color:#6366f1;">${u.totaalUren.toFixed(1)}u</div></div></div>`; }).join('');
                 html += '</div>';
             });
             document.getElementById('historyList').innerHTML = html;

@@ -746,7 +746,7 @@
                             <a href="tel:${cleanPhone}" class="contact-btn call">📞 Bel</a>
                             <a href="https://wa.me/31${cleanPhone.replace(/^0/, '').replace(/^\+31/, '')}" target="_blank" class="contact-btn whatsapp">💬 WhatsApp</a>
                         ` : ''}
-                        ${email ? `<a href="mailto:${email}" class="contact-btn mail">📧 Mail</a>` : ''}
+                        ${email ? `<a href="mailto:${escapeHtml(email)}" class="contact-btn mail">📧 Mail</a>` : ''}
                         <button onclick="openSendModal('${project.id}')" class="contact-btn mail">📤 Sturen</button>
                     </div>
                     
@@ -1147,6 +1147,7 @@
                 const contact = contacts.find(c => c.id === contactId);
                 
                 project.contactId = contactId;
+                project.klantId = contactId || null;  // Voor koppeling met opdrachtgever
                 project.titel = document.getElementById('projectTitel').value || 'Project';
                 project.type = document.getElementById('projectType').value;
                 project.m2 = parseFloat(document.getElementById('projectM2').value) || 0;
@@ -1154,15 +1155,19 @@
                 project.bedrag = parseFloat(document.getElementById('projectBedrag').value) || 0;
                 
                 if (contact) {
+                    const klantNaam = contact.company_name || `${contact.firstname} ${contact.lastname}`.trim();
+                    project.klantNaam = klantNaam;  // Voor weergave
                     project.klant = {
-                        naam: contact.company_name || `${contact.firstname} ${contact.lastname}`,
+                        id: contactId,
+                        naam: klantNaam,
                         email: contact.email,
                         telefoon: contact.phone,
                         adres: contact.address1,
                         postcode: contact.zipcode,
                         plaats: contact.city
                     };
-                    project.locatie = `${contact.address1 || ''}, ${contact.zipcode || ''} ${contact.city || ''}`;
+                    project.locatie = `${contact.address1 || ''}, ${contact.zipcode || ''} ${contact.city || ''}`.trim();
+                    project.adres = project.locatie;
                 }
             }
             
@@ -1395,7 +1400,7 @@ Uw stukadoorsbedrijf`;
             }
             
             // Fallback: open mailto link
-            window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`, '_blank');
+            window.open(`mailto:${escapeHtml(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`, '_blank');
             closeModal('sendModal');
             window.currentZZPNotification = null;
             showToast('Email geopend in mail app', 'success');

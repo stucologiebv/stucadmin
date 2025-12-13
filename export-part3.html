@@ -1,0 +1,197 @@
+        function renderPreview(inclUren, inclBonnen, inclReiskosten) {
+            const previewEmpty = document.getElementById('previewEmpty');
+            const previewContent = document.getElementById('previewContent');
+            
+            if (filteredData.uren.length === 0) {
+                previewEmpty.classList.remove('hidden');
+                previewContent.classList.add('hidden');
+                return;
+            }
+            
+            previewEmpty.classList.add('hidden');
+            previewContent.classList.remove('hidden');
+            
+            // Uren
+            const urenSection = document.getElementById('urenSection');
+            const urenBody = document.getElementById('urenTableBody');
+            if (inclUren && filteredData.uren.length) {
+                urenSection.classList.remove('hidden');
+                let totaalUren = 0;
+                urenBody.innerHTML = filteredData.uren.map(u => {
+                    totaalUren += u.totaalUren || 0;
+                    return `<tr>
+                        <td>${formatDatum(u.datum)}</td>
+                        <td>${u.medewerkerNaam || '-'}</td>
+                        <td>${(u.locatieAdres || '-').substring(0, 30)}</td>
+                        <td class="text-right">${u.begintijd}</td>
+                        <td class="text-right">${u.eindtijd}</td>
+                        <td class="text-right">${u.pauze || 0} min</td>
+                        <td class="text-right font-semibold">${(u.totaalUren || 0).toFixed(2)}</td>
+                    </tr>`;
+                }).join('');
+                urenBody.innerHTML += `<tr class="totaal-row">
+                    <td colspan="6" class="text-right font-bold">Totaal uren:</td>
+                    <td class="text-right font-bold">${totaalUren.toFixed(2)}</td>
+                </tr>`;
+                document.getElementById('totaalUren').textContent = totaalUren.toFixed(2);
+            } else {
+                urenSection.classList.add('hidden');
+                document.getElementById('totaalUren').textContent = '0';
+            }
+            
+            // Bonnen
+            const bonnenSection = document.getElementById('bonnenSection');
+            const bonnenBody = document.getElementById('bonnenTableBody');
+            if (inclBonnen && filteredData.bonnen.length) {
+                bonnenSection.classList.remove('hidden');
+                let totaalBonnen = 0;
+                bonnenBody.innerHTML = filteredData.bonnen.map(b => {
+                    totaalBonnen += b.bedrag || 0;
+                    return `<tr>
+                        <td>${formatDatum(b.datum)}</td>
+                        <td>${b.medewerkerNaam || '-'}</td>
+                        <td>${b.winkel || '-'}</td>
+                        <td>${b.categorie || '-'}</td>
+                        <td class="text-right font-semibold">€${(b.bedrag || 0).toFixed(2)}</td>
+                    </tr>`;
+                }).join('');
+                bonnenBody.innerHTML += `<tr class="totaal-row">
+                    <td colspan="4" class="text-right font-bold">Totaal materialen:</td>
+                    <td class="text-right font-bold">€${totaalBonnen.toFixed(2)}</td>
+                </tr>`;
+                document.getElementById('totaalBonnen').textContent = '€' + totaalBonnen.toFixed(2);
+            } else {
+                bonnenSection.classList.add('hidden');
+                document.getElementById('totaalBonnen').textContent = '€0';
+            }
+            
+            // Reiskosten
+            const reiskostenSection = document.getElementById('reiskostenSection');
+            const reiskostenBody = document.getElementById('reiskostenTableBody');
+            if (inclReiskosten && filteredData.reiskosten.length) {
+                reiskostenSection.classList.remove('hidden');
+                let totaalKm = 0, totaalBedrag = 0;
+                reiskostenBody.innerHTML = filteredData.reiskosten.map(r => {
+                    totaalKm += r.km || 0;
+                    totaalBedrag += r.totaal || 0;
+                    return `<tr>
+                        <td>${formatDatum(r.datum)}</td>
+                        <td>${r.medewerkerNaam || '-'}</td>
+                        <td>${r.desc || '-'}</td>
+                        <td class="text-right">${r.km || 0} km</td>
+                        <td class="text-right font-semibold">€${(r.totaal || 0).toFixed(2)}</td>
+                    </tr>`;
+                }).join('');
+                reiskostenBody.innerHTML += `<tr class="totaal-row">
+                    <td colspan="3" class="text-right font-bold">Totaal reiskosten:</td>
+                    <td class="text-right font-bold">${totaalKm} km</td>
+                    <td class="text-right font-bold">€${totaalBedrag.toFixed(2)}</td>
+                </tr>`;
+                document.getElementById('totaalReiskosten').textContent = '€' + totaalBedrag.toFixed(2);
+            } else {
+                reiskostenSection.classList.add('hidden');
+                document.getElementById('totaalReiskosten').textContent = '€0';
+            }
+        }
+        
+        function formatDatum(dateStr) {
+            if (!dateStr) return '-';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+        }
+        
+        function updatePeriodeLabel(van, tot) {
+            const label = document.getElementById('previewPeriode');
+            if (van && tot) {
+                const vd = new Date(van);
+                const td = new Date(tot);
+                label.textContent = `${vd.toLocaleDateString('nl-NL')} - ${td.toLocaleDateString('nl-NL')}`;
+            }
+        }
+        
+        async function exportPDF() {
+            const klantId = document.getElementById('filterKlant').value;
+            const locatie = document.getElementById('filterProject').value;
+            const van = document.getElementById('filterVan').value;
+            const tot = document.getElementById('filterTot').value;
+            const inclUren = document.getElementById('inclUren').checked;
+            const inclBonnen = document.getElementById('inclBonnen').checked;
+            const inclReiskosten = document.getElementById('inclReiskosten').checked;
+            
+            const params = new URLSearchParams({
+                van, tot,
+                klantId: klantId || '',
+                locatie: locatie || '',
+                inclUren, inclBonnen, inclReiskosten
+            });
+            
+            window.open(`/api/export/urenstaat-pdf?${params}`, '_blank');
+        }
+        
+        function exportExcel() {
+            const van = document.getElementById('filterVan').value;
+            const tot = document.getElementById('filterTot').value;
+            const klant = klanten.find(k => k.id === document.getElementById('filterKlant').value);
+            const locatie = document.getElementById('filterProject').value;
+            
+            // Build CSV
+            let csv = '\uFEFF'; // BOM for Excel UTF-8
+            
+            // Header info
+            csv += 'URENSTAAT\n';
+            if (klant) csv += `Opdrachtgever:;${klant.naam}\n`;
+            if (locatie) csv += `Project/Locatie:;${locatie}\n`;
+            csv += `Periode:;${van} - ${tot}\n`;
+            csv += '\n';
+            
+            // Uren
+            if (document.getElementById('inclUren').checked && filteredData.uren.length) {
+                csv += 'UREN\n';
+                csv += 'Datum;Medewerker;Locatie;Begin;Eind;Pauze;Uren\n';
+                let totaalUren = 0;
+                filteredData.uren.forEach(u => {
+                    totaalUren += u.totaalUren || 0;
+                    csv += `${u.datum};${u.medewerkerNaam || ''};${u.locatieAdres || ''};${u.begintijd};${u.eindtijd};${u.pauze || 0};${(u.totaalUren || 0).toFixed(2)}\n`;
+                });
+                csv += `;;;;TOTAAL;;${totaalUren.toFixed(2)}\n`;
+                csv += '\n';
+            }
+            
+            // Bonnen
+            if (document.getElementById('inclBonnen').checked && filteredData.bonnen.length) {
+                csv += 'MATERIALEN / BONNEN\n';
+                csv += 'Datum;Medewerker;Winkel;Categorie;Bedrag\n';
+                let totaal = 0;
+                filteredData.bonnen.forEach(b => {
+                    totaal += b.bedrag || 0;
+                    csv += `${b.datum};${b.medewerkerNaam || ''};${b.winkel || ''};${b.categorie || ''};${(b.bedrag || 0).toFixed(2)}\n`;
+                });
+                csv += `;;;TOTAAL;${totaal.toFixed(2)}\n`;
+                csv += '\n';
+            }
+            
+            // Reiskosten
+            if (document.getElementById('inclReiskosten').checked && filteredData.reiskosten.length) {
+                csv += 'REISKOSTEN\n';
+                csv += 'Datum;Medewerker;Omschrijving;KM;Bedrag\n';
+                let totaalKm = 0, totaalBedrag = 0;
+                filteredData.reiskosten.forEach(r => {
+                    totaalKm += r.km || 0;
+                    totaalBedrag += r.totaal || 0;
+                    csv += `${r.datum};${r.medewerkerNaam || ''};${r.desc || ''};${r.km || 0};${(r.totaal || 0).toFixed(2)}\n`;
+                });
+                csv += `;;TOTAAL;${totaalKm};${totaalBedrag.toFixed(2)}\n`;
+            }
+            
+            // Download
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `urenstaat-${van}-${tot}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

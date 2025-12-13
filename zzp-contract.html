@@ -162,6 +162,14 @@
     </div>
 
     <script>
+
+        // XSS Protection - escape HTML special characters
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const str = String(text);
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return str.replace(/[&<>"']/g, m => map[m]);
+        }
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         let inviteData = null;
@@ -290,7 +298,7 @@
         function updateContractWithData() {
             const naam = `${document.getElementById('voornaam').value} ${document.getElementById('achternaam').value}`;
             const bedrijf = document.getElementById('bedrijfsnaam').value;
-            document.getElementById('contractNaam').textContent = bedrijf ? `${naam} (${bedrijf})` : naam;
+            document.getElementById('contractNaam').textContent = bedrijf ? `${escapeHtml(naam)} (${escapeHtml(bedrijf)})` : naam;
             document.getElementById('contractTarief').textContent = document.getElementById('uurtarief').value || '[tarief]';
         }
 

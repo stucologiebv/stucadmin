@@ -352,6 +352,14 @@
     <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
     <script>
+
+        // XSS Protection - escape HTML special characters
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const str = String(text);
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return str.replace(/[&<>"']/g, m => map[m]);
+        }
     // ============================================
     // GLOBAL STATE
     // ============================================
@@ -639,7 +647,7 @@
                 ` : filtered.slice(0, 100).map(m => `
                     <div class="table-row cursor-pointer hover:bg-indigo-50" onclick="editMaterial('${m.id}')">
                         <div>
-                            <div class="font-semibold">${m.naam}</div>
+                            <div class="font-semibold">${escapeHtml(m.naam)}</div>
                             ${m.artikelnummer ? '<div class="text-xs text-gray-400">#' + m.artikelnummer + '</div>' : ''}
                         </div>
                         <div><span class="badge badge-info">${m.categorie || 'Geen'}</span></div>
@@ -984,7 +992,7 @@
                         <div class="card p-4 mb-3">
                             <div class="flex justify-between items-center cursor-pointer" onclick="showPriceHistory('${id}')">
                                 <div>
-                                    <div class="font-semibold">${data.naam}</div>
+                                    <div class="font-semibold">${escapeHtml(data.naam)}</div>
                                     <div class="text-sm text-gray-500">${data.entries.length} prijswijzigingen</div>
                                 </div>
                                 <div class="text-right">
@@ -1361,7 +1369,7 @@
         dropdown.innerHTML = filtered.map(m => `
             <div class="p-2 hover:bg-indigo-50 cursor-pointer border-b text-sm"
                  onclick="selectKitMaterial(${index}, '${m.id}')">
-                <div class="font-medium">${m.naam}</div>
+                <div class="font-medium">${escapeHtml(m.naam)}</div>
                 <div class="text-gray-500 text-xs">€${(m.standaardPrijs || 0).toFixed(2)}/${m.eenheid || 'stuk'} • ${m.categorie || ''}</div>
             </div>
         `).join('') || '<div class="p-3 text-gray-400 text-center">Geen resultaten</div>';
@@ -1881,7 +1889,7 @@
                 <tbody>
                     ${preview.map(m => `
                         <tr>
-                            <td class="py-1 truncate max-w-32">${m.naam}</td>
+                            <td class="py-1 truncate max-w-32">${escapeHtml(m.naam)}</td>
                             <td class="py-1">${m.categorie}</td>
                             <td class="py-1">€${m.standaardPrijs.toFixed(2)}</td>
                             <td class="py-1">${m.leverancier}</td>

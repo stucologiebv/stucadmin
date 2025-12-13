@@ -19,14 +19,6 @@
     <script src="/sidebar.js"></script>
     <script src="/storage-helper.js"></script>
     <script>
-
-        // XSS Protection - escape HTML special characters
-        function escapeHtml(text) {
-            if (text === null || text === undefined) return '';
-            const str = String(text);
-            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-            return str.replace(/[&<>"']/g, m => map[m]);
-        }
         tailwind.config = {
             theme: {
                 extend: {
@@ -157,6 +149,7 @@
                 <div class="flex items-center gap-3">
                     <span class="text-xs text-gray-400" id="syncStatus">✓ Gesynchroniseerd</span>
                     <button onclick="openNieuwTeamlid()" class="btn-primary text-sm">+ Teamlid</button>
+                    <button onclick="openInviteModal()" class="btn-secondary text-sm">📨 Uitnodigen</button>
                 </div>
             </header>
 
@@ -170,31 +163,26 @@
             <div id="alertsSection" class="mb-6 space-y-3"></div>
 
             <!-- KPIs -->
-            <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
                 <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #8b5cf6" onclick="switchTab('team')">
                     <p class="text-gray-500 text-xs mb-1">Actief teamleden</p>
                     <p class="kpi-value" id="kpiActief">0</p>
-                    <p class="text-xs text-gray-400 mt-1" id="kpiActiefSplit">0 vast / 0 ZZP</p>
+                    <p class="text-xs text-gray-400 mt-1" id="kpiActiefNu"></p>
                 </div>
-                <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #3b82f6" onclick="switchTab('uren')">
-                    <p class="text-gray-500 text-xs mb-1">Uren deze week</p>
-                    <p class="kpi-value" id="kpiUrenWeek">0</p>
-                    <p class="text-xs text-gray-400 mt-1" id="kpiKostenWeek">€0 kosten</p>
-                </div>
-                <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #10b981" onclick="switchTab('uren')">
-                    <p class="text-gray-500 text-xs mb-1">💰 Marge deze week</p>
-                    <p class="kpi-value" id="kpiMargeWeek">€0</p>
-                    <p class="text-xs text-gray-400 mt-1" id="kpiMargePerc">0%</p>
-                </div>
-                <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #f59e0b" onclick="switchTab('vergoedingen')">
-                    <p class="text-gray-500 text-xs mb-1">Open vergoedingen</p>
+                <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #10b981" onclick="switchTab('vergoedingen')">
+                    <p class="text-gray-500 text-xs mb-1">Open bonnen</p>
                     <p class="kpi-value text-lg" id="kpiOpenBonnen">€0</p>
-                    <p class="text-xs text-gray-400 mt-1" id="kpiOpenKmBedrag">+ €0 km</p>
+                    <p class="text-xs text-gray-400 mt-1">Te vergoeden</p>
                 </div>
-                <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #ef4444" onclick="switchTab('aandacht')">
+                <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #3b82f6" onclick="switchTab('vergoedingen')">
+                    <p class="text-gray-500 text-xs mb-1">Open kilometers</p>
+                    <p class="kpi-value" id="kpiOpenKm">0 km</p>
+                    <p class="text-xs text-gray-400 mt-1" id="kpiOpenKmBedrag">€0 vergoeding</p>
+                </div>
+                <div class="card kpi-card p-4 cursor-pointer hover:shadow-md transition-shadow" style="--accent: #f59e0b" onclick="switchTab('aandacht')">
                     <p class="text-gray-500 text-xs mb-1">⚠️ Aandacht nodig</p>
                     <p class="kpi-value" id="kpiWaarschuwingen">0</p>
-                    <p class="text-xs text-gray-400 mt-1">documenten</p>
+                    <p class="text-xs text-gray-400 mt-1">Documenten</p>
                 </div>
             </div>
 
@@ -210,7 +198,7 @@
             <div id="tab-team" class="tab-content">
                 <div class="card p-4 mb-4">
                     <div class="flex flex-col sm:flex-row gap-3">
-                        <input type="text" id="searchZZP" placeholder="🔍 Zoek teamlid..." class="form-input flex-1" oninput="renderTeam()">
+                        <input type="text" id="searchZZP" placeholder="🔍 Zoek ZZP'er..." class="form-input flex-1" oninput="renderTeam()">
                         <select id="filterType" class="form-input sm:w-40" onchange="renderTeam()">
                             <option value="alle">Alle types</option>
                             <option value="vast">Vast</option>
@@ -224,126 +212,10 @@
                     </div>
                 </div>
                 
-                <div id="zzpersList" class="space-y-3"></div>
+                <div id="zzpersList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
             </div>
 
-                        <!-- Tab: Te vergoeden -->
-            <div id="tab-vergoedingen" class="tab-content hidden">
-                <div class="card p-4 mb-4">
-                    <div class="flex flex-col sm:flex-row gap-3 items-center justify-between">
-                        <h3 class="font-bold">💰 Openstaande vergoedingen</h3>
-                        <div class="flex gap-2">
-                            <button onclick="approveAllVisible()" class="btn-secondary text-sm">✓ Alles goedkeuren</button>
-                            <button onclick="exportVergoedingen()" class="btn-secondary text-sm">📥 Export Excel</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Bonnen Section -->
-                <div class="card p-4 mb-4">
-                    <h4 class="font-semibold mb-3">🧾 Bonnen</h4>
-                    <div id="pendingBonnenList" class="space-y-3">
-                        <p class="text-gray-400 text-center py-4">Laden...</p>
-                    </div>
-                </div>
-                
-                <!-- Kilometers Section -->
-                <div class="card p-4 mb-4">
-                    <h4 class="font-semibold mb-3">🚗 Kilometers</h4>
-                    <div id="pendingKmList" class="space-y-3">
-                        <p class="text-gray-400 text-center py-4">Laden...</p>
-                    </div>
-                </div>
-                
-                <!-- Goedgekeurd Section (collapsed by default) -->
-                <div class="card p-4">
-                    <div class="flex items-center justify-between cursor-pointer" onclick="toggleApproved()">
-                        <h4 class="font-semibold">✅ Goedgekeurd</h4>
-                        <span id="approvedToggle" class="text-gray-400">▼</span>
-                    </div>
-                    <div id="approvedSection" class="hidden mt-4">
-                        <div class="flex gap-2 mb-4">
-                            <select id="approvedPeriod" class="form-input text-sm" onchange="loadApprovedExpenses()">
-                                <option value="week">Deze week</option>
-                                <option value="month">Deze maand</option>
-                                <option value="all">Alles</option>
-                            </select>
-                            <button onclick="exportApproved()" class="btn-secondary text-sm">📥 Export</button>
-                        </div>
-                        <div id="approvedList" class="space-y-2">
-                            <p class="text-gray-400 text-center py-4">Selecteer periode...</p>
-                        </div>
-                        <div id="approvedTotals" class="mt-4 pt-4 border-t border-gray-100 hidden">
-                            <div class="grid grid-cols-2 gap-4 text-center">
-                                <div>
-                                    <p class="text-sm text-gray-500">Totaal bonnen</p>
-                                    <p class="text-xl font-bold text-green-600" id="approvedBonnenTotal">€0.00</p>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-500">Totaal kilometers</p>
-                                    <p class="text-xl font-bold text-blue-600" id="approvedKmTotal">€0.00</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Tab: Uren overzicht -->
-            <div id="tab-uren" class="tab-content hidden">
-                <div class="card p-4 mb-4">
-                    <div class="flex flex-col sm:flex-row gap-3 items-center justify-between">
-                        <div>
-                            <h3 class="font-bold">📊 Weekoverzicht</h3>
-                            <p class="text-sm text-gray-500" id="weekRange">Deze week</p>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="prevWeek()" class="btn-secondary text-sm">← Vorige</button>
-                            <button onclick="currentWeek()" class="btn-secondary text-sm">Vandaag</button>
-                            <button onclick="nextWeek()" class="btn-secondary text-sm">Volgende →</button>
-                            <button onclick="exportWeekOverview()" class="btn-secondary text-sm">📥 Export</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="card overflow-x-auto">
-                    <table class="data-table" id="weekTable">
-                        <thead>
-                            <tr>
-                                <th>Medewerker</th>
-                                <th>Type</th>
-                                <th class="text-center">Ma</th>
-                                <th class="text-center">Di</th>
-                                <th class="text-center">Wo</th>
-                                <th class="text-center">Do</th>
-                                <th class="text-center">Vr</th>
-                                <th class="text-center">Za</th>
-                                <th class="text-center">Zo</th>
-                                <th class="text-right">Totaal</th>
-                                <th class="text-right">Bonnen</th>
-                                <th class="text-right">KM</th>
-                            </tr>
-                        </thead>
-                        <tbody id="weekTableBody">
-                            <tr><td colspan="12" class="text-center text-gray-400 py-8">Laden...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <!-- Tab: Aandacht -->
-            <div id="tab-aandacht" class="tab-content hidden">
-                <div class="card p-4 mb-4">
-                    <h3 class="font-bold">⚠️ Aandachtspunten</h3>
-                    <p class="text-sm text-gray-500">Verlopen documenten en ontbrekende gegevens</p>
-                </div>
-                
-                <div id="warningsList" class="space-y-3">
-                    <p class="text-gray-400 text-center py-4">Laden...</p>
-                </div>
-            </div>
-
-            <!-- Tab: Opdrachten (behouden maar verborgen in tabs) -->
+            <!-- Tab: Opdrachten -->
             <div id="tab-opdrachten" class="tab-content hidden">
                 <div class="card p-4 mb-4">
                     <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
@@ -511,11 +383,8 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="form-label" id="uurloonLabel">Kostprijs per uur <span class="text-gray-400 text-xs">(wat jij betaalt)</span></label>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">€</span>
-                                    <input type="number" step="0.01" id="zzpUurtarief" class="form-input pl-8" placeholder="35.00">
-                                </div>
+                                <label class="form-label">Standaard uurtarief</label>
+                                <input type="number" id="zzpUurtarief" class="form-input" placeholder="€45">
                             </div>
                         </div>
                         <div class="mt-4">
@@ -548,35 +417,7 @@
         </div>
     </div>
 
-    
-    <!-- Modal: Teamlid Type Keuze -->
-    <div id="modalTeamlidType" class="modal">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="p-6 border-b border-gray-100">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-xl font-bold">+ Teamlid toevoegen</h2>
-                    <button onclick="closeModal('modalTeamlidType')" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-                </div>
-            </div>
-            <div class="p-6">
-                <p class="text-gray-500 mb-4">Wie wil je uitnodigen?</p>
-                <div class="grid grid-cols-2 gap-4">
-                    <button onclick="selectInviteType('vast')" class="p-6 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-center">
-                        <span class="text-4xl block mb-2">👔</span>
-                        <span class="font-bold">Vast personeel</span>
-                        <span class="text-xs text-gray-500 block mt-1">In loondienst</span>
-                    </button>
-                    <button onclick="selectInviteType('zzp')" class="p-6 border-2 border-gray-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all text-center">
-                        <span class="text-4xl block mb-2">🔧</span>
-                        <span class="font-bold">ZZP'er</span>
-                        <span class="text-xs text-gray-500 block mt-1">Freelancer</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-<!-- Modal: ZZP Detail -->
+    <!-- Modal: ZZP Detail -->
     <div id="modalZZPDetail" class="modal">
         <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
             <div class="p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
@@ -870,40 +711,38 @@
     <!-- ============================================ -->
     <!-- MODAL: ZZP'er Uitnodigen -->
     <!-- ============================================ -->
-    <!-- Modal: Uitnodiging Type Keuze -->
     <div id="inviteModal" class="modal">
         <div class="modal-content" style="max-width: 450px;">
             <div class="p-4 border-b border-gray-100 flex justify-between items-center">
-                <h2 id="inviteModalTitle" class="text-lg font-bold">📨 Uitnodigen</h2>
+                <h2 class="text-lg font-bold">📨 ZZP'er Uitnodigen</h2>
                 <button onclick="closeInviteModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
             <form id="inviteForm" onsubmit="sendInvite(event)" class="p-4">
-                <input type="hidden" id="inviteType" value="zzp">
-                
-                <!-- Tip box - dynamisch -->
-                <div id="inviteTipBox" class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                    <p id="inviteTipText" class="text-blue-700 text-sm"></p>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                    <p class="text-blue-700 text-sm">💡 De ZZP'er ontvangt een email met een link om zelf zijn gegevens in te vullen, documenten te uploaden en het DBA-contract te tekenen.</p>
                 </div>
                 
                 <div class="mb-4">
-                    <label id="inviteEmailLabel" class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                    <input type="email" id="inviteEmail" required class="w-full p-3 border rounded-lg" placeholder="email@voorbeeld.nl">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email ZZP'er *</label>
+                    <input type="email" id="inviteEmail" required class="w-full p-3 border rounded-lg" placeholder="zzper@email.nl">
                 </div>
                 
                 <div class="mb-4">
-                    <label id="inviteNameLabel" class="block text-sm font-medium text-gray-700 mb-1">Naam (optioneel)</label>
-                    <input type="text" id="inviteName" class="w-full p-3 border rounded-lg" placeholder="Voornaam">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Naam (optioneel)</label>
+                    <input type="text" id="inviteName" class="w-full p-3 border rounded-lg" placeholder="Voornaam of bedrijfsnaam">
                 </div>
                 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Contract type</label>
                     <select id="inviteContractType" class="w-full p-3 border rounded-lg">
+                        <option value="onderaannemer">Modelovereenkomst Onderaannemer</option>
+                        <option value="aannemer">Modelovereenkomst Aannemer</option>
                     </select>
                 </div>
                 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Persoonlijk bericht (optioneel)</label>
-                    <textarea id="inviteMessage" rows="2" class="w-full p-3 border rounded-lg" placeholder="Bijv. 'Hoi, graag wil ik je uitnodigen om...'"></textarea>
+                    <textarea id="inviteMessage" rows="2" class="w-full p-3 border rounded-lg" placeholder="Bijv. 'Hoi Jan, graag wil ik je uitnodigen om...'"></textarea>
                 </div>
                 
                 <button type="submit" class="btn-primary w-full">📨 Uitnodiging Versturen</button>
@@ -1166,7 +1005,6 @@
         // DATA STORE
         // ==========================================
         let zzpers = [];
-        let weeklyUren = [];
         let opdrachten = [];
         let documenten = [];
         let currentZZPId = null;
@@ -1187,7 +1025,6 @@
             // Wait for DataSync to be ready
             if (window.DataSync && DataSync.state.initialized) {
                 await loadData();
-            loadTeamStats();
             } else {
                 window.addEventListener('datasync:ready', async () => await loadData());
                 // Fallback: load from localStorage if DataSync not available
@@ -1216,24 +1053,6 @@
                     }
                 }
             }
-            
-            // Laad uren voor deze week (voor stats)
-            try {
-                const now = new Date();
-                const dayOfWeek = now.getDay();
-                const monday = new Date(now);
-                monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-                const sunday = new Date(monday);
-                sunday.setDate(monday.getDate() + 6);
-                
-                const urenRes = await fetch('/api/uren');
-                if (urenRes.ok) {
-                    const alleUren = await urenRes.json();
-                    const mondayStr = monday.toISOString().split('T')[0];
-                    const sundayStr = sunday.toISOString().split('T')[0];
-                    weeklyUren = alleUren.filter(u => u.datum >= mondayStr && u.datum <= sundayStr);
-                }
-            } catch(e) { console.error('Error loading uren:', e); }
             
             // Ook medewerkers (vast personeel) laden via API
             try {
@@ -1281,450 +1100,6 @@
             
             renderAll();
         }
-        // ==========================================
-        // TEAM MODULE - NIEUWE FUNCTIES
-        // ==========================================
-        
-        // Laad team statistieken
-        async function loadTeamStats() {
-            try {
-                const res = await fetch('/api/team/stats');
-                if (res.ok) {
-                    const stats = await res.json();
-                    
-                    // Actief teamleden
-                    const actief = zzpers.filter(z => z.status === 'actief');
-                    const vast = actief.filter(z => z.type !== 'zzp').length;
-                    const zzp = actief.filter(z => z.type === 'zzp').length;
-                    document.getElementById('kpiActief').textContent = actief.length;
-                    document.getElementById('kpiActiefSplit').textContent = vast + ' vast / ' + zzp + ' ZZP';
-                    
-                    // Uren en marge deze week
-                    const verkooptarief = 60;
-                    let totaalUren = 0, totaalKosten = 0;
-                    
-                    weeklyUren.forEach(u => {
-                        totaalUren += u.totaalUren || 0;
-                        const medewerker = zzpers.find(z => z.id === u.medewerkerId);
-                        const kostprijs = parseFloat(medewerker?.uurtarief) || 0;
-                        totaalKosten += (u.totaalUren || 0) * kostprijs;
-                    });
-                    
-                    const totaalOmzet = totaalUren * verkooptarief;
-                    const marge = totaalOmzet - totaalKosten;
-                    const margePerc = totaalOmzet > 0 ? (marge / totaalOmzet * 100) : 0;
-                    
-                    document.getElementById('kpiUrenWeek').textContent = totaalUren.toFixed(1);
-                    document.getElementById('kpiKostenWeek').textContent = '€' + totaalKosten.toFixed(0) + ' kosten';
-                    document.getElementById('kpiMargeWeek').textContent = '€' + marge.toFixed(0);
-                    document.getElementById('kpiMargePerc').textContent = margePerc.toFixed(0) + '%';
-                    
-                    // Open vergoedingen
-                    document.getElementById('kpiOpenBonnen').textContent = '€' + stats.openBonnen.toFixed(0);
-                    document.getElementById('kpiOpenKmBedrag').textContent = '+ €' + stats.openKmVergoeding.toFixed(0) + ' km';
-                    
-                    // Waarschuwingen
-                    document.getElementById('kpiWaarschuwingen').textContent = stats.warnings;
-                    
-                    // Check wie er nu werkt
-                    loadActiveNow();
-                }
-            } catch (e) {
-                console.error('Error loading team stats:', e);
-            }
-        }
-        
-        // Check wie er nu aan het werk is
-        async function loadActiveNow() {
-            try {
-                const res = await fetch('/api/team/active-now');
-                if (res.ok) {
-                    const active = await res.json();
-                    const el = document.getElementById('kpiActiefNu');
-                    if (active.length > 0) {
-                        el.innerHTML = '<span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></span>' + active.length + ' nu aan het werk';
-                    } else {
-                        el.textContent = '';
-                    }
-                }
-            } catch (e) {
-                console.error('Error loading active now:', e);
-            }
-        }
-        
-        // Laad openstaande vergoedingen
-        async function loadPendingExpenses() {
-            try {
-                const res = await fetch('/api/team/pending-expenses');
-                if (res.ok) {
-                    const data = await res.json();
-                    renderPendingBonnen(data.bonnen);
-                    renderPendingKm(data.kilometers);
-                }
-            } catch (e) {
-                console.error('Error loading pending expenses:', e);
-                document.getElementById('pendingBonnenList').innerHTML = '<p class="text-red-500 text-center py-4">Fout bij laden</p>';
-                document.getElementById('pendingKmList').innerHTML = '<p class="text-red-500 text-center py-4">Fout bij laden</p>';
-            }
-        }
-        
-        // Render openstaande bonnen
-        function renderPendingBonnen(bonnen) {
-            const list = document.getElementById('pendingBonnenList');
-            if (bonnen.length === 0) {
-                list.innerHTML = '<p class="text-gray-400 text-center py-4">✓ Geen openstaande bonnen</p>';
-                return;
-            }
-            
-            const totaal = bonnen.reduce((sum, b) => sum + b.bedrag, 0);
-            list.innerHTML = '<div class="text-sm text-gray-500 mb-3">Totaal: <strong class="text-green-600">€' + totaal.toFixed(2) + '</strong></div>' +
-                bonnen.map(b => `
-                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg" data-bon-id="${b.id}">
-                    ${b.foto ? `<img src="${b.foto}" class="w-12 h-12 object-cover rounded cursor-pointer" onclick="window.open('${b.foto}', '_blank')">` : '<div class="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">🧾</div>'}
-                    <div class="flex-1">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <span class="font-semibold">${escapeHtml(b.medewerkerNaam)}</span>
-                                <span class="text-gray-400 text-sm ml-2">${b.winkel || 'Geen winkel'}</span>
-                            </div>
-                            <span class="font-bold text-green-600">€${b.bedrag.toFixed(2)}</span>
-                        </div>
-                        <div class="text-xs text-gray-500">${new Date(b.datum).toLocaleDateString('nl-NL')} ${b.locatie ? '• ' + b.locatie : ''}</div>
-                    </div>
-                    <button onclick="approveBon('${b.urenId}', ${b.bonIndex})" class="btn-primary text-xs py-1 px-3">✓</button>
-                </div>
-            `).join('');
-        }
-        
-        // Render openstaande kilometers
-        function renderPendingKm(kilometers) {
-            const list = document.getElementById('pendingKmList');
-            if (kilometers.length === 0) {
-                list.innerHTML = '<p class="text-gray-400 text-center py-4">✓ Geen openstaande kilometers</p>';
-                return;
-            }
-            
-            const totaalKm = kilometers.reduce((sum, k) => sum + k.km, 0);
-            const totaalBedrag = kilometers.reduce((sum, k) => sum + k.totaal, 0);
-            list.innerHTML = '<div class="text-sm text-gray-500 mb-3">Totaal: <strong>' + totaalKm + ' km</strong> = <strong class="text-blue-600">€' + totaalBedrag.toFixed(2) + '</strong></div>' +
-                kilometers.map(k => `
-                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg" data-km-id="${k.id}">
-                    <div class="w-12 h-12 bg-blue-100 rounded flex items-center justify-center text-xl">🚗</div>
-                    <div class="flex-1">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <span class="font-semibold">${k.medewerkerNaam}</span>
-                                <span class="text-gray-400 text-sm ml-2">${k.km} km</span>
-                            </div>
-                            <span class="font-bold text-blue-600">€${k.totaal.toFixed(2)}</span>
-                        </div>
-                        <div class="text-xs text-gray-500">${new Date(k.datum).toLocaleDateString('nl-NL')} ${k.beschrijving ? '• ' + k.beschrijving : ''}</div>
-                    </div>
-                    <button onclick="approveKm('${k.urenId}')" class="btn-primary text-xs py-1 px-3">✓</button>
-                </div>
-            `).join('');
-        }
-        
-        // Bon goedkeuren
-        async function approveBon(urenId, bonIndex) {
-            try {
-                const res = await fetch('/api/team/approve-expense', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: 'bon', urenId, bonIndex })
-                });
-                if (res.ok) {
-                    showNotification('Bon goedgekeurd!', 'success');
-                    loadPendingExpenses();
-                    loadTeamStats();
-                } else {
-                    showNotification('Fout bij goedkeuren', 'error');
-                }
-            } catch (e) {
-                showNotification('Fout bij goedkeuren', 'error');
-            }
-        }
-        
-        // Km goedkeuren
-        async function approveKm(urenId) {
-            try {
-                const res = await fetch('/api/team/approve-expense', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ type: 'km', urenId })
-                });
-                if (res.ok) {
-                    showNotification('Reiskosten goedgekeurd!', 'success');
-                    loadPendingExpenses();
-                    loadTeamStats();
-                } else {
-                    showNotification('Fout bij goedkeuren', 'error');
-                }
-            } catch (e) {
-                showNotification('Fout bij goedkeuren', 'error');
-            }
-        }
-        
-        // Alles goedkeuren
-        async function approveAllVisible() {
-            if (!confirm('Weet je zeker dat je alle zichtbare bonnen en kilometers wilt goedkeuren?')) return;
-            // TODO: Implementeer bulk approve
-            showNotification('Bulk goedkeuren komt binnenkort', 'info');
-        }
-        
-        // Laad weekoverzicht
-        let currentWeekOffset = 0;
-        
-        async function loadWeekOverview() {
-            try {
-                const res = await fetch('/api/team/weekly-overview');
-                if (res.ok) {
-                    const data = await res.json();
-                    document.getElementById('weekRange').textContent = formatDateRange(data.weekStart, data.weekEnd);
-                    renderWeekTable(data.medewerkers);
-                }
-            } catch (e) {
-                console.error('Error loading week overview:', e);
-                document.getElementById('weekTableBody').innerHTML = '<tr><td colspan="12" class="text-center text-red-500 py-8">Fout bij laden</td></tr>';
-            }
-        }
-        
-        function formatDateRange(start, end) {
-            const s = new Date(start);
-            const e = new Date(end);
-            return s.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' }) + ' - ' + e.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
-        }
-        
-        function renderWeekTable(medewerkers) {
-            const tbody = document.getElementById('weekTableBody');
-            if (medewerkers.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="12" class="text-center text-gray-400 py-8">Geen uren geregistreerd deze week</td></tr>';
-                return;
-            }
-            
-            tbody.innerHTML = medewerkers.map(m => `
-                <tr class="hover:bg-gray-50">
-                    <td class="font-medium">${escapeHtml(m.naam)}</td>
-                    <td><span class="text-xs px-2 py-1 rounded ${m.type === 'zzp' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}">${m.type === 'zzp' ? 'ZZP' : 'Vast'}</span></td>
-                    <td class="text-center ${m.dagen.ma > 0 ? 'font-medium' : 'text-gray-300'}">${m.dagen.ma > 0 ? m.dagen.ma.toFixed(1) : '-'}</td>
-                    <td class="text-center ${m.dagen.di > 0 ? 'font-medium' : 'text-gray-300'}">${m.dagen.di > 0 ? m.dagen.di.toFixed(1) : '-'}</td>
-                    <td class="text-center ${m.dagen.wo > 0 ? 'font-medium' : 'text-gray-300'}">${m.dagen.wo > 0 ? m.dagen.wo.toFixed(1) : '-'}</td>
-                    <td class="text-center ${m.dagen.do > 0 ? 'font-medium' : 'text-gray-300'}">${m.dagen.do > 0 ? m.dagen.do.toFixed(1) : '-'}</td>
-                    <td class="text-center ${m.dagen.vr > 0 ? 'font-medium' : 'text-gray-300'}">${m.dagen.vr > 0 ? m.dagen.vr.toFixed(1) : '-'}</td>
-                    <td class="text-center ${m.dagen.za > 0 ? 'font-medium' : 'text-gray-300'}">${m.dagen.za > 0 ? m.dagen.za.toFixed(1) : '-'}</td>
-                    <td class="text-center ${m.dagen.zo > 0 ? 'font-medium' : 'text-gray-300'}">${m.dagen.zo > 0 ? m.dagen.zo.toFixed(1) : '-'}</td>
-                    <td class="text-right font-bold">${m.totaalUren.toFixed(1)}u</td>
-                    <td class="text-right ${m.totaalBonnen > 0 ? 'text-green-600' : 'text-gray-300'}">${m.totaalBonnen > 0 ? '€' + m.totaalBonnen.toFixed(2) : '-'}</td>
-                    <td class="text-right ${m.totaalKm > 0 ? 'text-blue-600' : 'text-gray-300'}">${m.totaalKm > 0 ? m.totaalKm + 'km' : '-'}</td>
-                </tr>
-            `).join('');
-        }
-        
-        function prevWeek() { currentWeekOffset--; loadWeekOverview(); }
-        function nextWeek() { currentWeekOffset++; loadWeekOverview(); }
-        function currentWeek() { currentWeekOffset = 0; loadWeekOverview(); }
-        
-        // Laad waarschuwingen
-        async function loadWarnings() {
-            try {
-                const res = await fetch('/api/team/warnings');
-                if (res.ok) {
-                    const warnings = await res.json();
-                    renderWarnings(warnings);
-                }
-            } catch (e) {
-                console.error('Error loading warnings:', e);
-                document.getElementById('warningsList').innerHTML = '<p class="text-red-500 text-center py-4">Fout bij laden</p>';
-            }
-        }
-        
-        function renderWarnings(warnings) {
-            const list = document.getElementById('warningsList');
-            if (warnings.length === 0) {
-                list.innerHTML = '<div class="card p-6 text-center"><span class="text-4xl mb-2 block">✅</span><p class="text-gray-500">Geen aandachtspunten</p></div>';
-                return;
-            }
-            
-            list.innerHTML = warnings.map(w => `
-                <div class="card p-4 ${w.severity === 'danger' ? 'border-l-4 border-red-500' : 'border-l-4 border-amber-500'} cursor-pointer hover:shadow-md" onclick="openZZPDetail('${w.zzpId}')">
-                    <div class="flex items-center gap-3">
-                        <span class="text-2xl">${w.severity === 'danger' ? '🚨' : '⚠️'}</span>
-                        <div class="flex-1">
-                            <div class="font-semibold">${w.zzpNaam}</div>
-                            <div class="text-sm ${w.severity === 'danger' ? 'text-red-600' : 'text-amber-600'}">${w.message}</div>
-                            <div class="text-xs text-gray-500">${w.detail}</div>
-                        </div>
-                        <span class="text-gray-400">→</span>
-                    </div>
-                </div>
-            `).join('');
-        }
-        
-        // Export functies
-        function exportVergoedingen() {
-            showNotification('Export functie komt binnenkort', 'info');
-        }
-        
-        // Toggle goedgekeurd sectie
-        function toggleApproved() {
-            const section = document.getElementById('approvedSection');
-            const toggle = document.getElementById('approvedToggle');
-            if (section.classList.contains('hidden')) {
-                section.classList.remove('hidden');
-                toggle.textContent = '▲';
-                loadApprovedExpenses();
-            } else {
-                section.classList.add('hidden');
-                toggle.textContent = '▼';
-            }
-        }
-        
-        // Laad goedgekeurde vergoedingen
-        async function loadApprovedExpenses() {
-            const period = document.getElementById('approvedPeriod').value;
-            try {
-                const res = await fetch(`/api/team/approved-expenses?period=${period}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    renderApprovedList(data);
-                }
-            } catch (e) {
-                console.error('Error loading approved:', e);
-                document.getElementById('approvedList').innerHTML = '<p class="text-red-500 text-center py-4">Fout bij laden</p>';
-            }
-        }
-        
-        function renderApprovedList(data) {
-            const list = document.getElementById('approvedList');
-            const totals = document.getElementById('approvedTotals');
-            
-            if (data.bonnen.length === 0 && data.kilometers.length === 0) {
-                list.innerHTML = '<p class="text-gray-400 text-center py-4">Geen goedgekeurde vergoedingen in deze periode</p>';
-                totals.classList.add('hidden');
-                return;
-            }
-            
-            let html = '';
-            
-            // Bonnen
-            if (data.bonnen.length > 0) {
-                html += '<div class="mb-4"><h5 class="text-sm font-semibold text-gray-500 mb-2">🧾 Bonnen</h5>';
-                html += data.bonnen.map(b => `
-                    <div class="flex items-center justify-between p-2 bg-green-50 rounded mb-1 text-sm">
-                        <div>
-                            <span class="font-medium">${escapeHtml(b.medewerkerNaam)}</span>
-                            <span class="text-gray-500 ml-2">${b.winkel || ''}</span>
-                            <span class="text-xs text-gray-400 ml-2">${new Date(b.datum).toLocaleDateString('nl-NL')}</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold text-green-600">€${b.bedrag.toFixed(2)}</span>
-                            <button onclick="unapprove('bon', '${b.urenId}', ${b.bonIndex})" class="text-gray-400 hover:text-red-500 text-xs" title="Ongedaan maken">↩️</button>
-                        </div>
-                    </div>
-                `).join('');
-                html += '</div>';
-            }
-            
-            // Kilometers
-            if (data.kilometers.length > 0) {
-                html += '<div><h5 class="text-sm font-semibold text-gray-500 mb-2">🚗 Kilometers</h5>';
-                html += data.kilometers.map(k => `
-                    <div class="flex items-center justify-between p-2 bg-blue-50 rounded mb-1 text-sm">
-                        <div>
-                            <span class="font-medium">${k.medewerkerNaam}</span>
-                            <span class="text-gray-500 ml-2">${k.km} km</span>
-                            <span class="text-xs text-gray-400 ml-2">${new Date(k.datum).toLocaleDateString('nl-NL')}</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold text-blue-600">€${k.totaal.toFixed(2)}</span>
-                            <button onclick="unapprove('km', '${k.urenId}')" class="text-gray-400 hover:text-red-500 text-xs" title="Ongedaan maken">↩️</button>
-                        </div>
-                    </div>
-                `).join('');
-                html += '</div>';
-            }
-            
-            list.innerHTML = html;
-            
-            // Totalen
-            document.getElementById('approvedBonnenTotal').textContent = '€' + data.totaalBonnen.toFixed(2);
-            document.getElementById('approvedKmTotal').textContent = '€' + data.totaalKm.toFixed(2);
-            totals.classList.remove('hidden');
-        }
-        
-        // Goedkeuring ongedaan maken
-        async function unapprove(type, urenId, bonIndex) {
-            if (!confirm('Weet je zeker dat je de goedkeuring ongedaan wilt maken?')) return;
-            
-            try {
-                const body = { type, urenId };
-                if (bonIndex !== undefined) body.bonIndex = bonIndex;
-                
-                const res = await fetch('/api/team/unapprove-expense', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                if (res.ok) {
-                    showNotification('Goedkeuring ongedaan gemaakt', 'info');
-                    loadApprovedExpenses();
-                    loadPendingExpenses();
-                    loadTeamStats();
-                } else {
-                    showNotification('Fout bij ongedaan maken', 'error');
-                }
-            } catch (e) {
-                showNotification('Fout bij ongedaan maken', 'error');
-            }
-        }
-        
-        // Export goedgekeurde vergoedingen
-        async function exportApproved() {
-            const period = document.getElementById('approvedPeriod').value;
-            try {
-                const res = await fetch(`/api/team/approved-expenses?period=${period}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    
-                    // Maak CSV
-                    let csv = 'Type,Medewerker,Datum,Bedrag,Details\n';
-                    data.bonnen.forEach(b => {
-                        csv += `Bon,${escapeHtml(b.medewerkerNaam)},${b.datum},${b.bedrag.toFixed(2)},${b.winkel || ''}\n`;
-                    });
-                    data.kilometers.forEach(k => {
-                        csv += `Kilometers,${k.medewerkerNaam},${k.datum},${k.totaal.toFixed(2)},${k.km} km\n`;
-                    });
-                    csv += `\nTotaal Bonnen,,,${data.totaalBonnen.toFixed(2)},\n`;
-                    csv += `Totaal Kilometers,,,${data.totaalKm.toFixed(2)},\n`;
-                    csv += `TOTAAL,,,${(data.totaalBonnen + data.totaalKm).toFixed(2)},\n`;
-                    
-                    // Download
-                    const blob = new Blob([csv], { type: 'text/csv' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `vergoedingen-${period}-${new Date().toISOString().split('T')[0]}.csv`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    
-                    showNotification('Export gedownload!', 'success');
-                }
-            } catch (e) {
-                showNotification('Fout bij exporteren', 'error');
-            }
-        }
-        
-        function exportWeekOverview() {
-            showNotification('Export functie komt binnenkort', 'info');
-        }
-        
-        // Nieuw teamlid toevoegen modal
-        function openNieuwTeamlid() {
-            // Open type keuze modal
-            openModal('modalTeamlidType');
-        }
-
-
         
         function loadFromLocalStorage() {
             const storedZZP = StucStorage.getItem('zzpers');
@@ -1784,104 +1159,46 @@
                 container.innerHTML = `
                     <div class="col-span-full text-center py-12">
                         <p class="text-gray-400 text-4xl mb-4">👷</p>
-                        <p class="text-gray-500">Geen teamleden gevonden</p>
-                        <button onclick="openNieuwTeamlid()" class="btn-primary mt-4">+ Eerste teamlid toevoegen</button>
+                        <p class="text-gray-500">Geen ZZP'ers gevonden</p>
+                        <button onclick="openNieuweZZP()" class="btn-primary mt-4">+ Eerste ZZP'er toevoegen</button>
                     </div>
                 `;
                 return;
             }
             
             container.innerHTML = filtered.map(z => {
+                const zOpdrachten = opdrachten.filter(o => o.zzpId === z.id);
+                const lopend = zOpdrachten.filter(o => o.status === 'lopend').length;
                 const warnings = getZZPWarnings(z);
-                const isZZP = z.type === 'zzp';
-                const kostprijs = parseFloat(z.uurtarief) || 0;
-                const weekUren = getWeekUrenVoorMedewerker(z.id);
-                const verkooptarief = 60; // standaard
-                const weekOmzet = weekUren * verkooptarief;
-                const weekKosten = weekUren * kostprijs;
-                const weekMarge = weekOmzet - weekKosten;
+                const docs = documenten.filter(d => d.zzpId === z.id);
                 
                 return `
-                    <div class="card p-4 mb-3 hover:shadow-lg transition-all">
-                        <!-- Header -->
+                    <div class="card zzp-card p-4" onclick="openZZPDetail('${z.id}')">
                         <div class="flex items-start justify-between mb-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-12 h-12 rounded-full bg-gradient-to-br ${isZZP ? 'from-purple-400 to-purple-600' : 'from-blue-400 to-blue-600'} flex items-center justify-center text-white font-bold text-lg">
-                                    ${z.naam.charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                    <h3 class="font-bold text-gray-800">${escapeHtml(z.naam)}</h3>
-                                    <p class="text-gray-500 text-sm">${z.bedrijf || z.specialisatie || z.functie || '-'}</p>
-                                </div>
+                            <div>
+                                <h3 class="font-bold">${z.naam}</h3>
+                                <p class="text-gray-500 text-sm">${z.bedrijf || z.specialisatie || 'ZZP\'er'}</p>
                             </div>
-                            <div class="flex flex-col items-end gap-1">
-                                <span class="status-badge ${isZZP ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}">${isZZP ? '🔧 ZZP' : '👔 Vast'}</span>
-                                <span class="status-badge status-${z.status}">${z.status === 'actief' ? '✅ Actief' : '⏸️ Inactief'}</span>
-                            </div>
+                            <span class="status-badge status-${z.status}">${z.status === 'actief' ? '✓ Actief' : 'Inactief'}</span>
                         </div>
-                        
-                        <!-- Contact info -->
-                        <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600 mb-3 pb-3 border-b border-gray-100">
-                            ${z.email ? `<a href="mailto:${escapeHtml(z.email)}" class="hover:text-purple-600">📧 ${escapeHtml(z.email)}</a>` : ''}
-                            ${z.telefoon ? `<a href="tel:${escapeHtml(z.telefoon)}" class="hover:text-purple-600">📱 ${escapeHtml(z.telefoon)}</a>` : ''}
+                        <div class="flex items-center gap-4 text-sm text-gray-500 mb-3">
+                            <span>📋 ${lopend} lopend</span>
+                            <span>📁 ${docs.length} docs</span>
                         </div>
-                        
-                        <!-- Stats row -->
-                        <div class="grid grid-cols-4 gap-2 mb-3 text-center">
-                            <div class="bg-gray-50 rounded-lg p-2">
-                                <p class="text-lg font-bold text-purple-600">${kostprijs > 0 ? '€' + kostprijs : '⚠️'}</p>
-                                <p class="text-xs text-gray-500">Kostprijs/u</p>
-                            </div>
-                            <div class="bg-gray-50 rounded-lg p-2">
-                                <p class="text-lg font-bold text-gray-700">${weekUren.toFixed(1)}</p>
-                                <p class="text-xs text-gray-500">Uren week</p>
-                            </div>
-                            <div class="bg-gray-50 rounded-lg p-2">
-                                <p class="text-lg font-bold text-green-600">€${weekOmzet.toFixed(0)}</p>
-                                <p class="text-xs text-gray-500">Omzet</p>
-                            </div>
-                            <div class="bg-gray-50 rounded-lg p-2">
-                                <p class="text-lg font-bold ${weekMarge >= 0 ? 'text-emerald-600' : 'text-red-600'}">€${weekMarge.toFixed(0)}</p>
-                                <p class="text-xs text-gray-500">Marge</p>
-                            </div>
-                        </div>
-                        
-                        <!-- Warnings -->
                         ${warnings.length > 0 ? `
-                            <div class="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg p-2 mb-3">
+                            <div class="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
                                 <span>⚠️</span>
-                                <span>${warnings.map(w => w.msg).slice(0, 2).join(' • ')}${warnings.length > 2 ? ' +' + (warnings.length - 2) + ' meer' : ''}</span>
+                                <span>${warnings.length} waarschuwing${warnings.length > 1 ? 'en' : ''}</span>
                             </div>
-                        ` : ''}
-                        
-                        <!-- Actions -->
-                        <div class="flex gap-2">
-                            <button onclick="event.stopPropagation(); editZZP('${z.id}')" class="flex-1 btn-secondary text-sm py-2">✏️ Bewerken</button>
-                            <button onclick="event.stopPropagation(); openZZPDetail('${z.id}')" class="flex-1 btn-secondary text-sm py-2">📋 Details</button>
-                            <button onclick="event.stopPropagation(); showMedewerkerUren('${z.id}', '${escapeHtml(z.naam)}')" class="flex-1 btn-secondary text-sm py-2">⏱️ Uren</button>
-                        </div>
+                        ` : `
+                            <div class="flex items-center gap-2 text-xs text-green-600 bg-green-50 rounded-lg p-2">
+                                <span>✓</span>
+                                <span>DBA compliant</span>
+                            </div>
+                        `}
                     </div>
                 `;
             }).join('');
-        }
-        
-        // Helper: Haal uren op voor medewerker deze week
-        function getWeekUrenVoorMedewerker(medewerkerId) {
-            const now = new Date();
-            const dayOfWeek = now.getDay();
-            const monday = new Date(now);
-            monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-            monday.setHours(0, 0, 0, 0);
-            
-            let totaal = 0;
-            if (typeof weeklyUren !== 'undefined' && weeklyUren.length > 0) {
-                weeklyUren.forEach(u => {
-                    if (u.medewerkerId === medewerkerId) {
-                        totaal += u.totaalUren || 0;
-                    }
-                });
-            }
-            return totaal;
         }
         
         function getZZPWarnings(zzp) {
@@ -1939,47 +1256,7 @@
         }
         
         function openInviteModal() {
-            // Wordt niet meer direct aangeroepen, alleen via selectInviteType
-            document.getElementById('inviteModal').style.display = 'flex';
-        }
-        
-        function selectInviteType(type) {
-            closeModal('modalTeamlidType');
             document.getElementById('inviteForm').reset();
-            document.getElementById('inviteType').value = type;
-            
-            // Pas alle velden aan op basis van type
-            const title = document.getElementById('inviteModalTitle');
-            const tipText = document.getElementById('inviteTipText');
-            const tipBox = document.getElementById('inviteTipBox');
-            const emailLabel = document.getElementById('inviteEmailLabel');
-            const nameLabel = document.getElementById('inviteNameLabel');
-            const emailInput = document.getElementById('inviteEmail');
-            const nameInput = document.getElementById('inviteName');
-            const contractSelect = document.getElementById('inviteContractType');
-            
-            if (type === 'zzp') {
-                title.textContent = '📨 ZZP\'er uitnodigen';
-                tipBox.className = 'bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4';
-                tipText.className = 'text-purple-700 text-sm';
-                tipText.textContent = '💡 De ZZP\'er ontvangt een email met een link om zelf gegevens in te vullen, documenten te uploaden en het DBA-contract te tekenen.';
-                emailLabel.textContent = 'Email ZZP\'er *';
-                emailInput.placeholder = 'zzper@email.nl';
-                nameLabel.textContent = 'Naam of bedrijfsnaam (optioneel)';
-                nameInput.placeholder = 'Voornaam of bedrijfsnaam';
-                contractSelect.innerHTML = '<option value="onderaannemer">Modelovereenkomst Onderaannemer</option><option value="aannemer">Modelovereenkomst Aannemer</option><option value="tussenkomst">Modelovereenkomst Tussenkomst</option>';
-            } else {
-                title.textContent = '📨 Medewerker uitnodigen';
-                tipBox.className = 'bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4';
-                tipText.className = 'text-blue-700 text-sm';
-                tipText.textContent = '💡 De medewerker ontvangt een email met een link om zichzelf te registreren en een pincode aan te maken voor de mobiele app.';
-                emailLabel.textContent = 'Email medewerker *';
-                emailInput.placeholder = 'medewerker@email.nl';
-                nameLabel.textContent = 'Naam (optioneel)';
-                nameInput.placeholder = 'Voornaam';
-                contractSelect.innerHTML = '<option value="arbeidsovereenkomst">Arbeidsovereenkomst</option><option value="0uren">0-uren contract</option><option value="bepaalde_tijd">Bepaalde tijd</option><option value="onbepaalde_tijd">Onbepaalde tijd</option>';
-            }
-            
             document.getElementById('inviteModal').style.display = 'flex';
         }
         
@@ -1990,20 +1267,16 @@
         async function sendInvite(e) {
             e.preventDefault();
             
-            const inviteType = document.getElementById('inviteType').value;
             const email = document.getElementById('inviteEmail').value;
             const naam = document.getElementById('inviteName').value;
             const contractType = document.getElementById('inviteContractType').value;
             const message = document.getElementById('inviteMessage').value;
             
-            // Kies juiste endpoint op basis van type
-            const endpoint = inviteType === 'vast' ? '/api/team/invite-medewerker' : '/api/zzp-invite';
-            
             try {
-                const res = await fetch(endpoint, {
+                const res = await fetch('/api/zzp-invite', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, naam, contractType, message, type: inviteType })
+                    body: JSON.stringify({ email, naam, contractType, message })
                 });
                 
                 const data = await res.json();
@@ -2082,12 +1355,11 @@
             // Info - compact
             document.getElementById('detailZZPInfo').innerHTML = `
                 ${isZZP ? `<p><span class="text-gray-400">Bedrijf:</span> <strong>${zzp.bedrijf || '-'}</strong></p>` : ''}
-                <p><span class="text-gray-400">Email:</span> <a href="mailto:${escapeHtml(zzp.email)}" class="text-purple-600">${zzp.email || '-'}</a></p>
-                <p><span class="text-gray-400">Tel:</span> <a href="tel:${escapeHtml(zzp.telefoon)}" class="text-purple-600">${zzp.telefoon || '-'}</a></p>
+                <p><span class="text-gray-400">Email:</span> <a href="mailto:${zzp.email}" class="text-purple-600">${zzp.email || '-'}</a></p>
+                <p><span class="text-gray-400">Tel:</span> <a href="tel:${zzp.telefoon}" class="text-purple-600">${zzp.telefoon || '-'}</a></p>
                 ${isZZP ? `<p><span class="text-gray-400">KvK:</span> ${zzp.kvk || '-'}</p>` : ''}
                 ${isZZP ? `<p><span class="text-gray-400">BTW:</span> ${zzp.btw || '-'}</p>` : ''}
                 <p><span class="text-gray-400">${isZZP ? 'Specialisatie' : 'Functie'}:</span> ${zzp.specialisatie || zzp.functie || '-'}</p>
-                <p><span class="text-gray-400">Kostprijs/uur:</span> <strong class="text-green-600">${zzp.uurtarief ? '€' + parseFloat(zzp.uurtarief).toFixed(2) : 'Niet ingesteld'}</strong></p>
             `;
             
             // DBA Checklist - compact inline
@@ -2183,8 +1455,8 @@
                             ${u.pauze ? `<div class="text-xs text-gray-400">${u.pauze} min pauze</div>` : ''}
                         </div>
                     </div>
-                    ${u.locatieAdres ? `<div class="text-xs text-gray-500">📍 ${escapeHtml(u.locatieAdres)}</div>` : ''}
-                    ${u.notitie ? `<div class="text-xs text-gray-600 mt-1">📝 ${escapeHtml(u.notitie)}</div>` : ''}
+                    ${u.locatieAdres ? `<div class="text-xs text-gray-500">📍 ${u.locatieAdres}</div>` : ''}
+                    ${u.notitie ? `<div class="text-xs text-gray-600 mt-1">📝 ${u.notitie}</div>` : ''}
                 </div>
             `).join('');
         }
@@ -2549,7 +1821,7 @@
             const select = document.getElementById('opdrachtZZP');
             select.innerHTML = '<option value="">Selecteer ZZP\'er...</option>' +
                 zzpers.filter(z => z.status === 'actief').map(z => 
-                    `<option value="${z.id}" ${z.id === selectedId ? 'selected' : ''}>${escapeHtml(z.naam)}</option>`
+                    `<option value="${z.id}" ${z.id === selectedId ? 'selected' : ''}>${z.naam}</option>`
                 ).join('');
         }
         
@@ -2818,7 +2090,7 @@ StucAdmin Team
                             <span>${w.type === 'danger' ? '🚨' : '⚠️'}</span>
                             <div>
                                 <p class="font-medium text-sm">${w.zzp}</p>
-                                <p class="text-xs">${escapeHtml(w.msg)}</p>
+                                <p class="text-xs">${w.msg}</p>
                             </div>
                         </div>
                     </div>
@@ -2831,17 +2103,10 @@ StucAdmin Team
         // ==========================================
         function switchTab(tab) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            const tabBtn = document.querySelector(`.tab-btn[onclick="switchTab('${tab}')"]`);
-            if (tabBtn) tabBtn.classList.add('active');
+            document.querySelector(`.tab-btn[onclick="switchTab('${tab}')"]`).classList.add('active');
             
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-            const tabContent = document.getElementById(`tab-${tab}`);
-            if (tabContent) tabContent.classList.remove('hidden');
-            
-            // Laad data voor specifieke tabs
-            if (tab === 'vergoedingen') loadPendingExpenses();
-            if (tab === 'uren') loadWeekOverview();
-            if (tab === 'aandacht') loadWarnings();
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
         }
         
         function openModal(id) {

@@ -4594,12 +4594,41 @@ app.post('/api/medewerker/uren', requireMedewerkerAuth, (req, res) => {
         });
     }
     
+    // Automatische project matching op basis van locatie
+    let matchedProjectId = projectId || null;
+    let matchedProjectNaam = projectNaam || null;
+    let matchedKlantId = null;
+    let matchedKlantNaam = null;
+    
+    if (!projectId && locatieAdres) {
+        const projecten = loadCompanyData(req.companyId, 'projecten') || [];
+        const adresLower = locatieAdres.toLowerCase();
+        
+        for (const project of projecten) {
+            const projectAdres = (project.locatie || project.adres || '').toLowerCase();
+            if (projectAdres && (
+                adresLower.includes(projectAdres) || 
+                projectAdres.includes(adresLower) ||
+                adresLower.split(',')[0].trim() === projectAdres.split(',')[0].trim()
+            )) {
+                matchedProjectId = project.id;
+                matchedProjectNaam = project.titel || project.naam;
+                matchedKlantId = project.klantId || project.contactId || null;
+                matchedKlantNaam = project.klantNaam || project.klant?.naam || null;
+                console.log(`🎯 Auto-matched project: ${matchedProjectNaam} voor locatie ${locatieAdres}`);
+                break;
+            }
+        }
+    }
+    
     const newUren = {
         id: Date.now().toString(),
         medewerkerId: req.medewerkerId,
         medewerkerNaam: req.medewerker,
-        projectId: projectId || null,
-        projectNaam: projectNaam || null,
+        projectId: matchedProjectId,
+        projectNaam: matchedProjectNaam,
+        klantId: matchedKlantId,
+        klantNaam: matchedKlantNaam,
         datum,
         begintijd,
         eindtijd,
@@ -5500,6 +5529,956 @@ app.get('/api/zzp-invites', requireAuth, (req, res) => {
 });
 
 console.log('📨 ZZP Uitnodiging module geladen');
+// ==========================================
+// TEAM MODULE API's
+// ==========================================
+// Multi-tenant veilig: alle endpoints gebruiken companyId uit admin sessie
+// Data isolatie: loadCompanyData/saveCompanyData zorgt voor scheiding
+
+// GET /api/team/stats - Dashboard KPI's
+app.get('/api/team/stats', requireAuth, (req, res) => {
+    const companyId = req.session?.bedrijf_id;
+    if (!companyId) return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
+    
+    try {
+        const medewerkers = loadCompanyData(companyId, 'medewerkers') || [];
+        const zzpers = loadCompanyData(companyId, 'zzpers') || [];
+        const uren = loadCompanyData(companyId, 'uren') || [];
+        const documenten = loadCompanyData(companyId, 'zzpDocumenten') || [];
+        
+        // Combineer medewerkers en zzpers
+        const allTeam = [...medewerkers, ...zzpers];
+        const actief = allTeam.filter(m => m.status === 'actief').length;
+        
+        // Bereken openstaande bonnen en km
+        let openBonnen = 0;
+        let openKm = 0;
+        let openKmVergoeding = 0;
+        
+        uren.forEach(u => {
+            // Bonnen die nog niet goedgekeurd zijn
+            if (u.bonnen && Array.isArray(u.bonnen)) {
+                u.bonnen.forEach(b => {
+                    if (!b.approved) {
+                        openBonnen += b.bedrag || 0;
+                    }
+                });
+            }
+            // Kilometers die nog niet goedgekeurd zijn
+            if (u.reiskosten && !u.reiskosten.approved) {
+                openKm += u.reiskosten.km || 0;
+                openKmVergoeding += u.reiskosten.totaal || 0;
+            }
+        });
+        
+        // Waarschuwingen: verlopen documenten
+        const now = new Date();
+        let warnings = 0;
+        documenten.forEach(d => {
+            if (d.verloopdatum) {
+                const verloop = new Date(d.verloopdatum);
+                // Verlopen of binnen 30 dagen
+                if (verloop < now || (verloop - now) < 30 * 24 * 60 * 60 * 1000) {
+                    warnings++;
+                }
+            }
+        });
+        
+        // Check ook voor ontbrekende documenten bij actieve ZZP'ers
+        zzpers.filter(z => z.status === 'actief').forEach(z => {
+            const docs = documenten.filter(d => d.zzpId === z.id);
+            if (!docs.some(d => d.type === 'overeenkomst') && !z.contractSigned) warnings++;
+            if (!docs.some(d => d.type === 'id')) warnings++;
+            if (!docs.some(d => d.type === 'verzekering')) warnings++;
+        });
+        
+        res.json({
+            actief,
+            totaalTeam: allTeam.length,
+            openBonnen: Math.round(openBonnen * 100) / 100,
+            openKm,
+            openKmVergoeding: Math.round(openKmVergoeding * 100) / 100,
+            warnings
+        });
+        
+    } catch (e) {
+        console.error('Team stats error:', e);
+        res.status(500).json({ error: 'Fout bij ophalen statistieken' });
+    }
+});
+
+// GET /api/team/pending-expenses - Alle openstaande bonnen en km
+app.get('/api/team/pending-expenses', requireAuth, (req, res) => {
+    const companyId = req.session?.bedrijf_id;
+    if (!companyId) return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
+    
+    try {
+        const uren = loadCompanyData(companyId, 'uren') || [];
+        const medewerkers = loadCompanyData(companyId, 'medewerkers') || [];
+        const zzpers = loadCompanyData(companyId, 'zzpers') || [];
+        
+        const pendingBonnen = [];
+        const pendingKm = [];
+        
+        uren.forEach(u => {
+            // Vind medewerker naam
+            const medewerker = [...medewerkers, ...zzpers].find(m => m.id === u.medewerkerId);
+            const medewerkerNaam = medewerker?.naam || u.medewerkerNaam || 'Onbekend';
+            
+            // Openstaande bonnen
+            if (u.bonnen && Array.isArray(u.bonnen)) {
+                u.bonnen.forEach((b, index) => {
+                    if (!b.approved) {
+                        pendingBonnen.push({
+                            id: `${u.id}-bon-${index}`,
+                            urenId: u.id,
+                            bonIndex: index,
+                            medewerkerId: u.medewerkerId,
+                            medewerkerNaam,
+                            datum: u.datum,
+                            locatie: u.locatieAdres || '',
+                            bedrag: b.bedrag || 0,
+                            winkel: b.winkel || '',
+                            categorie: b.categorie || '',
+                            foto: b.fotoFilename ? `/uploads/bonnen/${b.fotoFilename}` : null
+                        });
+                    }
+                });
+            }
+            
+            // Openstaande kilometers
+            if (u.reiskosten && !u.reiskosten.approved) {
+                pendingKm.push({
+                    id: `${u.id}-km`,
+                    urenId: u.id,
+                    medewerkerId: u.medewerkerId,
+                    medewerkerNaam,
+                    datum: u.datum,
+                    km: u.reiskosten.km || 0,
+                    vergoeding: u.reiskosten.vergoeding || 0.23,
+                    totaal: u.reiskosten.totaal || 0,
+                    beschrijving: u.reiskosten.desc || ''
+                });
+            }
+        });
+        
+        // Sorteer op datum (nieuwste eerst)
+        pendingBonnen.sort((a, b) => new Date(b.datum) - new Date(a.datum));
+        pendingKm.sort((a, b) => new Date(b.datum) - new Date(a.datum));
+        
+        res.json({ bonnen: pendingBonnen, kilometers: pendingKm });
+        
+    } catch (e) {
+        console.error('Pending expenses error:', e);
+        res.status(500).json({ error: 'Fout bij ophalen openstaande vergoedingen' });
+    }
+});
+
+// POST /api/team/approve-expense - Bon of km goedkeuren
+app.post('/api/team/approve-expense', requireAuth, (req, res) => {
+    const companyId = req.session?.bedrijf_id;
+    if (!companyId) return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
+    
+    const { type, urenId, bonIndex } = req.body;
+    
+    if (!type || !urenId) {
+        return res.status(400).json({ error: 'Type en urenId zijn verplicht' });
+    }
+    
+    try {
+        const uren = loadCompanyData(companyId, 'uren') || [];
+        const urenRecord = uren.find(u => u.id === urenId);
+        
+        if (!urenRecord) {
+            return res.status(404).json({ error: 'Uren record niet gevonden' });
+        }
+        
+        if (type === 'bon') {
+            if (bonIndex === undefined || !urenRecord.bonnen || !urenRecord.bonnen[bonIndex]) {
+                return res.status(404).json({ error: 'Bon niet gevonden' });
+            }
+            urenRecord.bonnen[bonIndex].approved = true;
+            urenRecord.bonnen[bonIndex].approvedAt = new Date().toISOString();
+            urenRecord.bonnen[bonIndex].approvedBy = req.session.username;
+        } else if (type === 'km') {
+            if (!urenRecord.reiskosten) {
+                return res.status(404).json({ error: 'Reiskosten niet gevonden' });
+            }
+            urenRecord.reiskosten.approved = true;
+            urenRecord.reiskosten.approvedAt = new Date().toISOString();
+            urenRecord.reiskosten.approvedBy = req.session.username;
+        } else {
+            return res.status(400).json({ error: 'Ongeldig type, gebruik "bon" of "km"' });
+        }
+        
+        saveCompanyData(companyId, 'uren', uren);
+        
+        // Log de actie
+        console.log(`✅ ${type} goedgekeurd door ${req.session.username} voor uren ${urenId}`);
+        
+        res.json({ success: true, message: `${type === 'bon' ? 'Bon' : 'Reiskosten'} goedgekeurd` });
+        
+    } catch (e) {
+        console.error('Approve expense error:', e);
+        res.status(500).json({ error: 'Fout bij goedkeuren' });
+    }
+});
+
+// GET /api/team/active-now - Wie werkt er nu (heeft actieve timer)
+app.get('/api/team/active-now', requireAuth, (req, res) => {
+    const companyId = req.session?.bedrijf_id;
+    if (!companyId) return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
+    
+    try {
+        // Check medewerker sessions voor actieve timers
+        const activeWorkers = [];
+        
+        // Itereer door medewerker sessions
+        if (typeof medewerkerSessions !== 'undefined') {
+            for (const [sessionId, session] of medewerkerSessions) {
+                // Check of deze session bij dit bedrijf hoort
+                if (session.companyId === companyId && session.activeTimer) {
+                    activeWorkers.push({
+                        medewerkerId: session.medewerkerId,
+                        naam: session.medewerker,
+                        startTime: session.activeTimer.startTime,
+                        location: session.activeTimer.location
+                    });
+                }
+            }
+        }
+        
+        res.json(activeWorkers);
+        
+    } catch (e) {
+        console.error('Active now error:', e);
+        res.status(500).json({ error: 'Fout bij ophalen actieve medewerkers' });
+    }
+});
+
+// GET /api/team/warnings - Detail van alle waarschuwingen
+app.get('/api/team/warnings', requireAuth, (req, res) => {
+    const companyId = req.session?.bedrijf_id;
+    if (!companyId) return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
+    
+    try {
+        const zzpers = loadCompanyData(companyId, 'zzpers') || [];
+        const documenten = loadCompanyData(companyId, 'zzpDocumenten') || [];
+        
+        const warnings = [];
+        const now = new Date();
+        const dertigDagen = 30 * 24 * 60 * 60 * 1000;
+        
+        // Check verlopen documenten
+        documenten.forEach(d => {
+            if (d.verloopdatum) {
+                const verloop = new Date(d.verloopdatum);
+                const zzp = zzpers.find(z => z.id === d.zzpId);
+                
+                if (verloop < now) {
+                    warnings.push({
+                        type: 'expired',
+                        severity: 'danger',
+                        zzpId: d.zzpId,
+                        zzpNaam: zzp?.naam || 'Onbekend',
+                        message: `${d.type} is verlopen`,
+                        detail: `Verlopen op ${verloop.toLocaleDateString('nl-NL')}`,
+                        documentId: d.id
+                    });
+                } else if ((verloop - now) < dertigDagen) {
+                    warnings.push({
+                        type: 'expiring',
+                        severity: 'warning',
+                        zzpId: d.zzpId,
+                        zzpNaam: zzp?.naam || 'Onbekend',
+                        message: `${d.type} verloopt binnenkort`,
+                        detail: `Verloopt op ${verloop.toLocaleDateString('nl-NL')}`,
+                        documentId: d.id
+                    });
+                }
+            }
+        });
+        
+        // Check ontbrekende documenten bij actieve ZZP'ers
+        zzpers.filter(z => z.status === 'actief').forEach(z => {
+            const docs = documenten.filter(d => d.zzpId === z.id);
+            
+            if (!docs.some(d => d.type === 'overeenkomst') && !z.contractSigned) {
+                warnings.push({
+                    type: 'missing',
+                    severity: 'danger',
+                    zzpId: z.id,
+                    zzpNaam: z.naam,
+                    message: 'Geen ondertekende overeenkomst',
+                    detail: 'Vereist voor Wet DBA 2025 compliance'
+                });
+            }
+            if (!docs.some(d => d.type === 'id')) {
+                warnings.push({
+                    type: 'missing',
+                    severity: 'warning',
+                    zzpId: z.id,
+                    zzpNaam: z.naam,
+                    message: 'Geen ID document',
+                    detail: 'Aanbevolen voor administratie'
+                });
+            }
+            if (!docs.some(d => d.type === 'verzekering')) {
+                warnings.push({
+                    type: 'missing',
+                    severity: 'warning',
+                    zzpId: z.id,
+                    zzpNaam: z.naam,
+                    message: 'Geen verzekeringsbewijs',
+                    detail: 'Aansprakelijkheidsverzekering aanbevolen'
+                });
+            }
+        });
+        
+        // Sorteer: danger eerst, dan warning
+        warnings.sort((a, b) => {
+            if (a.severity === 'danger' && b.severity !== 'danger') return -1;
+            if (a.severity !== 'danger' && b.severity === 'danger') return 1;
+            return 0;
+        });
+        
+        res.json(warnings);
+        
+    } catch (e) {
+        console.error('Warnings error:', e);
+        res.status(500).json({ error: 'Fout bij ophalen waarschuwingen' });
+    }
+});
+
+// GET /api/team/weekly-overview - Weekoverzicht alle medewerkers
+app.get('/api/team/weekly-overview', requireAuth, (req, res) => {
+    const companyId = req.session?.bedrijf_id;
+    if (!companyId) return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
+    
+    try {
+        const uren = loadCompanyData(companyId, 'uren') || [];
+        const medewerkers = loadCompanyData(companyId, 'medewerkers') || [];
+        const zzpers = loadCompanyData(companyId, 'zzpers') || [];
+        
+        // Bepaal week range (maandag t/m zondag)
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - daysToMonday);
+        weekStart.setHours(0, 0, 0, 0);
+        
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+        
+        // Filter uren voor deze week
+        const weekUren = uren.filter(u => {
+            const datum = new Date(u.datum);
+            return datum >= weekStart && datum <= weekEnd;
+        });
+        
+        // Groepeer per medewerker
+        const allTeam = [...medewerkers, ...zzpers];
+        const overview = allTeam.map(m => {
+            const mUren = weekUren.filter(u => u.medewerkerId === m.id);
+            const totaalUren = mUren.reduce((sum, u) => sum + (u.totaalUren || 0), 0);
+            const totaalBonnen = mUren.reduce((sum, u) => {
+                return sum + (u.bonnen || []).reduce((s, b) => s + (b.bedrag || 0), 0);
+            }, 0);
+            const totaalKm = mUren.reduce((sum, u) => {
+                return sum + (u.reiskosten?.km || 0);
+            }, 0);
+            
+            // Uren per dag
+            const dagen = {};
+            ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'].forEach((dag, i) => {
+                const dagDatum = new Date(weekStart);
+                dagDatum.setDate(weekStart.getDate() + i);
+                const dagStr = dagDatum.toISOString().split('T')[0];
+                const dagUren = mUren.filter(u => u.datum === dagStr);
+                dagen[dag] = dagUren.reduce((sum, u) => sum + (u.totaalUren || 0), 0);
+            });
+            
+            return {
+                id: m.id,
+                naam: m.naam,
+                type: m.type || 'vast',
+                totaalUren: Math.round(totaalUren * 100) / 100,
+                totaalBonnen: Math.round(totaalBonnen * 100) / 100,
+                totaalKm,
+                dagen
+            };
+        }).filter(m => m.totaalUren > 0); // Alleen medewerkers met uren deze week
+        
+        res.json({
+            weekStart: weekStart.toISOString().split('T')[0],
+            weekEnd: weekEnd.toISOString().split('T')[0],
+            medewerkers: overview
+        });
+        
+    } catch (e) {
+        console.error('Weekly overview error:', e);
+        res.status(500).json({ error: 'Fout bij ophalen weekoverzicht' });
+    }
+});
+
+console.log('👥 Team module API geladen');
+// POST /api/export/moneybird-invoice - Maak concept factuur in Moneybird
+app.post('/api/export/moneybird-invoice', requireAuth, async (req, res) => {
+    const companyId = req.session?.bedrijf_id;
+    if (!companyId) return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
+    
+    const { klantId, locatie, van, tot, uurtarief, urenPerMedewerker, totaalBonnen, totaalKm, totaalReiskosten } = req.body;
+    
+    if (!klantId) {
+        return res.status(400).json({ error: 'Geen opdrachtgever geselecteerd' });
+    }
+    
+    try {
+        // Haal Moneybird credentials op
+        const tokens = loadCompanyData(companyId, 'tokens');
+        if (!tokens || !tokens.moneybird_token || !tokens.moneybird_administration_id) {
+            return res.status(400).json({ error: 'Moneybird niet gekoppeld. Ga naar Instellingen om te koppelen.' });
+        }
+        
+        const mbToken = tokens.moneybird_token;
+        const mbAdminId = tokens.moneybird_administration_id;
+        
+        // Haal BTW tarief op
+        let taxRateId = null;
+        try {
+            const taxRes = await fetch(`https://moneybird.com/api/v2/${mbAdminId}/tax_rates`, {
+                headers: { 'Authorization': `Bearer ${mbToken}` }
+            });
+            if (taxRes.ok) {
+                const rates = await taxRes.json();
+                const rate21 = rates.find(r => r.percentage === '21.0' || r.percentage === '21');
+                if (rate21) taxRateId = rate21.id;
+                else {
+                    const active = rates.find(r => r.active);
+                    if (active) taxRateId = active.id;
+                }
+            }
+        } catch (e) {
+            console.error('Error getting tax rates:', e);
+        }
+        
+        // Bouw factuur regels
+        const detailsLines = [];
+        
+        // Uren per medewerker
+        if (urenPerMedewerker) {
+            Object.entries(urenPerMedewerker).forEach(([naam, uren]) => {
+                const line = {
+                    description: `Stucwerk - ${naam}\nPeriode: ${van} t/m ${tot}${locatie ? '\nLocatie: ' + locatie : ''}`,
+                    price: uurtarief.toString(),
+                    amount: uren.toFixed(2)
+                };
+                if (taxRateId) line.tax_rate_id = taxRateId;
+                detailsLines.push(line);
+            });
+        }
+        
+        // Materialen
+        if (totaalBonnen > 0) {
+            const line = {
+                description: 'Materialen',
+                price: totaalBonnen.toFixed(2),
+                amount: '1'
+            };
+            if (taxRateId) line.tax_rate_id = taxRateId;
+            detailsLines.push(line);
+        }
+        
+        // Reiskosten
+        if (totaalReiskosten > 0) {
+            const line = {
+                description: `Reiskosten (${totaalKm} km)`,
+                price: totaalReiskosten.toFixed(2),
+                amount: '1'
+            };
+            if (taxRateId) line.tax_rate_id = taxRateId;
+            detailsLines.push(line);
+        }
+        
+        // Maak factuur aan
+        const invoiceData = {
+            sales_invoice: {
+                contact_id: klantId,
+                reference: locatie ? `Urenstaat ${locatie}` : `Urenstaat ${van} - ${tot}`,
+                details_attributes: detailsLines,
+                prices_are_incl_tax: false
+            }
+        };
+        
+        console.log('Creating Moneybird invoice:', JSON.stringify(invoiceData, null, 2));
+        
+        const mbRes = await fetch(`https://moneybird.com/api/v2/${mbAdminId}/sales_invoices`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${mbToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(invoiceData)
+        });
+        
+        if (!mbRes.ok) {
+            const errText = await mbRes.text();
+            console.error('Moneybird API error:', errText);
+            return res.status(400).json({ error: 'Moneybird fout: ' + errText.substring(0, 200) });
+        }
+        
+        const invoice = await mbRes.json();
+        
+        console.log(`📤 Concept factuur aangemaakt in Moneybird: ${invoice.invoice_id || invoice.id}`);
+        
+        res.json({ 
+            success: true, 
+            invoiceId: invoice.id,
+            invoiceNumber: invoice.invoice_id || 'concept',
+            url: `https://moneybird.com/${mbAdminId}/sales_invoices/${invoice.id}`
+        });
+        
+    } catch (e) {
+        console.error('Moneybird invoice error:', e);
+        res.status(500).json({ error: 'Fout bij aanmaken factuur: ' + e.message });
+    }
+});
+// GET /api/export/urenstaat-pdf - Genereer PDF urenstaat
+app.get('/api/export/urenstaat-pdf', requireAuth, async (req, res) => {
+    const companyId = req.session?.bedrijf_id;
+    if (!companyId) return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
+    
+    const { van, tot, klantId, locatie, inclUren, inclBonnen, inclReiskosten } = req.query;
+    
+    try {
+        const uren = loadCompanyData(companyId, 'uren') || [];
+        const settings = loadCompanyData(companyId, 'settings') || {};
+        
+        // Filter uren
+        let filtered = uren.filter(u => {
+            if (van && u.datum < van) return false;
+            if (tot && u.datum > tot) return false;
+            if (klantId && u.klantId !== klantId) return false;
+            if (locatie && u.locatieAdres !== locatie) return false;
+            return true;
+        });
+        
+        filtered.sort((a, b) => a.datum.localeCompare(b.datum));
+        
+        // Extract bonnen en reiskosten
+        const bonnen = [];
+        const reiskosten = [];
+        filtered.forEach(u => {
+            if (u.bonnen) {
+                u.bonnen.forEach(b => bonnen.push({ ...b, datum: u.datum, medewerkerNaam: u.medewerkerNaam }));
+            }
+            if (u.reiskosten && u.reiskosten.km > 0) {
+                reiskosten.push({ ...u.reiskosten, datum: u.datum, medewerkerNaam: u.medewerkerNaam });
+            }
+        });
+        
+        // Bereken totalen
+        const totaalUren = filtered.reduce((sum, u) => sum + (u.totaalUren || 0), 0);
+        const totaalBonnen = bonnen.reduce((sum, b) => sum + (b.bedrag || 0), 0);
+        const totaalKm = reiskosten.reduce((sum, r) => sum + (r.km || 0), 0);
+        const totaalReiskosten = reiskosten.reduce((sum, r) => sum + (r.totaal || 0), 0);
+        
+        // Genereer HTML voor PDF
+        const klantNaam = klantId ? (filtered.find(u => u.klantId === klantId)?.klantNaam || '') : 'Alle opdrachtgevers';
+        
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 12px; margin: 40px; }
+        h1 { color: #1e1b4b; font-size: 24px; margin-bottom: 5px; }
+        h2 { color: #4b5563; font-size: 14px; margin-top: 20px; border-bottom: 2px solid #8b5cf6; padding-bottom: 5px; }
+        .header { margin-bottom: 30px; }
+        .header p { margin: 3px 0; color: #6b7280; }
+        .company { font-weight: bold; font-size: 14px; color: #1e1b4b; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th { background: #f3f4f6; padding: 8px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+        td { padding: 8px; border-bottom: 1px solid #f3f4f6; }
+        .text-right { text-align: right; }
+        .totaal { background: #f0fdf4; font-weight: bold; }
+        .totaal td { border-top: 2px solid #22c55e; }
+        .totalen-box { background: #f8fafc; padding: 20px; margin-top: 30px; border-radius: 8px; }
+        .totalen-grid { display: flex; justify-content: space-around; text-align: center; }
+        .totaal-item { padding: 10px; }
+        .totaal-waarde { font-size: 24px; font-weight: bold; }
+        .totaal-label { color: #6b7280; font-size: 11px; }
+        .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📋 URENSTAAT</h1>
+        <p class="company">${settings.bedrijfsnaam || 'StucAdmin'}</p>
+        <p>Opdrachtgever: <strong>${klantNaam}</strong></p>
+        ${locatie ? `<p>Locatie: <strong>${locatie}</strong></p>` : ''}
+        <p>Periode: <strong>${van} t/m ${tot}</strong></p>
+    </div>
+    
+    ${inclUren === 'true' && filtered.length ? `
+    <h2>⏱️ Uren</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>Medewerker</th>
+                <th>Locatie</th>
+                <th class="text-right">Begin</th>
+                <th class="text-right">Eind</th>
+                <th class="text-right">Pauze</th>
+                <th class="text-right">Uren</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${filtered.map(u => `
+            <tr>
+                <td>${u.datum}</td>
+                <td>${u.medewerkerNaam || '-'}</td>
+                <td>${(u.locatieAdres || '-').substring(0, 25)}</td>
+                <td class="text-right">${u.begintijd}</td>
+                <td class="text-right">${u.eindtijd}</td>
+                <td class="text-right">${u.pauze || 0} min</td>
+                <td class="text-right">${(u.totaalUren || 0).toFixed(2)}</td>
+            </tr>
+            `).join('')}
+            <tr class="totaal">
+                <td colspan="6" class="text-right">Totaal uren:</td>
+                <td class="text-right">${totaalUren.toFixed(2)}</td>
+            </tr>
+        </tbody>
+    </table>
+    ` : ''}
+    
+    ${inclBonnen === 'true' && bonnen.length ? `
+    <h2>🧾 Materialen / Bonnen</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>Medewerker</th>
+                <th>Winkel</th>
+                <th>Categorie</th>
+                <th class="text-right">Bedrag</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${bonnen.map(b => `
+            <tr>
+                <td>${b.datum}</td>
+                <td>${b.medewerkerNaam || '-'}</td>
+                <td>${b.winkel || '-'}</td>
+                <td>${b.categorie || '-'}</td>
+                <td class="text-right">€${(b.bedrag || 0).toFixed(2)}</td>
+            </tr>
+            `).join('')}
+            <tr class="totaal">
+                <td colspan="4" class="text-right">Totaal materialen:</td>
+                <td class="text-right">€${totaalBonnen.toFixed(2)}</td>
+            </tr>
+        </tbody>
+    </table>
+    ` : ''}
+    
+    ${inclReiskosten === 'true' && reiskosten.length ? `
+    <h2>🚗 Reiskosten</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Datum</th>
+                <th>Medewerker</th>
+                <th>Omschrijving</th>
+                <th class="text-right">KM</th>
+                <th class="text-right">Bedrag</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${reiskosten.map(r => `
+            <tr>
+                <td>${r.datum}</td>
+                <td>${r.medewerkerNaam || '-'}</td>
+                <td>${r.desc || '-'}</td>
+                <td class="text-right">${r.km || 0} km</td>
+                <td class="text-right">€${(r.totaal || 0).toFixed(2)}</td>
+            </tr>
+            `).join('')}
+            <tr class="totaal">
+                <td colspan="3" class="text-right">Totaal reiskosten:</td>
+                <td class="text-right">${totaalKm} km</td>
+                <td class="text-right">€${totaalReiskosten.toFixed(2)}</td>
+            </tr>
+        </tbody>
+    </table>
+    ` : ''}
+    
+    <div class="totalen-box">
+        <div class="totalen-grid">
+            <div class="totaal-item">
+                <div class="totaal-waarde" style="color: #8b5cf6;">${totaalUren.toFixed(2)}</div>
+                <div class="totaal-label">UREN</div>
+            </div>
+            <div class="totaal-item">
+                <div class="totaal-waarde" style="color: #22c55e;">€${totaalBonnen.toFixed(2)}</div>
+                <div class="totaal-label">MATERIALEN</div>
+            </div>
+            <div class="totaal-item">
+                <div class="totaal-waarde" style="color: #3b82f6;">€${totaalReiskosten.toFixed(2)}</div>
+                <div class="totaal-label">REISKOSTEN</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        Gegenereerd op ${new Date().toLocaleDateString('nl-NL')} ${new Date().toLocaleTimeString('nl-NL')} via StucAdmin
+    </div>
+</body>
+</html>
+        `;
+        
+        // Stuur HTML terug (browser kan printen naar PDF)
+        res.setHeader('Content-Type', 'text/html');
+        res.send(html);
+        
+    } catch (e) {
+        console.error('Export PDF error:', e);
+        res.status(500).json({ error: 'Fout bij genereren PDF' });
+    }
+});
+// POST /api/team/invite-medewerker - Vast personeel uitnodigen
+app.post('/api/team/invite-medewerker', requireAuth, async (req, res) => {
+    const companyId = req.session?.bedrijf_id;
+    if (!companyId) return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
+    
+    const { email, naam, contractType, message } = req.body;
+    
+    if (!email) {
+        return res.status(400).json({ error: 'Email is verplicht' });
+    }
+    
+    try {
+        // Genereer unieke token
+        const token = require('crypto').randomBytes(32).toString('hex');
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 7); // 7 dagen geldig
+        
+        // Sla invite op
+        const invites = loadCompanyData(companyId, 'medewerkerInvites') || [];
+        invites.push({
+            id: 'inv_' + Date.now(),
+            token,
+            email,
+            naam: naam || '',
+            contractType: contractType || 'arbeidsovereenkomst',
+            message: message || '',
+            type: 'vast',
+            createdAt: new Date().toISOString(),
+            expires: expires.toISOString(),
+            status: 'pending'
+        });
+        saveCompanyData(companyId, 'medewerkerInvites', invites);
+        
+        // Stuur email (als SMTP geconfigureerd is)
+        const company = loadCompanyData(companyId, 'settings') || {};
+        const companyName = company.bedrijfsnaam || 'StucAdmin';
+        const inviteUrl = `https://stucadmin.nl/medewerker-registratie.html?token=${token}`;
+        
+        // Check of we email kunnen sturen
+        const smtpConfig = loadCompanyData(companyId, 'smtp');
+        if (smtpConfig && smtpConfig.host) {
+            const nodemailer = require('nodemailer');
+            const transporter = nodemailer.createTransport({
+                host: smtpConfig.host,
+                port: smtpConfig.port || 587,
+                secure: smtpConfig.secure || false,
+                auth: {
+                    user: smtpConfig.user,
+                    pass: smtpConfig.pass
+                }
+            });
+            
+            await transporter.sendMail({
+                from: smtpConfig.from || smtpConfig.user,
+                to: email,
+                subject: `Uitnodiging om te werken bij ${companyName}`,
+                html: `
+                    <h2>Welkom bij ${companyName}!</h2>
+                    <p>${naam ? `Hoi ${naam},` : 'Hoi,'}</p>
+                    ${message ? `<p>${message}</p>` : ''}
+                    <p>Je bent uitgenodigd om je te registreren als medewerker.</p>
+                    <p><a href="${inviteUrl}" style="background:#8b5cf6;color:white;padding:12px 24px;text-decoration:none;border-radius:8px;display:inline-block;">Registreren</a></p>
+                    <p><small>Deze link is 7 dagen geldig.</small></p>
+                `
+            });
+            
+            console.log(`📨 Medewerker uitnodiging verzonden naar ${email}`);
+            res.json({ success: true, message: 'Uitnodiging verzonden' });
+        } else {
+            // Geen SMTP - geef link terug
+            console.log(`📨 Medewerker uitnodiging aangemaakt voor ${email} (geen email verzonden)`);
+            res.json({ 
+                success: true, 
+                message: 'Uitnodiging aangemaakt (email niet geconfigureerd)',
+                inviteUrl 
+            });
+        }
+        
+    } catch (e) {
+        console.error('Medewerker invite error:', e);
+        res.status(500).json({ error: 'Fout bij verzenden uitnodiging' });
+    }
+});
+// GET /api/team/approved-expenses - Goedgekeurde bonnen en km
+app.get('/api/team/approved-expenses', requireAuth, (req, res) => {
+    const companyId = req.session?.bedrijf_id;
+    if (!companyId) return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
+    
+    const period = req.query.period || 'week'; // week, month, all
+    
+    try {
+        const uren = loadCompanyData(companyId, 'uren') || [];
+        const medewerkers = loadCompanyData(companyId, 'medewerkers') || [];
+        const zzpers = loadCompanyData(companyId, 'zzpers') || [];
+        
+        // Bepaal datum filter
+        const now = new Date();
+        let startDate = null;
+        
+        if (period === 'week') {
+            const dayOfWeek = now.getDay();
+            const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            startDate = new Date(now);
+            startDate.setDate(now.getDate() - daysToMonday);
+            startDate.setHours(0, 0, 0, 0);
+        } else if (period === 'month') {
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        }
+        
+        const approvedBonnen = [];
+        const approvedKm = [];
+        
+        uren.forEach(u => {
+            // Datum filter
+            if (startDate) {
+                const urenDatum = new Date(u.datum);
+                if (urenDatum < startDate) return;
+            }
+            
+            // Vind medewerker naam
+            const medewerker = [...medewerkers, ...zzpers].find(m => m.id === u.medewerkerId);
+            const medewerkerNaam = medewerker?.naam || u.medewerkerNaam || 'Onbekend';
+            
+            // Goedgekeurde bonnen
+            if (u.bonnen && Array.isArray(u.bonnen)) {
+                u.bonnen.forEach((b, index) => {
+                    if (b.approved) {
+                        approvedBonnen.push({
+                            id: `${u.id}-bon-${index}`,
+                            urenId: u.id,
+                            bonIndex: index,
+                            medewerkerId: u.medewerkerId,
+                            medewerkerNaam,
+                            datum: u.datum,
+                            bedrag: b.bedrag || 0,
+                            winkel: b.winkel || '',
+                            approvedAt: b.approvedAt,
+                            approvedBy: b.approvedBy
+                        });
+                    }
+                });
+            }
+            
+            // Goedgekeurde kilometers
+            if (u.reiskosten && u.reiskosten.approved) {
+                approvedKm.push({
+                    id: `${u.id}-km`,
+                    urenId: u.id,
+                    medewerkerId: u.medewerkerId,
+                    medewerkerNaam,
+                    datum: u.datum,
+                    km: u.reiskosten.km || 0,
+                    totaal: u.reiskosten.totaal || 0,
+                    approvedAt: u.reiskosten.approvedAt,
+                    approvedBy: u.reiskosten.approvedBy
+                });
+            }
+        });
+        
+        // Sorteer op datum (nieuwste eerst)
+        approvedBonnen.sort((a, b) => new Date(b.datum) - new Date(a.datum));
+        approvedKm.sort((a, b) => new Date(b.datum) - new Date(a.datum));
+        
+        // Bereken totalen
+        const totaalBonnen = approvedBonnen.reduce((sum, b) => sum + b.bedrag, 0);
+        const totaalKm = approvedKm.reduce((sum, k) => sum + k.totaal, 0);
+        
+        res.json({ 
+            bonnen: approvedBonnen, 
+            kilometers: approvedKm,
+            totaalBonnen: Math.round(totaalBonnen * 100) / 100,
+            totaalKm: Math.round(totaalKm * 100) / 100
+        });
+        
+    } catch (e) {
+        console.error('Approved expenses error:', e);
+        res.status(500).json({ error: 'Fout bij ophalen goedgekeurde vergoedingen' });
+    }
+});
+
+// POST /api/team/unapprove-expense - Goedkeuring ongedaan maken
+app.post('/api/team/unapprove-expense', requireAuth, (req, res) => {
+    const companyId = req.session?.bedrijf_id;
+    if (!companyId) return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
+    
+    const { type, urenId, bonIndex } = req.body;
+    
+    if (!type || !urenId) {
+        return res.status(400).json({ error: 'Type en urenId zijn verplicht' });
+    }
+    
+    try {
+        const uren = loadCompanyData(companyId, 'uren') || [];
+        const urenRecord = uren.find(u => u.id === urenId);
+        
+        if (!urenRecord) {
+            return res.status(404).json({ error: 'Uren record niet gevonden' });
+        }
+        
+        if (type === 'bon') {
+            if (bonIndex === undefined || !urenRecord.bonnen || !urenRecord.bonnen[bonIndex]) {
+                return res.status(404).json({ error: 'Bon niet gevonden' });
+            }
+            delete urenRecord.bonnen[bonIndex].approved;
+            delete urenRecord.bonnen[bonIndex].approvedAt;
+            delete urenRecord.bonnen[bonIndex].approvedBy;
+        } else if (type === 'km') {
+            if (!urenRecord.reiskosten) {
+                return res.status(404).json({ error: 'Reiskosten niet gevonden' });
+            }
+            delete urenRecord.reiskosten.approved;
+            delete urenRecord.reiskosten.approvedAt;
+            delete urenRecord.reiskosten.approvedBy;
+        } else {
+            return res.status(400).json({ error: 'Ongeldig type' });
+        }
+        
+        saveCompanyData(companyId, 'uren', uren);
+        
+        console.log(`↩️ ${type} goedkeuring ongedaan gemaakt door ${req.session.username} voor uren ${urenId}`);
+        
+        res.json({ success: true, message: 'Goedkeuring ongedaan gemaakt' });
+        
+    } catch (e) {
+        console.error('Unapprove expense error:', e);
+        res.status(500).json({ error: 'Fout bij ongedaan maken' });
+    }
+});
 
 
 // ============================================

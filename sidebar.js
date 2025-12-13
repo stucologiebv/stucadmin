@@ -107,6 +107,7 @@ function loadSidebar() {
         { href: 'opname.html', icon: '📋', label: 'Opname' },
         { href: 'offerteaanvragen.html', icon: '📩', label: 'Offertes', badge: 'navOffertes' },
         { href: 'team.html', icon: '👥', label: 'Team' },
+        { href: 'export.html', icon: '📥', label: 'Export' },
         { href: 'calculator.html', icon: '🧮', label: 'Calculator' },
         { href: 'materialen-beheer.html', icon: '📦', label: 'Materialen' },
         { href: 'stucie.html', icon: '🤖', label: 'Stucie' },
