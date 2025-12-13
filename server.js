@@ -558,7 +558,7 @@ app.use((req, res, next) => {
         "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://cdnjs.cloudflare.com; " +
         "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; " +
         "img-src 'self' data: blob: https:; " +
-        "connect-src 'self' https://api.moneybird.com https://gmail.googleapis.com https://www.googleapis.com https://nominatim.openstreetmap.org https://cdn.tailwindcss.com https://fonts.googleapis.com https://fonts.gstatic.com; " +
+        "connect-src 'self' https://api.moneybird.com https://gmail.googleapis.com https://www.googleapis.com https://nominatim.openstreetmap.org https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com; " +
         "frame-ancestors 'none';"
     );
     
@@ -589,6 +589,8 @@ app.use((req, res, next) => {
         '/api/auth/reset-password',
         '/api/medewerker/login',
         '/api/medewerker/logout',
+        '/api/medewerker/validate-invite',
+        '/api/medewerker/register',
         '/api/zzp-register',
         '/api/offerteaanvragen/website',
         '/api/webhook/',
@@ -885,7 +887,8 @@ const publicPaths = [
     '/medewerker-portal-v2.html',
     '/medewerker-uren.html',
     // ZZP registratie (eigen token systeem)
-    '/zzp-registratie.html'
+    '/zzp-registratie.html',
+    '/medewerker-registratie.html'
 ];
 
 // Medewerker API paths (eigen auth via pincode)
@@ -967,7 +970,9 @@ app.use((req, res, next) => {
         '/sidebar.js',
         '/storage-helper.js',
         '/zzp-wizard.js',
-        '/data-sync.js'
+        '/data-sync.js',
+        '/stucie.js',
+        '/tip-banner.js'
     ];
     
     // Allow specific directories
@@ -1826,7 +1831,22 @@ app.get('/api/data/sync/all', requireAuth, (req, res) => {
 
 // ============ MONEYBIRD API ============
 
-async function moneybirdRequest(endpoint, options = {}, credentials = null) {
+async function moneybirdRequest(endpoint, optionsOrCredentials = {}, credentialsArg = null) {
+    // Smart detection: als 2e argument token/adminId heeft, is het credentials
+    let options = {};
+    let credentials = credentialsArg;
+    
+    if (optionsOrCredentials && (optionsOrCredentials.token || optionsOrCredentials.adminId)) {
+        // 2e argument is credentials, geen options
+        credentials = optionsOrCredentials;
+    } else if (optionsOrCredentials && !credentialsArg) {
+        // 2e argument is options, geen credentials gegeven
+        options = optionsOrCredentials;
+    } else {
+        // Normale situatie: options en credentials apart
+        options = optionsOrCredentials || {};
+    }
+    
     if (!credentials || !credentials.token || !credentials.adminId) {
         throw new Error('Geen Moneybird credentials beschikbaar voor dit bedrijf');
     }
@@ -4118,20 +4138,72 @@ app.delete('/api/medewerkers/:id', requireAuth, (req, res) => {
     const companyId = req.session?.bedrijf_id;
     if (!companyId) return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
     
-    const { id } = req.params;
-    const medewerkers = loadCompanyData(companyId, 'medewerkers');
-    const index = medewerkers.findIndex(m => m.id === id);
+    const medewerkerId = req.params.id;
     
-    if (index === -1) {
-        return res.status(404).json({ error: 'Medewerker niet gevonden' });
+    try {
+        let verwijderd = { medewerker: false, uren: 0, sessies: 0, zzp: false };
+        let naam = '';
+        
+        // 1. Verwijder uit medewerkers lijst
+        const medewerkers = loadCompanyData(companyId, 'medewerkers') || [];
+        const mwIndex = medewerkers.findIndex(m => m.id === medewerkerId);
+        if (mwIndex !== -1) {
+            naam = medewerkers[mwIndex].naam || 'Onbekend';
+            medewerkers.splice(mwIndex, 1);
+            saveCompanyData(companyId, 'medewerkers', medewerkers);
+            verwijderd.medewerker = true;
+        }
+        
+        // 2. Verwijder uit zzpers lijst (indien ZZP)
+        const zzpers = loadCompanyData(companyId, 'zzpers') || [];
+        const zzpIndex = zzpers.findIndex(z => z.id === medewerkerId);
+        if (zzpIndex !== -1) {
+            if (!naam) naam = zzpers[zzpIndex].naam || 'Onbekend';
+            zzpers.splice(zzpIndex, 1);
+            saveCompanyData(companyId, 'zzpers', zzpers);
+            verwijderd.zzp = true;
+        }
+        
+        // 3. Verwijder alle uren van deze medewerker
+        const uren = loadCompanyData(companyId, 'uren') || [];
+        const origLength = uren.length;
+        const filteredUren = uren.filter(u => u.medewerkerId !== medewerkerId);
+        if (filteredUren.length < origLength) {
+            saveCompanyData(companyId, 'uren', filteredUren);
+            verwijderd.uren = origLength - filteredUren.length;
+        }
+        
+        // 4. Verwijder actieve sessies
+        for (const [sessionId, session] of medewerkerSessions.entries()) {
+            if (session.medewerkerId === medewerkerId && session.companyId === companyId) {
+                medewerkerSessions.delete(sessionId);
+                verwijderd.sessies++;
+            }
+        }
+        if (verwijderd.sessies > 0) saveMedewerkerSessions();
+        
+        // 5. Verwijder uit medewerkerInvites (pending invites)
+        const invites = loadCompanyData(companyId, 'medewerkerInvites') || [];
+        const filteredInvites = invites.filter(i => i.medewerkerId !== medewerkerId);
+        if (filteredInvites.length < invites.length) {
+            saveCompanyData(companyId, 'medewerkerInvites', filteredInvites);
+        }
+        
+        if (!verwijderd.medewerker && !verwijderd.zzp) {
+            return res.status(404).json({ error: 'Medewerker niet gevonden' });
+        }
+        
+        console.log(`🗑️ Medewerker ${naam} volledig verwijderd:`, verwijderd);
+        res.json({ 
+            success: true, 
+            message: `${naam} volledig verwijderd`,
+            details: verwijderd
+        });
+        
+    } catch (e) {
+        console.error('Delete medewerker error:', e);
+        res.status(500).json({ error: 'Fout bij verwijderen medewerker' });
     }
-    
-    const naam = medewerkers[index].naam;
-    medewerkers.splice(index, 1);
-    saveCompanyData(companyId, 'medewerkers', medewerkers);
-    
-    console.log(`ðŸ‘· Medewerker verwijderd: ${naam}`);
-    res.json({ success: true });
 });
 
 // Get all uren (admin)
@@ -4218,27 +4290,14 @@ app.post('/api/projecten', requireAuth, (req, res) => {
     const companyId = req.session?.bedrijf_id;
     if (!companyId) return res.status(400).json({ error: 'Geen bedrijf gekoppeld' });
     
-    const { titel, naam, klantId, klantNaam, locatie, adres, type, m2, bedrag, notitie, status, voortgang, startdatum, deadline, budgetUren, opmerkingen } = req.body;
-    
+    // Accept all fields from request body - spread operator preserves googleEventId, team, etc.
     const newProject = {
-        id: 'proj_' + Date.now(),
-        titel: titel || naam || 'Nieuw project',
-        naam: titel || naam || 'Nieuw project',
-        klantId: klantId || null,
-        klantNaam: klantNaam || '',
-        klant: klantNaam || '',
-        locatie: locatie || adres || '',
-        adres: locatie || adres || '',
-        type: type || 'stucwerk',
-        m2: parseFloat(m2) || 0,
-        bedrag: parseFloat(bedrag) || 0,
-        notitie: notitie || '',
-        status: status || 'gepland',
-        voortgang: parseInt(voortgang) || 0,
-        startdatum: startdatum || null,
-        deadline: deadline || null,
-        budgetUren: parseInt(budgetUren) || null,
-        opmerkingen: opmerkingen || '',
+        ...req.body,
+        id: req.body.id || 'proj_' + Date.now(),
+        titel: req.body.titel || req.body.naam || 'Nieuw project',
+        status: req.body.status || 'gepland',
+        m2: parseFloat(req.body.m2) || 0,
+        bedrag: parseFloat(req.body.bedrag) || 0,
         created: new Date().toISOString()
     };
     
@@ -4263,27 +4322,13 @@ app.put('/api/projecten/:id', requireAuth, (req, res) => {
         return res.status(404).json({ error: 'Project niet gevonden' });
     }
     
-    const { titel, naam, klantId, klantNaam, locatie, adres, type, m2, bedrag, notitie, status, voortgang, startdatum, deadline, budgetUren, opmerkingen } = req.body;
-    
+    // Accept all fields from request body - merge with existing, preserving all custom fields
     projecten[index] = {
         ...projecten[index],
-        titel: titel || naam || projecten[index].titel,
-        naam: titel || naam || projecten[index].naam,
-        klantId: klantId !== undefined ? klantId : projecten[index].klantId,
-        klantNaam: klantNaam !== undefined ? klantNaam : projecten[index].klantNaam,
-        klant: klantNaam !== undefined ? klantNaam : projecten[index].klant,
-        locatie: locatie || adres || projecten[index].locatie,
-        adres: locatie || adres || projecten[index].adres,
-        type: type || projecten[index].type,
-        m2: m2 !== undefined ? parseFloat(m2) : projecten[index].m2,
-        bedrag: bedrag !== undefined ? parseFloat(bedrag) : projecten[index].bedrag,
-        notitie: notitie !== undefined ? notitie : projecten[index].notitie,
-        status: status || projecten[index].status,
-        voortgang: voortgang !== undefined ? parseInt(voortgang) : projecten[index].voortgang,
-        startdatum: startdatum !== undefined ? startdatum : projecten[index].startdatum,
-        deadline: deadline !== undefined ? deadline : projecten[index].deadline,
-        budgetUren: budgetUren !== undefined ? parseInt(budgetUren) : projecten[index].budgetUren,
-        opmerkingen: opmerkingen !== undefined ? opmerkingen : projecten[index].opmerkingen,
+        ...req.body,
+        id: projecten[index].id, // Keep original ID
+        m2: req.body.m2 !== undefined ? parseFloat(req.body.m2) : projecten[index].m2,
+        bedrag: req.body.bedrag !== undefined ? parseFloat(req.body.bedrag) : projecten[index].bedrag,
         updated: new Date().toISOString()
     };
     
@@ -4313,83 +4358,50 @@ app.delete('/api/projecten/:id', requireAuth, (req, res) => {
 
 // ============ MEDEWERKER ENDPOINTS ============
 
-// Medewerker login - pincode + bedrijf (multi-tenant)
+// Medewerker login - email + pincode (multi-tenant)
 app.post('/api/medewerker/login', (req, res) => {
-    const { pincode, companyId } = req.body;
+    const { email, pincode } = req.body;
     const ip = getClientIP(req);
     
-    // Rate limiting
     const rateCheck = checkRateLimit(ip);
-    if (!rateCheck.allowed) {
-        console.log(`🚫 Medewerker login rate limited: ${ip}`);
-        return res.status(429).json({ error: rateCheck.reason });
-    }
+    if (!rateCheck.allowed) return res.status(429).json({ error: rateCheck.reason });
+    if (!email) return res.status(400).json({ error: 'Vul je email in' });
+    if (!pincode || pincode.length !== 4) return res.status(400).json({ error: 'Voer een 4-cijferige pincode in' });
     
-    if (!companyId) {
-        return res.status(400).json({ error: 'Geen bedrijf geselecteerd' });
-    }
+    const companies = loadData('companies') || [];
+    let medewerker = null, foundCompanyId = null, needsMigration = false;
     
-    if (!pincode || pincode.length !== 4) {
-        return res.status(400).json({ error: 'Voer een 4-cijferige pincode in' });
-    }
-    
-    // Load medewerkers for this company only (multi-tenant)
-    const companyMedewerkers = loadCompanyData(companyId, 'medewerkers');
-    
-    // Zoek medewerker - ondersteunt zowel gehashte als plaintext pincodes (migratie)
-    let medewerker = null;
-    let needsMigration = false;
-    
-    for (const m of companyMedewerkers) {
-        if (m.actief === false) continue;
-        
-        // Check pincode of pinHash veld
-        const storedPin = m.pincode || m.pinHash;
-        if (!storedPin) continue;
-        
-        // Check of pincode gehasht is (bevat ':')
-        if (storedPin.includes(':')) {
-            // Gehashte pincode - gebruik verifyPassword
-            if (verifyPassword(pincode, storedPin)) {
-                medewerker = m;
-                break;
-            }
-        } else {
-            // Plaintext pincode (legacy) - directe vergelijking
-            if (storedPin === pincode) {
-                medewerker = m;
-                needsMigration = true;
-                break;
+    for (const company of companies) {
+        const mws = loadCompanyData(company.id, 'medewerkers') || [];
+        const found = mws.find(m => m.email && m.email.toLowerCase() === email.toLowerCase() && m.actief !== false);
+        if (found) {
+            const storedPin = found.pincode || found.pinHash;
+            if (!storedPin) continue;
+            if (storedPin.includes(':')) {
+                if (verifyPassword(pincode, storedPin)) { medewerker = found; foundCompanyId = company.id; break; }
+            } else {
+                if (storedPin === pincode) { medewerker = found; foundCompanyId = company.id; needsMigration = true; break; }
             }
         }
     }
     
-    if (!medewerker) {
-        recordLoginAttempt(ip, false);
-        return res.status(401).json({ error: 'Ongeldige pincode' });
-    }
+    if (!medewerker) { recordLoginAttempt(ip, false); return res.status(401).json({ error: 'Ongeldige email of pincode' }); }
     
-    // Success - reset rate limit
     recordLoginAttempt(ip, true);
     
-    // Migreer plaintext pincode naar hash (company-specific)
     if (needsMigration) {
-        const idx = companyMedewerkers.findIndex(m => m.id === medewerker.id);
-        if (idx !== -1) {
-            companyMedewerkers[idx].pincode = hashPassword(pincode);
-            saveCompanyData(companyId, 'medewerkers', companyMedewerkers);
-            console.log(`ðŸ” Pincode gemigreerd naar hash voor: ${medewerker.naam}`);
-        }
+        const mws = loadCompanyData(foundCompanyId, 'medewerkers') || [];
+        const idx = mws.findIndex(m => m.id === medewerker.id);
+        if (idx !== -1) { mws[idx].pincode = hashPassword(pincode); saveCompanyData(foundCompanyId, 'medewerkers', mws); }
     }
     
-    // Create session with companyId (multi-tenant)
     const sessionId = crypto.randomBytes(32).toString('hex');
     medewerkerSessions.set(sessionId, {
         medewerkerId: medewerker.id,
         medewerker: medewerker.naam,
-        companyId: companyId,  // Multi-tenant: store company ID in session
+        companyId: foundCompanyId,
         created: Date.now(),
-        expires: Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 dagen sessie
+        expires: Date.now() + (7 * 24 * 60 * 60 * 1000)
     });
     saveMedewerkerSessions();
     
@@ -4407,7 +4419,76 @@ app.post('/api/medewerker/login', (req, res) => {
     res.setHeader('Set-Cookie', cookieOptions.join('; '));
     
     console.log(`ðŸ‘· Medewerker login: ${medewerker.naam}`);
-    res.json({ success: true, id: medewerker.id, naam: medewerker.naam, type: medewerker.type, telefoon: medewerker.telefoon, sessionId: sessionId });
+    res.json({ success: true, id: medewerker.id, naam: medewerker.naam, type: medewerker.type, telefoon: medewerker.telefoon, sessionId: sessionId, companyId: foundCompanyId });
+});
+
+// Validate medewerker invite token
+app.get('/api/medewerker/validate-invite', (req, res) => {
+    const { token } = req.query;
+    if (!token) return res.status(400).json({ valid: false, error: 'Token ontbreekt' });
+    
+    const companies = loadData('companies') || [];
+    let foundInvite = null, foundCompany = null;
+    
+    for (const company of companies) {
+        const invites = loadCompanyData(company.id, 'medewerkerInvites') || [];
+        const invite = invites.find(i => i.token === token && i.status === 'pending');
+        if (invite) {
+            if (new Date(invite.expires) < new Date()) {
+                return res.status(400).json({ valid: false, error: 'Uitnodiging is verlopen' });
+            }
+            foundInvite = invite;
+            foundCompany = company;
+            break;
+        }
+    }
+    
+    if (!foundInvite) return res.status(400).json({ valid: false, error: 'Ongeldige of gebruikte uitnodiging' });
+    
+    res.json({ valid: true, email: foundInvite.email, naam: foundInvite.naam || '', companyName: foundCompany?.name || foundCompany?.bedrijfsnaam || 'StucAdmin', companyId: foundCompany?.id });
+});
+
+// Register medewerker via invite
+app.post('/api/medewerker/register', (req, res) => {
+    const { token, naam, email, telefoon, pincode } = req.body;
+    if (!token || !naam || !pincode) return res.status(400).json({ error: 'Vul alle verplichte velden in' });
+    if (!/^\d{4}$/.test(pincode)) return res.status(400).json({ error: 'Pincode moet 4 cijfers zijn' });
+    
+    const companies = loadData('companies') || [];
+    let foundInvite = null, foundCompanyId = null;
+    
+    for (const company of companies) {
+        const invites = loadCompanyData(company.id, 'medewerkerInvites') || [];
+        const inviteIdx = invites.findIndex(i => i.token === token && i.status === 'pending');
+        if (inviteIdx !== -1) {
+            if (new Date(invites[inviteIdx].expires) < new Date()) return res.status(400).json({ error: 'Uitnodiging is verlopen' });
+            foundInvite = invites[inviteIdx];
+            foundCompanyId = company.id;
+            invites[inviteIdx].status = 'used';
+            invites[inviteIdx].usedAt = new Date().toISOString();
+            saveCompanyData(company.id, 'medewerkerInvites', invites);
+            break;
+        }
+    }
+    
+    if (!foundInvite) return res.status(400).json({ error: 'Ongeldige uitnodiging' });
+    
+    const medewerkers = loadCompanyData(foundCompanyId, 'medewerkers') || [];
+    if (medewerkers.some(m => m.email === email)) return res.status(400).json({ error: 'Email is al geregistreerd' });
+    
+    medewerkers.push({
+        id: 'mw_' + Date.now(),
+        naam, email, telefoon: telefoon || '',
+        pincode: hashPassword(pincode),
+        type: 'vast',
+        contractType: foundInvite.contractType || 'arbeidsovereenkomst',
+        actief: true,
+        createdAt: new Date().toISOString()
+    });
+    saveCompanyData(foundCompanyId, 'medewerkers', medewerkers);
+    
+    console.log('Medewerker geregistreerd:', naam);
+    res.json({ success: true });
 });
 
 // Medewerker logout
@@ -6263,77 +6344,114 @@ app.post('/api/team/invite-medewerker', requireAuth, async (req, res) => {
     }
     
     try {
-        // Genereer unieke token
-        const token = require('crypto').randomBytes(32).toString('hex');
-        const expires = new Date();
-        expires.setDate(expires.getDate() + 7); // 7 dagen geldig
+        // Check of email al bestaat bij dit bedrijf
+        const medewerkers = loadCompanyData(companyId, 'medewerkers') || [];
+        if (medewerkers.find(m => m.email?.toLowerCase() === email.toLowerCase())) {
+            return res.status(400).json({ error: 'Deze email is al geregistreerd' });
+        }
         
-        // Sla invite op
-        const invites = loadCompanyData(companyId, 'medewerkerInvites') || [];
-        invites.push({
-            id: 'inv_' + Date.now(),
-            token,
-            email,
-            naam: naam || '',
-            contractType: contractType || 'arbeidsovereenkomst',
-            message: message || '',
-            type: 'vast',
+        // Genereer 4-cijferige PIN
+        const pin = Math.floor(1000 + Math.random() * 9000).toString();
+        const hashedPin = hashPassword(pin);
+        
+        // Maak medewerker direct aan
+        const nieuweMedewerker = {
+            id: 'mw_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8),
+            naam: naam || 'Nieuwe medewerker',
+            email: email,
+            telefoon: '',
+            type: contractType || 'vast',
+            pincode: hashedPin,
+            actief: true,
+            status: 'actief',
             createdAt: new Date().toISOString(),
-            expires: expires.toISOString(),
-            status: 'pending'
-        });
-        saveCompanyData(companyId, 'medewerkerInvites', invites);
+            invitedBy: req.session?.email || 'admin'
+        };
         
-        // Stuur email (als SMTP geconfigureerd is)
-        const company = loadCompanyData(companyId, 'settings') || {};
-        const companyName = company.bedrijfsnaam || 'StucAdmin';
-        const inviteUrl = `https://stucadmin.nl/medewerker-registratie.html?token=${token}`;
+        medewerkers.push(nieuweMedewerker);
+        saveCompanyData(companyId, 'medewerkers', medewerkers);
         
-        // Check of we email kunnen sturen
-        const smtpConfig = loadCompanyData(companyId, 'smtp');
-        if (smtpConfig && smtpConfig.host) {
+        // Stuur email met login gegevens
+        const companies = loadData('companies') || [];
+        const company = companies.find(c => c.id === companyId);
+        const companyName = company?.name || company?.bedrijfsnaam || 'StucAdmin';
+        const loginUrl = `https://stucadmin.nl/medewerker-login.html?email=${encodeURIComponent(email)}`;
+        
+        const emailHtml = `
+            <h2>Welkom bij ${companyName}!</h2>
+            <p>${naam ? `Hoi ${naam},` : 'Hoi,'}</p>
+            ${message ? `<p>${message}</p>` : ''}
+            <p>Je bent toegevoegd als medewerker. Hieronder vind je je inloggegevens:</p>
+            <div style="background:#f3f4f6;padding:20px;border-radius:10px;margin:20px 0;">
+                <p style="margin:0 0 10px 0;"><strong>Email:</strong> ${email}</p>
+                <p style="margin:0;"><strong>Pincode:</strong> <span style="font-size:24px;font-weight:bold;color:#8b5cf6;">${pin}</span></p>
+            </div>
+            <p><a href="${loginUrl}" style="background:#8b5cf6;color:white;padding:12px 24px;text-decoration:none;border-radius:8px;display:inline-block;">Direct Inloggen</a></p>
+            <p><small>Bewaar je pincode goed - je hebt deze nodig om in te loggen.</small></p>
+        `;
+        
+        // Probeer Gmail OAuth
+        const googleTokens = global.googleTokens?.get('default');
+        if (googleTokens?.access_token) {
             const nodemailer = require('nodemailer');
             const transporter = nodemailer.createTransport({
-                host: smtpConfig.host,
-                port: smtpConfig.port || 587,
-                secure: smtpConfig.secure || false,
+                host: 'smtp.gmail.com',
+                port: 465,
+                secure: true,
                 auth: {
-                    user: smtpConfig.user,
-                    pass: smtpConfig.pass
+                    type: 'OAuth2',
+                    user: process.env.SMTP_USER || 'info@stucadmin.nl',
+                    accessToken: googleTokens.access_token
                 }
             });
             
             await transporter.sendMail({
-                from: smtpConfig.from || smtpConfig.user,
+                from: process.env.SMTP_USER || 'info@stucadmin.nl',
                 to: email,
-                subject: `Uitnodiging om te werken bij ${companyName}`,
-                html: `
-                    <h2>Welkom bij ${companyName}!</h2>
-                    <p>${naam ? `Hoi ${naam},` : 'Hoi,'}</p>
-                    ${message ? `<p>${message}</p>` : ''}
-                    <p>Je bent uitgenodigd om je te registreren als medewerker.</p>
-                    <p><a href="${inviteUrl}" style="background:#8b5cf6;color:white;padding:12px 24px;text-decoration:none;border-radius:8px;display:inline-block;">Registreren</a></p>
-                    <p><small>Deze link is 7 dagen geldig.</small></p>
-                `
+                subject: `Je inloggegevens voor ${companyName}`,
+                html: emailHtml
             });
             
-            console.log(`📨 Medewerker uitnodiging verzonden naar ${email}`);
-            res.json({ success: true, message: 'Uitnodiging verzonden' });
+            console.log(`📨 Medewerker ${naam || email} aangemaakt en uitnodiging verzonden`);
+            res.json({ success: true, message: 'Medewerker aangemaakt en uitnodiging verzonden' });
+        } else if (process.env.SMTP_HOST) {
+            // SMTP fallback
+            const nodemailer = require('nodemailer');
+            const smtpPort = parseInt(process.env.SMTP_PORT) || 587;
+            const transporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST,
+                port: smtpPort,
+                secure: smtpPort === 465,
+                auth: {
+                    user: process.env.SMTP_USER,
+                    pass: process.env.SMTP_PASS
+                }
+            });
+            
+            await transporter.sendMail({
+                from: process.env.SMTP_FROM || process.env.SMTP_USER,
+                to: email,
+                subject: `Je inloggegevens voor ${companyName}`,
+                html: emailHtml
+            });
+            
+            console.log(`📨 Medewerker ${naam || email} aangemaakt en uitnodiging verzonden (SMTP)`);
+            res.json({ success: true, message: 'Medewerker aangemaakt en uitnodiging verzonden' });
         } else {
-            // Geen SMTP - geef link terug
-            console.log(`📨 Medewerker uitnodiging aangemaakt voor ${email} (geen email verzonden)`);
+            console.log(`📨 Medewerker ${naam || email} aangemaakt (geen email verzonden)`);
             res.json({ 
                 success: true, 
-                message: 'Uitnodiging aangemaakt (email niet geconfigureerd)',
-                inviteUrl 
+                message: 'Medewerker aangemaakt (email niet geconfigureerd)',
+                pin: pin
             });
         }
         
     } catch (e) {
         console.error('Medewerker invite error:', e);
-        res.status(500).json({ error: 'Fout bij verzenden uitnodiging' });
+        res.status(500).json({ error: 'Fout bij aanmaken medewerker' });
     }
 });
+
 // GET /api/team/approved-expenses - Goedgekeurde bonnen en km
 app.get('/api/team/approved-expenses', requireAuth, (req, res) => {
     const companyId = req.session?.bedrijf_id;
@@ -6614,12 +6732,21 @@ app.post('/api/offerteaanvragen', (req, res) => {
 });
 
 // Update offerteaanvraag (admin)
-app.put('/api/offerteaanvragen/:id', requireAuth, (req, res) => {
+app.put('/api/offerteaanvragen/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const companyId = req.session?.bedrijf_id;
     
+    // Lees uit juiste bestand
+    let allAanvragen = [];
+    try {
+        const fileData = await fs.promises.readFile('/home/info/stucadmin-data/offerteaanvragen.json', 'utf8');
+        allAanvragen = JSON.parse(fileData);
+    } catch (e) {
+        return res.status(500).json({ error: 'Kon aanvragen niet laden' });
+    }
+    
     // Multi-tenant: alleen aanvragen van eigen bedrijf kunnen worden gewijzigd
-    const index = offerteaanvragen.findIndex(a => a.id === id && (a.companyId === companyId || (!a.companyId && companyId === 'comp_1765303193963_c53a745a')));
+    const index = allAanvragen.findIndex(a => a.id === id && (a.companyId === companyId || (!a.companyId && companyId === 'comp_1765303193963_c53a745a')));
     
     if (index === -1) {
         return res.status(404).json({ error: 'Aanvraag niet gevonden' });
@@ -6627,37 +6754,59 @@ app.put('/api/offerteaanvragen/:id', requireAuth, (req, res) => {
     
     const updates = req.body;
     
-    if (updates.status !== undefined) offerteaanvragen[index].status = updates.status;
-    if (updates.type !== undefined) offerteaanvragen[index].type = updates.type;
-    if (updates.notities !== undefined) offerteaanvragen[index].notities = updates.notities;
-    if (updates.eersteReactie !== undefined) offerteaanvragen[index].eersteReactie = updates.eersteReactie;
-    if (updates.geschatteM2 !== undefined) offerteaanvragen[index].geschatteM2 = updates.geschatteM2;
+    if (updates.status !== undefined) allAanvragen[index].status = updates.status;
+    if (updates.type !== undefined) allAanvragen[index].type = updates.type;
+    if (updates.notities !== undefined) allAanvragen[index].notities = updates.notities;
+    if (updates.eersteReactie !== undefined) allAanvragen[index].eersteReactie = updates.eersteReactie;
+    if (updates.geschatteM2 !== undefined) allAanvragen[index].geschatteM2 = updates.geschatteM2;
     
-    saveOfferteaanvragen(offerteaanvragen);
-    res.json({ success: true, aanvraag: offerteaanvragen[index] });
+    await fs.promises.writeFile('/home/info/stucadmin-data/offerteaanvragen.json', JSON.stringify(allAanvragen, null, 2));
+    res.json({ success: true, aanvraag: allAanvragen[index] });
 });
 
 // Delete offerteaanvraag (admin)
-app.delete('/api/offerteaanvragen/:id', requireAuth, (req, res) => {
+app.delete('/api/offerteaanvragen/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const companyId = req.session?.bedrijf_id;
     
+    // Lees uit juiste bestand
+    let allAanvragen = [];
+    try {
+        const fileData = await fs.promises.readFile('/home/info/stucadmin-data/offerteaanvragen.json', 'utf8');
+        allAanvragen = JSON.parse(fileData);
+    } catch (e) {
+        return res.status(500).json({ error: 'Kon aanvragen niet laden' });
+    }
+    
     // Multi-tenant: alleen aanvragen van eigen bedrijf kunnen worden verwijderd
-    const index = offerteaanvragen.findIndex(a => a.id === id && (a.companyId === companyId || (!a.companyId && companyId === 'comp_1765303193963_c53a745a')));
+    const index = allAanvragen.findIndex(a => a.id === id && (a.companyId === companyId || (!a.companyId && companyId === 'comp_1765303193963_c53a745a')));
     
     if (index === -1) {
         return res.status(404).json({ error: 'Aanvraag niet gevonden' });
     }
     
-    offerteaanvragen.splice(index, 1);
-    saveOfferteaanvragen(offerteaanvragen);
+    allAanvragen.splice(index, 1);
+    await fs.promises.writeFile('/home/info/stucadmin-data/offerteaanvragen.json', JSON.stringify(allAanvragen, null, 2));
     res.json({ success: true });
 });
 
 // Maak klant aan in Moneybird vanuit aanvraag
 app.post('/api/offerteaanvragen/:id/create-contact', requireAuth, async (req, res) => {
     const { id } = req.params;
-    const aanvraag = offerteaanvragen.find(a => a.id === id);
+    const companyId = req.session?.bedrijf_id;
+    
+    // Lees aanvragen uit het juiste bestand
+    let allAanvragen = [];
+    try {
+        const fileData = await fs.promises.readFile('/home/info/stucadmin-data/offerteaanvragen.json', 'utf8');
+        allAanvragen = JSON.parse(fileData);
+    } catch (e) {
+        console.error('Error reading offerteaanvragen:', e);
+        return res.status(500).json({ error: 'Kon aanvragen niet laden' });
+    }
+    
+    // Multi-tenant: zoek aanvraag van eigen bedrijf (of legacy zonder companyId)
+    const aanvraag = allAanvragen.find(a => a.id === id && (a.companyId === companyId || (!a.companyId && companyId === 'comp_1765303193963_c53a745a')));
     
     if (!aanvraag) {
         return res.status(404).json({ error: 'Aanvraag niet gevonden' });
@@ -6665,6 +6814,13 @@ app.post('/api/offerteaanvragen/:id/create-contact', requireAuth, async (req, re
     
     if (aanvraag.klantAangemaakt) {
         return res.status(400).json({ error: 'Klant is al aangemaakt' });
+    }
+    
+    // Haal Moneybird credentials op
+    const mbCreds = getMoneyBirdCredentials(companyId, req.session);
+    console.log('Moneybird credentials:', mbCreds ? 'found' : 'null', mbCreds?.source);
+    if (!mbCreds || !mbCreds.token || !mbCreds.adminId) {
+        return res.status(400).json({ error: 'Moneybird niet gekoppeld' });
     }
     
     try {
@@ -6691,10 +6847,10 @@ app.post('/api/offerteaanvragen/:id/create-contact', requireAuth, async (req, re
         
         // Maak contact aan in Moneybird
         const fetch = (await import('node-fetch')).default;
-        const response = await fetch(`https://moneybird.com/api/v2/${MONEYBIRD_ADMIN_ID}/contacts`, {
+        const response = await fetch(`https://moneybird.com/api/v2/${mbCreds.adminId}/contacts`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${MONEYBIRD_API_TOKEN}`,
+                'Authorization': `Bearer ${mbCreds.token}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -6714,14 +6870,16 @@ app.post('/api/offerteaanvragen/:id/create-contact', requireAuth, async (req, re
         const data = await response.json();
         
         if (data.id) {
-            // Update aanvraag
-            const index = offerteaanvragen.findIndex(a => a.id === id);
-            offerteaanvragen[index].klantAangemaakt = true;
-            offerteaanvragen[index].moneybirdContactId = data.id;
-            saveOfferteaanvragen(offerteaanvragen);
+            // Update aanvraag in bestand
+            const index = allAanvragen.findIndex(a => a.id === id);
+            if (index !== -1) {
+                allAanvragen[index].klantAangemaakt = true;
+                allAanvragen[index].moneybirdContactId = data.id;
+                await fs.promises.writeFile('/home/info/stucadmin-data/offerteaanvragen.json', JSON.stringify(allAanvragen, null, 2));
+            }
             
             // Clear contacts cache
-            cache.delete('contacts');
+            clearCache('contacts');
             
             console.log(`ðŸ‘¤ Klant aangemaakt in Moneybird: ${aanvraag.naam}`);
             res.json({ success: true, contactId: data.id });
@@ -8019,7 +8177,7 @@ app.post('/api/company/accounting/:provider', requireAuth, (req, res) => {
         
         // Also update legacy moneybird fields if provider is moneybird
         if (provider === 'moneybird' && req.body.token && req.body.adminId) {
-            companies[index].moneybird_token = req.body.token;
+            companies[index].moneybird_token = (req.body.token || '').trim();
             companies[index].moneybird_admin_id = req.body.adminId;
         }
         

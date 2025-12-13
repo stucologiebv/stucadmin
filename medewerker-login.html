@@ -8,31 +8,9 @@
     <style>
         body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
         .login-card { backdrop-filter: blur(10px); background: rgba(255,255,255,0.95); }
-        .pin-input { 
-            font-size: 32px; 
-            letter-spacing: 12px; 
-            text-align: center;
-            font-weight: bold;
-        }
-        .pin-input::placeholder {
-            letter-spacing: 8px;
-        }
-        .shake {
-            animation: shake 0.5s ease-in-out;
-        }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-10px); }
-            40%, 80% { transform: translateX(10px); }
-        }
-        .success-animation {
-            animation: success 0.5s ease-in-out;
-        }
-        @keyframes success {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
+        .pin-input { font-size: 28px; letter-spacing: 10px; text-align: center; font-weight: bold; }
+        .shake { animation: shake 0.5s ease-in-out; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
     </style>
 </head>
 <body class="flex items-center justify-center p-4">
@@ -40,28 +18,22 @@
         <div class="text-center mb-8">
             <div class="text-5xl mb-4">👷</div>
             <h1 class="text-2xl font-bold text-gray-800">Medewerker Login</h1>
-            <p class="text-gray-500 text-sm mt-2" id="companyName">Voer je 4-cijferige pincode in</p>
+            <p class="text-gray-500 text-sm mt-2">Log in met je email en pincode</p>
         </div>
 
-        <!-- Error state when no company -->
-        <div id="noCompanyError" class="hidden text-center py-8">
-            <div class="text-5xl mb-4">🔒</div>
-            <p class="text-red-600 font-medium mb-4">Geen bedrijf geselecteerd</p>
-            <p class="text-gray-500 text-sm">Vraag je werkgever om de juiste login link.</p>
-        </div>
+        <form id="loginForm" onsubmit="login(event)">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" id="emailInput" required
+                       class="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"
+                       placeholder="je@email.nl">
+            </div>
 
-        <!-- Login form -->
-        <div id="loginForm">
             <div class="mb-6">
-                <input type="password" 
-                       id="pincodeInput" 
-                       class="pin-input w-full p-5 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none transition-all"
-                       maxlength="4" 
-                       pattern="\d{4}"
-                       inputmode="numeric"
-                       placeholder="••••"
-                       autocomplete="off"
-                       onkeyup="handleInput(event)"
+                <label class="block text-sm font-medium text-gray-700 mb-1">Pincode (4 cijfers)</label>
+                <input type="password" id="pincodeInput" required
+                       class="pin-input w-full p-4 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"
+                       maxlength="4" pattern="\d{4}" inputmode="numeric" placeholder="••••"
                        oninput="this.value = this.value.replace(/[^0-9]/g, '')">
             </div>
 
@@ -69,97 +41,31 @@
                 <span class="text-gray-400 text-sm">Pincode vergeten? Vraag de admin.</span>
             </div>
 
-            <button onclick="login()" 
-                    id="loginBtn"
-                    class="w-full bg-indigo-600 text-white py-4 rounded-xl font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
-                    disabled>
+            <button type="submit" id="loginBtn"
+                    class="w-full bg-indigo-600 text-white py-4 rounded-xl font-semibold hover:bg-indigo-700 transition text-lg">
                 Inloggen
             </button>
-        </div>
+        </form>
 
         <div class="mt-8 pt-6 border-t text-center">
-            <a href="/login.html" class="text-gray-400 text-sm hover:text-gray-600">
-                Admin login →
-            </a>
+            <a href="/login.html" class="text-gray-400 text-sm hover:text-gray-600">Admin login →</a>
         </div>
     </div>
 
     <script>
-
-        // XSS Protection - escape HTML special characters
-        function escapeHtml(text) {
-            if (text === null || text === undefined) return '';
-            const str = String(text);
-            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-            return str.replace(/[&<>"']/g, m => map[m]);
-        }
-        // Get company ID from URL parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const companyId = urlParams.get('c');
-        
-        // Check if company ID is present
-        if (!companyId) {
-            document.getElementById('loginForm').classList.add('hidden');
-            document.getElementById('noCompanyError').classList.remove('hidden');
-        } else {
-            // Load company name
-            loadCompanyInfo();
-        }
-        
-        async function loadCompanyInfo() {
-            try {
-                const res = await fetch(`/api/company/public/${companyId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.naam) {
-                        document.getElementById('companyName').textContent = data.naam;
-                    }
-                }
-            } catch (e) {}
-        }
-
-        // Check if already logged in (skip if coming from new registration)
-        async function checkStatus() {
-            // Skip auto-login if coming from ZZP registration
-            const isNewRegistration = urlParams.get('newreg') === '1';
-            if (isNewRegistration) {
-                console.log('New registration - skipping auto-login');
-                return;
-            }
+        async function login(e) {
+            e.preventDefault();
             
-            try {
-                const res = await fetch('/api/medewerker/status?companyId=' + companyId);
-                const data = await res.json();
-                if (data.loggedIn && data.companyId === companyId) {
-                    window.location.href = '/medewerker-portal.html?c=' + companyId;
-                }
-            } catch (e) {}
-        }
-
-        function handleInput(event) {
-            const pin = document.getElementById('pincodeInput').value;
-            const btn = document.getElementById('loginBtn');
-            
-            btn.disabled = pin.length !== 4;
-            
-            // Reset status message
-            document.getElementById('statusMsg').innerHTML = 
-                '<span class="text-gray-400 text-sm">Pincode vergeten? Vraag de admin.</span>';
-            
-            // Auto-login when 4 digits entered
-            if (pin.length === 4) {
-                login();
-            }
-        }
-
-        async function login() {
+            const email = document.getElementById('emailInput').value;
             const pincode = document.getElementById('pincodeInput').value;
             const statusMsg = document.getElementById('statusMsg');
             const loginBtn = document.getElementById('loginBtn');
-            const loginCard = document.getElementById('loginCard');
-            const input = document.getElementById('pincodeInput');
+            const pincodeInput = document.getElementById('pincodeInput');
 
-            if (pincode.length !== 4 || !companyId) return;
+            if (pincode.length !== 4) {
+                statusMsg.innerHTML = '<span class="text-red-500">Pincode moet 4 cijfers zijn</span>';
+                return;
+            }
 
             loginBtn.disabled = true;
             loginBtn.textContent = 'Bezig...';
@@ -169,32 +75,22 @@
                 const res = await fetch('/api/medewerker/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ pincode, companyId })
+                    body: JSON.stringify({ email, pincode })
                 });
 
                 const data = await res.json();
 
                 if (res.ok && data.success) {
                     statusMsg.innerHTML = `<span class="text-green-600 font-medium">✅ Welkom ${data.naam}!</span>`;
-                    loginCard.classList.add('success-animation');
-                    input.style.borderColor = '#10b981';
-                    
                     setTimeout(() => {
-                        window.location.href = '/medewerker-portal.html?c=' + companyId;
+                        window.location.href = '/medewerker-portal.html?c=' + (data.companyId || '');
                     }, 800);
                 } else {
-                    statusMsg.innerHTML = `<span class="text-red-500 font-medium">❌ ${data.error || 'Ongeldige pincode'}</span>`;
-                    input.classList.add('shake');
-                    input.style.borderColor = '#ef4444';
-                    input.value = '';
-                    input.focus();
-                    
-                    setTimeout(() => {
-                        input.classList.remove('shake');
-                        input.style.borderColor = '';
-                    }, 500);
-                    
-                    loginBtn.disabled = true;
+                    statusMsg.innerHTML = `<span class="text-red-500 font-medium">❌ ${data.error || 'Ongeldige gegevens'}</span>`;
+                    pincodeInput.classList.add('shake');
+                    pincodeInput.value = '';
+                    setTimeout(() => pincodeInput.classList.remove('shake'), 500);
+                    loginBtn.disabled = false;
                     loginBtn.textContent = 'Inloggen';
                 }
             } catch (e) {
@@ -204,10 +100,16 @@
             }
         }
 
-        // Init
-        if (companyId) {
-            checkStatus();
+        // Prefill email uit URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const prefillEmail = urlParams.get('email');
+        if (prefillEmail) {
+            document.getElementById('emailInput').value = prefillEmail;
+            document.getElementById('emailInput').readOnly = true;
+            document.getElementById('emailInput').classList.add('bg-gray-100');
             document.getElementById('pincodeInput').focus();
+        } else {
+            document.getElementById('emailInput').focus();
         }
     </script>
 </body>

@@ -898,6 +898,7 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="status-badge ${m.type === 'zzp' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}">${m.type === 'zzp' ? 'ZZP' : 'Medewerker'}</span>
+                        <button class="text-red-500 hover:text-red-700 p-1" onclick="deleteMedewerker('${m.id}', '${escapeHtml(m.naam)}')" title="Verwijderen">🗑️</button>
                     </div>
                 </div>
             `).join('');
@@ -1009,6 +1010,35 @@
         async function logout() {
             await fetch('/api/auth/logout', { method: 'POST' });
             window.location.href = '/login.html';
+        }
+
+        
+        // Delete medewerker volledig
+        async function deleteMedewerker(id, naam) {
+            if (!confirm(`Weet je zeker dat je ${naam} wilt verwijderen?\n\nDit verwijdert ook alle uren en sessies van deze medewerker.`)) return;
+            
+            try {
+                const res = await fetch(`/api/medewerkers/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    let msg = `${naam} verwijderd`;
+                    if (data.details) {
+                        const d = data.details;
+                        const parts = [];
+                        if (d.uren > 0) parts.push(`${d.uren} uren`);
+                        if (d.sessies > 0) parts.push(`${d.sessies} sessies`);
+                        if (parts.length > 0) msg += ` (inclusief ${parts.join(' en ')})`;
+                    }
+                    showToast(msg);
+                    loadUsers();
+                } else {
+                    showToast(data.error || 'Fout bij verwijderen', 'error');
+                }
+            } catch (e) {
+                console.error('Delete error:', e);
+                showToast('Fout bij verwijderen', 'error');
+            }
         }
 
         // Init

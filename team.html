@@ -18,6 +18,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/sidebar.js"></script>
     <script src="/storage-helper.js"></script>
+    <script src="/tip-banner.js"></script>
     <script>
 
         // XSS Protection - escape HTML special characters
@@ -96,6 +97,59 @@
         .data-table td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
         .data-table tr:hover { background: #f8fafc; }
         
+        /* Team Table View */
+        .team-table { width: 100%; border-collapse: collapse; }
+        .team-table th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; color: #94a3b8; border-bottom: 2px solid #e5e7eb; white-space: nowrap; }
+        .team-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .team-table tr { cursor: pointer; transition: background 0.15s; }
+        .team-table tr:hover { background: #f8fafc; }
+        .team-table tr.expanded { background: #faf5ff; }
+        
+        .team-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; color: white; flex-shrink: 0; }
+        .team-avatar.zzp { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+        .team-avatar.vast { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        
+        .team-name { font-weight: 600; color: #1e293b; font-size: 14px; }
+        .team-subtitle { font-size: 12px; color: #94a3b8; }
+        
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .status-dot.green { background: #22c55e; }
+        .status-dot.yellow { background: #f59e0b; }
+        .status-dot.red { background: #ef4444; }
+        .status-dot.gray { background: #94a3b8; }
+        
+        .type-pill { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .type-pill.zzp { background: #f3e8ff; color: #7c3aed; }
+        .type-pill.vast { background: #dbeafe; color: #2563eb; }
+        
+        .team-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+        .team-table tr:hover .team-actions { opacity: 1; }
+        .team-action-btn { width: 32px; height: 32px; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: all 0.15s; background: #f1f5f9; }
+        .team-action-btn:hover { background: #e2e8f0; transform: scale(1.05); }
+        .team-action-btn.primary { background: #8b5cf6; color: white; }
+        .team-action-btn.primary:hover { background: #7c3aed; }
+        
+        .view-toggle { display: flex; background: #f1f5f9; border-radius: 8px; padding: 3px; }
+        .view-toggle-btn { padding: 6px 12px; border: none; background: transparent; cursor: pointer; border-radius: 6px; font-size: 13px; color: #64748b; transition: all 0.15s; }
+        .view-toggle-btn.active { background: white; color: #1e293b; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        
+        .expanded-row { background: #faf5ff; border-left: 3px solid #8b5cf6; }
+        .expanded-content { padding: 16px 12px 16px 60px; }
+        
+        .stat-mini { text-align: center; padding: 8px; background: #f8fafc; border-radius: 8px; }
+        .stat-mini-value { font-size: 16px; font-weight: 700; }
+        .stat-mini-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; }
+        
+        .warning-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; }
+        .warning-badge.danger { background: #fee2e2; color: #dc2626; }
+        .warning-badge.warning { background: #fef3c7; color: #d97706; }
+        
+        @media (max-width: 768px) {
+            .team-table th:nth-child(4), .team-table td:nth-child(4),
+            .team-table th:nth-child(5), .team-table td:nth-child(5) { display: none; }
+            .team-actions { opacity: 1; }
+        }
+        
         main { margin-left: 256px; padding: 32px; min-height: 100vh; }
         
         .file-upload { border: 2px dashed #e5e7eb; border-radius: 12px; padding: 24px; text-align: center; cursor: pointer; transition: all 0.2s; }
@@ -161,13 +215,13 @@
             </header>
 
             <!-- Tip Banner -->
-            <div class="bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-100 rounded-xl p-3 mb-4 flex items-center gap-3">
-                <span class="text-xl">📋</span>
-                <p class="text-sm text-purple-700"><strong>Wet DBA compliant</strong> — Download kant-en-klare modelovereenkomsten. Documenten worden automatisch gecontroleerd op geldigheid (KVK, BTW, verzekeringen).</p>
+            <div class="tip-banner bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-100 rounded-xl p-3 mb-4 flex items-center gap-3" data-tip-id="team-dba">
+                <span class="tip-content text-xl">📋</span>
+                <p class="tip-content text-sm text-purple-700"><strong>Wet DBA compliant</strong> — Download kant-en-klare modelovereenkomsten. Documenten worden automatisch gecontroleerd op geldigheid (KVK, BTW, verzekeringen).</p>
             </div>
 
-            <!-- Alerts Section -->
-            <div id="alertsSection" class="mb-6 space-y-3"></div>
+            <!-- Alerts Section - Compact & Dismissible -->
+            <div id="alertsSection" class="mb-4"></div>
 
             <!-- KPIs -->
             <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
@@ -209,22 +263,49 @@
             <!-- Tab: ZZP'ers -->
             <div id="tab-team" class="tab-content">
                 <div class="card p-4 mb-4">
-                    <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex flex-col sm:flex-row gap-3 items-center">
                         <input type="text" id="searchZZP" placeholder="🔍 Zoek teamlid..." class="form-input flex-1" oninput="renderTeam()">
-                        <select id="filterType" class="form-input sm:w-40" onchange="renderTeam()">
+                        <select id="filterType" class="form-input sm:w-32" onchange="renderTeam()">
                             <option value="alle">Alle types</option>
                             <option value="vast">Vast</option>
                             <option value="zzp">ZZP</option>
                         </select>
-                        <select id="filterStatus" class="form-input sm:w-40" onchange="renderTeam()">
-                            <option value="alle">Alle statussen</option>
+                        <select id="filterStatus" class="form-input sm:w-32" onchange="renderTeam()">
+                            <option value="alle">Alle</option>
                             <option value="actief">Actief</option>
                             <option value="inactief">Inactief</option>
                         </select>
+                        <div class="view-toggle">
+                            <button class="view-toggle-btn active" onclick="setTeamView('table')" id="viewTable">📋</button>
+                            <button class="view-toggle-btn" onclick="setTeamView('cards')" id="viewCards">▦</button>
+                        </div>
                     </div>
                 </div>
                 
-                <div id="zzpersList" class="space-y-3"></div>
+                <!-- Table View -->
+                <div id="teamTableView" class="card overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="team-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 250px;">Naam</th>
+                                    <th style="width: 80px;">Type</th>
+                                    <th style="width: 100px;">Status</th>
+                                    <th style="width: 90px;">Uren/week</th>
+                                    <th style="width: 100px;">Kostprijs</th>
+                                    <th style="width: 100px;">Marge</th>
+                                    <th style="width: 120px;" class="text-right">Acties</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teamTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Card View (hidden by default) -->
+                <div id="teamCardView" class="hidden">
+                    <div id="zzpersList" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+                </div>
             </div>
 
                         <!-- Tab: Te vergoeden -->
@@ -588,7 +669,7 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <button onclick="editZZP()" class="btn-secondary text-sm py-1 px-3">✏️</button>
-                        <button onclick="deleteZZP()" class="btn-danger text-sm py-1 px-3">🗑️</button>
+                        <a href="/instellingen.html#gebruikers" class="btn-secondary text-sm py-1 px-3" title="Beheer in Instellingen">⚙️</a>
                         <button onclick="closeModal('modalZZPDetail')" class="text-gray-400 hover:text-gray-600 text-2xl ml-2">&times;</button>
                     </div>
                 </div>
@@ -1179,6 +1260,36 @@
             overeenkomst: { label: '📝 Ondertekende overeenkomst', hasExpiry: false },
             anders: { label: '📎 Anders', hasExpiry: false }
         };
+        
+        // Prijsmodel helper functies
+        function getOpdrachtVoorMedewerker(medewerkerId, projectId) {
+            if (projectId) {
+                const opdracht = opdrachten.find(o => o.zzpId === medewerkerId && o.projectId === projectId);
+                if (opdracht) return opdracht;
+            }
+            const actieveOpdracht = opdrachten.find(o => o.zzpId === medewerkerId && o.status === 'lopend');
+            return actieveOpdracht || null;
+        }
+        
+        function berekenOmzet(uren, verkooptarief, opdracht) {
+            if (!opdracht || !opdracht.prijsModel) return uren * verkooptarief;
+            switch (opdracht.prijsModel) {
+                case 'vast': return parseFloat(opdracht.bedrag) || 0;
+                case 'm2': return (parseFloat(opdracht.m2Prijs) || 0) * (parseFloat(opdracht.m2Aantal) || 0);
+                case 'uur': 
+                default: return uren * (parseFloat(opdracht.uurtarief) || verkooptarief);
+            }
+        }
+        
+        function getPrijsModelLabel(opdracht) {
+            if (!opdracht || !opdracht.prijsModel) return 'per uur';
+            switch (opdracht.prijsModel) {
+                case 'vast': return 'vast';
+                case 'm2': return 'm²';
+                case 'uur': return '/uur';
+                default: return opdracht.prijsModel;
+            }
+        }
 
         // ==========================================
         // INITIALIZATION
@@ -1232,6 +1343,12 @@
                     const mondayStr = monday.toISOString().split('T')[0];
                     const sundayStr = sunday.toISOString().split('T')[0];
                     weeklyUren = alleUren.filter(u => u.datum >= mondayStr && u.datum <= sundayStr);
+                }
+                
+                // Laad ZZP opdrachten voor prijsmodel
+                const opdRes = await fetch('/api/zzp-opdrachten');
+                if (opdRes.ok) {
+                    opdrachten = await opdRes.json();
                 }
             } catch(e) { console.error('Error loading uren:', e); }
             
@@ -1766,11 +1883,22 @@
         // ==========================================
         // ZZP'ERS
         // ==========================================
+        let teamViewMode = 'table'; // 'table' or 'cards'
+        let expandedTeamRow = null;
+        
+        function setTeamView(mode) {
+            teamViewMode = mode;
+            document.getElementById('viewTable').classList.toggle('active', mode === 'table');
+            document.getElementById('viewCards').classList.toggle('active', mode === 'cards');
+            document.getElementById('teamTableView').classList.toggle('hidden', mode !== 'table');
+            document.getElementById('teamCardView').classList.toggle('hidden', mode !== 'cards');
+            renderTeam();
+        }
+        
         function renderTeam() {
-            const container = document.getElementById('zzpersList');
-            const search = document.getElementById('searchZZP').value.toLowerCase();
+            const search = (document.getElementById('searchZZP')?.value || '').toLowerCase();
             const filterType = document.getElementById('filterType')?.value || 'alle';
-            const filter = document.getElementById('filterStatus').value;
+            const filter = document.getElementById('filterStatus')?.value || 'alle';
             
             let filtered = zzpers.filter(z => {
                 const matchSearch = z.naam.toLowerCase().includes(search) || 
@@ -1779,6 +1907,148 @@
                 const matchFilter = filter === 'alle' || z.status === filter;
                 return matchSearch && matchType && matchFilter;
             });
+            
+            if (teamViewMode === 'table') {
+                renderTeamTable(filtered);
+            } else {
+                renderTeamCards(filtered);
+            }
+        }
+        
+        function renderTeamTable(filtered) {
+            const tbody = document.getElementById('teamTableBody');
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-12">
+                            <p class="text-gray-400 text-4xl mb-4">👷</p>
+                            <p class="text-gray-500">Geen teamleden gevonden</p>
+                            <button onclick="openNieuwTeamlid()" class="btn-primary mt-4">+ Eerste teamlid toevoegen</button>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = filtered.map(z => {
+                const warnings = getZZPWarnings(z);
+                const isZZP = z.type === 'zzp';
+                const kostprijs = parseFloat(z.uurtarief) || 0;
+                const weekUren = getWeekUrenVoorMedewerker(z.id);
+                const opdracht = getOpdrachtVoorMedewerker(z.id, null);
+                const weekOmzet = berekenOmzet(weekUren, 60, opdracht);
+                const weekMarge = weekOmzet - (weekUren * kostprijs);
+                
+                // Bepaal status indicator
+                let statusDot = 'gray';
+                let statusText = 'Inactief';
+                if (z.status === 'actief') {
+                    if (warnings.some(w => w.type === 'danger')) {
+                        statusDot = 'red';
+                        statusText = 'Actie nodig';
+                    } else if (warnings.some(w => w.type === 'warning')) {
+                        statusDot = 'yellow';
+                        statusText = 'Aandacht';
+                    } else {
+                        statusDot = 'green';
+                        statusText = 'Actief';
+                    }
+                }
+                
+                const isExpanded = expandedTeamRow === z.id;
+                
+                return `
+                    <tr onclick="toggleTeamRow('${z.id}')" class="${isExpanded ? 'expanded' : ''}">
+                        <td>
+                            <div class="flex items-center gap-3">
+                                <div class="team-avatar ${isZZP ? 'zzp' : 'vast'}">${z.naam.charAt(0).toUpperCase()}</div>
+                                <div>
+                                    <div class="team-name">${escapeHtml(z.naam)}</div>
+                                    <div class="team-subtitle">${escapeHtml(z.bedrijf || z.functie || z.specialisatie || '')}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="type-pill ${isZZP ? 'zzp' : 'vast'}">${isZZP ? 'ZZP' : 'Vast'}</span></td>
+                        <td>
+                            <div class="flex items-center">
+                                <span class="status-dot ${statusDot}"></span>
+                                <span class="text-sm">${statusText}</span>
+                            </div>
+                            ${warnings.length > 0 ? `<span class="warning-badge ${warnings[0].type} ml-2">${warnings.length}</span>` : ''}
+                        </td>
+                        <td class="font-medium">${weekUren.toFixed(1)}u</td>
+                        <td class="text-purple-600 font-medium">${kostprijs > 0 ? '€' + kostprijs : '-'}</td>
+                        <td class="${weekMarge >= 0 ? 'text-green-600' : 'text-red-600'} font-medium">€${weekMarge.toFixed(0)}</td>
+                        <td class="text-right">
+                            <div class="team-actions justify-end">
+                                ${z.telefoon ? `<a href="tel:${escapeHtml(z.telefoon)}" onclick="event.stopPropagation()" class="team-action-btn" title="Bellen">📞</a>` : ''}
+                                <button onclick="event.stopPropagation(); editZZP('${z.id}')" class="team-action-btn" title="Bewerken">✏️</button>
+                                <button onclick="event.stopPropagation(); showMedewerkerUren('${z.id}', '${escapeHtml(z.naam)}')" class="team-action-btn" title="Uren">⏱️</button>
+                                <button onclick="event.stopPropagation(); openZZPDetail('${z.id}')" class="team-action-btn primary" title="Details">📋</button>
+                            </div>
+                        </td>
+                    </tr>
+                    ${isExpanded ? renderExpandedRow(z, warnings, weekUren, kostprijs, weekMarge) : ''}
+                `;
+            }).join('');
+        }
+        
+        function renderExpandedRow(z, warnings, weekUren, kostprijs, weekMarge) {
+            const isZZP = z.type === 'zzp';
+            return `
+                <tr class="expanded-row">
+                    <td colspan="7">
+                        <div class="expanded-content">
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                <div class="stat-mini">
+                                    <div class="stat-mini-value text-purple-600">€${kostprijs}</div>
+                                    <div class="stat-mini-label">Kostprijs/u</div>
+                                </div>
+                                <div class="stat-mini">
+                                    <div class="stat-mini-value">${weekUren.toFixed(1)}</div>
+                                    <div class="stat-mini-label">Uren/week</div>
+                                </div>
+                                <div class="stat-mini">
+                                    <div class="stat-mini-value ${weekMarge >= 0 ? 'text-green-600' : 'text-red-600'}">€${weekMarge.toFixed(0)}</div>
+                                    <div class="stat-mini-label">Marge/week</div>
+                                </div>
+                                <div class="stat-mini">
+                                    <div class="stat-mini-value text-blue-600">${isZZP ? 'ZZP\'er' : 'Vast'}</div>
+                                    <div class="stat-mini-label">Contract</div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-wrap gap-4 text-sm mb-4">
+                                ${z.email ? `<a href="mailto:${escapeHtml(z.email)}" class="text-purple-600 hover:underline">📧 ${escapeHtml(z.email)}</a>` : ''}
+                                ${z.telefoon ? `<a href="tel:${escapeHtml(z.telefoon)}" class="text-purple-600 hover:underline">📱 ${escapeHtml(z.telefoon)}</a>` : ''}
+                                ${z.kvk ? `<span class="text-gray-600">🏢 KvK: ${escapeHtml(z.kvk)}</span>` : ''}
+                            </div>
+                            
+                            ${warnings.length > 0 ? `
+                                <div class="flex flex-wrap gap-2 mb-4">
+                                    ${warnings.map(w => `<span class="warning-badge ${w.type}">${w.msg}</span>`).join('')}
+                                </div>
+                            ` : ''}
+                            
+                            <div class="flex gap-2">
+                                <button onclick="event.stopPropagation(); editZZP('${z.id}')" class="btn-secondary text-sm">✏️ Bewerken</button>
+                                <button onclick="event.stopPropagation(); openZZPDetail('${z.id}')" class="btn-secondary text-sm">📋 Alle details</button>
+                                <button onclick="event.stopPropagation(); showMedewerkerUren('${z.id}', '${escapeHtml(z.naam)}')" class="btn-secondary text-sm">⏱️ Uren overzicht</button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        function toggleTeamRow(id) {
+            expandedTeamRow = expandedTeamRow === id ? null : id;
+            renderTeam();
+        }
+        
+        function renderTeamCards(filtered) {
+            const container = document.getElementById('zzpersList');
             
             if (filtered.length === 0) {
                 container.innerHTML = `
@@ -1796,70 +2066,44 @@
                 const isZZP = z.type === 'zzp';
                 const kostprijs = parseFloat(z.uurtarief) || 0;
                 const weekUren = getWeekUrenVoorMedewerker(z.id);
-                const verkooptarief = 60; // standaard
-                const weekOmzet = weekUren * verkooptarief;
-                const weekKosten = weekUren * kostprijs;
-                const weekMarge = weekOmzet - weekKosten;
+                const opdracht = getOpdrachtVoorMedewerker(z.id, null);
+                const weekOmzet = berekenOmzet(weekUren, 60, opdracht);
+                const weekMarge = weekOmzet - (weekUren * kostprijs);
                 
                 return `
-                    <div class="card p-4 mb-3 hover:shadow-lg transition-all">
-                        <!-- Header -->
-                        <div class="flex items-start justify-between mb-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-12 h-12 rounded-full bg-gradient-to-br ${isZZP ? 'from-purple-400 to-purple-600' : 'from-blue-400 to-blue-600'} flex items-center justify-center text-white font-bold text-lg">
-                                    ${z.naam.charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                    <h3 class="font-bold text-gray-800">${escapeHtml(z.naam)}</h3>
-                                    <p class="text-gray-500 text-sm">${z.bedrijf || z.specialisatie || z.functie || '-'}</p>
-                                </div>
+                    <div class="card p-4 hover:shadow-lg transition-all cursor-pointer" onclick="openZZPDetail('${z.id}')">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="team-avatar ${isZZP ? 'zzp' : 'vast'}" style="width:44px;height:44px;font-size:16px;">
+                                ${z.naam.charAt(0).toUpperCase()}
                             </div>
-                            <div class="flex flex-col items-end gap-1">
-                                <span class="status-badge ${isZZP ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}">${isZZP ? '🔧 ZZP' : '👔 Vast'}</span>
-                                <span class="status-badge status-${z.status}">${z.status === 'actief' ? '✅ Actief' : '⏸️ Inactief'}</span>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-bold text-gray-800 truncate">${escapeHtml(z.naam)}</h3>
+                                <p class="text-gray-500 text-sm truncate">${z.bedrijf || z.functie || '-'}</p>
                             </div>
+                            <span class="type-pill ${isZZP ? 'zzp' : 'vast'}">${isZZP ? 'ZZP' : 'Vast'}</span>
                         </div>
                         
-                        <!-- Contact info -->
-                        <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600 mb-3 pb-3 border-b border-gray-100">
-                            ${z.email ? `<a href="mailto:${escapeHtml(z.email)}" class="hover:text-purple-600">📧 ${escapeHtml(z.email)}</a>` : ''}
-                            ${z.telefoon ? `<a href="tel:${escapeHtml(z.telefoon)}" class="hover:text-purple-600">📱 ${escapeHtml(z.telefoon)}</a>` : ''}
-                        </div>
-                        
-                        <!-- Stats row -->
-                        <div class="grid grid-cols-4 gap-2 mb-3 text-center">
+                        <div class="grid grid-cols-3 gap-2 mb-3 text-center">
                             <div class="bg-gray-50 rounded-lg p-2">
-                                <p class="text-lg font-bold text-purple-600">${kostprijs > 0 ? '€' + kostprijs : '⚠️'}</p>
-                                <p class="text-xs text-gray-500">Kostprijs/u</p>
+                                <p class="font-bold text-purple-600">${kostprijs > 0 ? '€' + kostprijs : '-'}</p>
+                                <p class="text-xs text-gray-500">Kost/u</p>
                             </div>
                             <div class="bg-gray-50 rounded-lg p-2">
-                                <p class="text-lg font-bold text-gray-700">${weekUren.toFixed(1)}</p>
-                                <p class="text-xs text-gray-500">Uren week</p>
+                                <p class="font-bold">${weekUren.toFixed(1)}u</p>
+                                <p class="text-xs text-gray-500">Week</p>
                             </div>
                             <div class="bg-gray-50 rounded-lg p-2">
-                                <p class="text-lg font-bold text-green-600">€${weekOmzet.toFixed(0)}</p>
-                                <p class="text-xs text-gray-500">Omzet</p>
-                            </div>
-                            <div class="bg-gray-50 rounded-lg p-2">
-                                <p class="text-lg font-bold ${weekMarge >= 0 ? 'text-emerald-600' : 'text-red-600'}">€${weekMarge.toFixed(0)}</p>
+                                <p class="font-bold ${weekMarge >= 0 ? 'text-green-600' : 'text-red-600'}">€${weekMarge.toFixed(0)}</p>
                                 <p class="text-xs text-gray-500">Marge</p>
                             </div>
                         </div>
                         
-                        <!-- Warnings -->
                         ${warnings.length > 0 ? `
-                            <div class="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg p-2 mb-3">
+                            <div class="flex items-center gap-1 text-xs text-amber-700 bg-amber-50 rounded p-2">
                                 <span>⚠️</span>
-                                <span>${warnings.map(w => w.msg).slice(0, 2).join(' • ')}${warnings.length > 2 ? ' +' + (warnings.length - 2) + ' meer' : ''}</span>
+                                <span class="truncate">${warnings[0].msg}${warnings.length > 1 ? ` +${warnings.length - 1}` : ''}</span>
                             </div>
                         ` : ''}
-                        
-                        <!-- Actions -->
-                        <div class="flex gap-2">
-                            <button onclick="event.stopPropagation(); editZZP('${z.id}')" class="flex-1 btn-secondary text-sm py-2">✏️ Bewerken</button>
-                            <button onclick="event.stopPropagation(); openZZPDetail('${z.id}')" class="flex-1 btn-secondary text-sm py-2">📋 Details</button>
-                            <button onclick="event.stopPropagation(); showMedewerkerUren('${z.id}', '${escapeHtml(z.naam)}')" class="flex-1 btn-secondary text-sm py-2">⏱️ Uren</button>
-                        </div>
                     </div>
                 `;
             }).join('');
@@ -1980,11 +2224,11 @@
                 contractSelect.innerHTML = '<option value="arbeidsovereenkomst">Arbeidsovereenkomst</option><option value="0uren">0-uren contract</option><option value="bepaalde_tijd">Bepaalde tijd</option><option value="onbepaalde_tijd">Onbepaalde tijd</option>';
             }
             
-            document.getElementById('inviteModal').style.display = 'flex';
+            document.getElementById('inviteModal').classList.add('open');
         }
         
         function closeInviteModal() {
-            document.getElementById('inviteModal').style.display = 'none';
+            document.getElementById('inviteModal').classList.remove('open');
         }
         
         async function sendInvite(e) {
@@ -2018,6 +2262,36 @@
             } catch (err) {
                 showToast('Netwerkfout', 'error');
             }
+        }
+        
+        function showInviteLink(email, url) {
+            const modal = document.createElement('div');
+            modal.className = 'modal open';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 500px;">
+                    <div class="p-6">
+                        <h2 class="text-xl font-bold mb-4">📨 Uitnodiging aangemaakt</h2>
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                            <p class="text-yellow-800 text-sm">⚠️ Email is niet geconfigureerd. Deel de link handmatig met ${email}:</p>
+                        </div>
+                        <div class="bg-gray-100 rounded-lg p-3 mb-4">
+                            <input type="text" value="${url}" readonly class="w-full bg-transparent text-sm" id="inviteLinkInput">
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="copyInviteLink()" class="btn-primary flex-1">📋 Kopieer link</button>
+                            <button onclick="this.closest('.modal').remove()" class="btn-secondary flex-1">Sluiten</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        function copyInviteLink() {
+            const input = document.getElementById('inviteLinkInput');
+            input.select();
+            document.execCommand('copy');
+            showToast('Link gekopieerd!', 'success');
         }
         
         function openNieuweZZP() {
@@ -2726,11 +3000,19 @@ StucAdmin Team
                 warnings += getZZPWarnings(z).length;
             });
             
-            document.getElementById('kpiActief').textContent = actief;
-            document.getElementById('kpiLopend').textContent = lopend;
-            document.getElementById('kpiUitbetaald').textContent = `€${totaal.toLocaleString('nl-NL')}`;
-            document.getElementById('kpiWaarschuwingen').textContent = warnings;
+            const setKpi = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            };
+            
+            setKpi('kpiActief', actief);
+            setKpi('kpiLopend', lopend);
+            setKpi('kpiUitbetaald', `€${totaal.toLocaleString('nl-NL')}`);
+            setKpi('kpiWaarschuwingen', warnings);
         }
+        
+        let alertsDismissed = sessionStorage.getItem('team_alerts_dismissed') === 'true';
+        let alertsCollapsed = sessionStorage.getItem('team_alerts_collapsed') === 'true';
         
         function renderAlerts() {
             const container = document.getElementById('alertsSection');
@@ -2739,30 +3021,57 @@ StucAdmin Team
             zzpers.forEach(z => {
                 const warnings = getZZPWarnings(z);
                 warnings.filter(w => w.type === 'danger').forEach(w => {
-                    alerts.push({ zzp: z.naam, ...w });
+                    alerts.push({ zzp: z.naam, zzpId: z.id, ...w });
                 });
             });
             
-            if (alerts.length === 0) {
+            if (alerts.length === 0 || alertsDismissed) {
                 container.innerHTML = '';
                 return;
             }
             
-            container.innerHTML = alerts.slice(0, 3).map(a => `
-                <div class="danger-card flex items-center gap-3">
-                    <span class="text-xl">⚠️</span>
-                    <div>
-                        <p class="font-medium text-sm">${a.zzp}</p>
-                        <p class="text-red-600 text-xs">${a.msg}</p>
+            container.innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-xl overflow-hidden">
+                    <div class="flex items-center justify-between px-4 py-2 bg-red-100 cursor-pointer" onclick="toggleAlerts()">
+                        <div class="flex items-center gap-2">
+                            <span class="text-red-600">⚠️</span>
+                            <span class="font-semibold text-red-800 text-sm">${alerts.length} actie${alerts.length > 1 ? 's' : ''} vereist</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-red-400 text-xs" id="alertToggleIcon">${alertsCollapsed ? '▼ Tonen' : '▲ Verbergen'}</span>
+                            <button onclick="event.stopPropagation(); dismissAlerts()" class="text-red-400 hover:text-red-600 text-lg leading-none" title="Sluiten">×</button>
+                        </div>
+                    </div>
+                    <div id="alertsContent" class="${alertsCollapsed ? 'hidden' : ''} divide-y divide-red-100">
+                        ${alerts.slice(0, 5).map(a => `
+                            <div class="flex items-center justify-between px-4 py-2 hover:bg-red-100/50">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-6 h-6 rounded-full bg-red-200 flex items-center justify-center text-xs font-bold text-red-700">${a.zzp.charAt(0)}</span>
+                                    <div>
+                                        <span class="font-medium text-sm text-gray-800">${escapeHtml(a.zzp)}</span>
+                                        <span class="text-red-600 text-xs ml-2">${a.msg}</span>
+                                    </div>
+                                </div>
+                                <button onclick="event.stopPropagation(); openZZPDetail('${a.zzpId}')" class="text-xs text-red-600 hover:text-red-800 font-medium">Oplossen →</button>
+                            </div>
+                        `).join('')}
+                        ${alerts.length > 5 ? `<div class="px-4 py-2 text-center text-xs text-red-500">+ ${alerts.length - 5} meer</div>` : ''}
                     </div>
                 </div>
-            `).join('');
-            
-            if (alerts.length > 3) {
-                container.innerHTML += `
-                    <p class="text-center text-sm text-gray-500">+ ${alerts.length - 3} meer waarschuwingen</p>
-                `;
-            }
+            `;
+        }
+        
+        function toggleAlerts() {
+            alertsCollapsed = !alertsCollapsed;
+            sessionStorage.setItem('team_alerts_collapsed', alertsCollapsed);
+            document.getElementById('alertsContent').classList.toggle('hidden', alertsCollapsed);
+            document.getElementById('alertToggleIcon').textContent = alertsCollapsed ? '▼ Tonen' : '▲ Verbergen';
+        }
+        
+        function dismissAlerts() {
+            alertsDismissed = true;
+            sessionStorage.setItem('team_alerts_dismissed', 'true');
+            document.getElementById('alertsSection').innerHTML = '';
         }
 
         // ==========================================
